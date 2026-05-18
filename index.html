@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeniusNotes AI — Study Smarter, Not Longer</title>
+  <title>geniusnotes ai — study smarter, not longer</title>
   <meta name="description" content="AI-generated notes, flashcards, quizzes, and summaries from your lectures in seconds." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -66,8 +66,7 @@
 
     /* ── HERO ── */
     .hero {
-      display: grid; grid-template-columns: 1fr 1fr;
-      align-items: center; gap: 56px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
       max-width: 1200px; margin: 0 auto; padding: 80px 40px 60px;
     }
     .hero-badge {
@@ -78,8 +77,8 @@
     }
     .hero-left h1 { font-size: clamp(2.4rem, 5vw, 3.8rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 4px; }
     .grad { background: linear-gradient(135deg, var(--purple2), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .hero-left p { font-size: 1rem; color: var(--muted); margin: 20px 0 32px; max-width: 420px; line-height: 1.7; }
-    .hero-ctas { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 36px; }
+    .hero-left p { font-size: 1rem; color: var(--muted); margin: 20px 0 32px; max-width: 520px; line-height: 1.7; }
+    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 36px; }
     .btn-primary {
       background: var(--purple); color: #fff; font-weight: 700; font-size: 0.92rem;
       padding: 13px 24px; border-radius: 100px; text-decoration: none;
@@ -278,8 +277,8 @@
     <a href="#">Resources ▾</a>
   </div>
   <div class="nav-auth">
-    <a href="#" class="nav-login">Log in</a>
-    <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="nav-cta">Start Free →</a>
+    <a href="signin.html" class="nav-login">Log in</a>
+    <a href="signup.html" class="nav-cta">Start Free →</a>
   </div>
 </nav>
 
@@ -291,47 +290,6 @@
     <p>AI-generated notes, flashcards, quizzes, and summaries from your lectures in seconds.</p>
     <div class="hero-ctas">
       <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="btn-primary">Start Free – It's Free →</a>
-      <a href="#how-it-works" class="btn-outline">▶ Watch Demo</a>
-    </div>
-  </div>
-
-  <div class="mockup-wrap">
-    <div class="mockup-glow"></div>
-    <div class="app-mockup">
-      <div class="mock-bar">
-        <div class="mock-dots"><span></span><span></span><span></span></div>
-        <div class="mock-search">🔍 Search notes...</div>
-        <div class="mock-avatar"></div>
-      </div>
-      <div class="mock-body">
-        <div class="mock-sidebar">
-          <div class="mock-logo">✦ GeniusNotes AI</div>
-          <div class="mock-nav active">🏠 Home</div>
-          <div class="mock-nav">📝 Notes</div>
-          <div class="mock-nav">🃏 Flashcards</div>
-          <div class="mock-nav">❓ Quizzes</div>
-          <div class="mock-nav">🤖 AI Tutor</div>
-          <div class="mock-nav">📤 Uploads</div>
-          <div class="mock-nav">📚 History</div>
-          <div class="mock-nav">🔖 Bookmarks</div>
-          <div class="mock-upgrade">Upgrade to Pro<br><span style="color:var(--muted);font-size:0.55rem;">Unlock unlimited notes and more.</span></div>
-        </div>
-        <div class="mock-main">
-          <div class="mock-greeting">Welcome back, Alex 👋</div>
-          <div class="mock-sub">Ready to study something amazing today?</div>
-          <div class="mock-stats">
-            <div class="mock-stat"><div class="mock-stat-lbl">AI Notes</div><div class="mock-stat-val" style="color:#A78BFA">12</div></div>
-            <div class="mock-stat"><div class="mock-stat-lbl">Flashcards</div><div class="mock-stat-val" style="color:#4FC3F7">235</div></div>
-            <div class="mock-stat"><div class="mock-stat-lbl">Quizzes</div><div class="mock-stat-val" style="color:#F59E0B">18</div></div>
-            <div class="mock-stat"><div class="mock-stat-lbl">AI Tutor</div><div class="mock-stat-val" style="color:#34D399;font-size:0.75rem;">24/7</div></div>
-          </div>
-          <div class="mock-recent-lbl">Recent Notes</div>
-          <div class="mock-note"><div class="mock-dot" style="background:#8B5CF6"></div>Machine Learning Fundamentals<span class="mock-time">2 min ago</span></div>
-          <div class="mock-note"><div class="mock-dot" style="background:#4FC3F7"></div>Photosynthesis in Plants<span class="mock-time">1 hour ago</span></div>
-          <div class="mock-note"><div class="mock-dot" style="background:#F59E0B"></div>The Causes of World War I<span class="mock-time">3 hours ago</span></div>
-          <div class="mock-note" style="border-bottom:none"><div class="mock-dot" style="background:#34D399"></div>Cell Structure and Function<span class="mock-time">5 hours ago</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </div>

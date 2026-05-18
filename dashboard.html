@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dashboard — geniusnotes ai</title>
+  <style>
+    :root {
+      --bg: #06060F; --surface: #12121E; --border: rgba(255,255,255,0.07);
+      --text: #F0F0FF; --muted: #8888AA; --purple: #8B5CF6; --purple2: #A78BFA; --cyan: #4FC3F7;
+    }
+    :root.light {
+      --bg: #F4F4FC; --surface: #fff; --border: rgba(0,0,0,0.08);
+      --text: #0A0A1A; --muted: #666677;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; transition: background 0.2s, color 0.2s; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 60px; border-bottom: 1px solid var(--border); background: rgba(6,6,15,0.92); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    :root.light nav { background: rgba(244,244,252,0.92); }
+    .nav-logo { font-size: 1rem; font-weight: 800; color: var(--text); text-decoration: none; }
+    .nav-logo .ai { color: var(--purple2); }
+    .nav-right { display: flex; align-items: center; gap: 16px; }
+    .user-name { font-size: 0.85rem; color: var(--muted); }
+    .signout-btn { padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .signout-btn:hover { background: rgba(255,255,255,0.06); }
+    :root.light .signout-btn:hover { background: rgba(0,0,0,0.04); }
+
+    .main { max-width: 1000px; margin: 0 auto; padding: 48px 40px; }
+    .greeting { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .greeting span { background: linear-gradient(135deg, var(--purple2), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .sub { color: var(--muted); margin-bottom: 36px; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-val { font-size: 1.8rem; font-weight: 800; }
+
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+    .card:hover { border-color: var(--purple); transform: translateY(-2px); }
+    .card-icon { font-size: 1.6rem; margin-bottom: 12px; }
+    .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .card-badge { display: inline-block; margin-top: 12px; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(139,92,246,0.15); color: var(--purple2); }
+
+    @media (max-width: 700px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .cards { grid-template-columns: 1fr; }
+      .main { padding: 32px 16px; }
+      nav { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
+  <div class="nav-right">
+    <span class="user-name" id="userName"></span>
+    <button class="signout-btn" id="signoutBtn">Sign out</button>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="greeting">Good to see you, <span id="greetName">there</span> 👋</div>
+  <p class="sub">Ready to study something amazing today?</p>
+
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">AI Notes</div><div class="stat-val" style="color:#A78BFA">0</div></div>
+    <div class="stat-card"><div class="stat-label">Flashcards</div><div class="stat-val" style="color:#4FC3F7">0</div></div>
+    <div class="stat-card"><div class="stat-label">Quizzes</div><div class="stat-val" style="color:#F59E0B">0</div></div>
+    <div class="stat-card"><div class="stat-label">AI Tutor</div><div class="stat-val" style="color:#34D399;font-size:1.2rem">24/7</div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">📝</div>
+      <div class="card-title">AI Notes</div>
+      <div class="card-desc">Upload a lecture or paste text and get structured notes instantly.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🃏</div>
+      <div class="card-title">Flashcards</div>
+      <div class="card-desc">Auto-generate flashcard decks from any topic or document.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">❓</div>
+      <div class="card-title">Quizzes</div>
+      <div class="card-desc">Test yourself with AI-generated quizzes tailored to your material.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">AI Tutor</div>
+      <div class="card-desc">Ask anything. Get clear, detailed explanations on any subject.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">▶️</div>
+      <div class="card-title">YouTube Summarizer</div>
+      <div class="card-desc">Paste any YouTube URL and get a full AI summary in seconds.</div>
+      <span class="card-badge" style="background:rgba(79,195,247,0.15);color:var(--cyan)">Live</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">📤</div>
+      <div class="card-title">Upload Docs</div>
+      <div class="card-desc">Upload PDFs, slides, or notes for instant AI processing.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+    authDomain: "geniusnotes-ai.firebaseapp.com",
+    projectId: "geniusnotes-ai",
+    storageBucket: "geniusnotes-ai.firebasestorage.app",
+    messagingSenderId: "1041746856723",
+    appId: "1:1041746856723:web:fae9072e0292c3946068e6",
+    measurementId: "G-6MEN0RBSEF"
+  });
+  const auth = firebase.auth();
+
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  auth.onAuthStateChanged(user => {
+    if (!user) { window.location.href = 'signin.html'; return; }
+    const first = (user.displayName || user.email).split(' ')[0].split('@')[0];
+    document.getElementById('greetName').textContent = first;
+    document.getElementById('userName').textContent = user.email;
+  });
+
+  document.getElementById('signoutBtn').addEventListener('click', async () => {
+    await auth.signOut();
+    window.location.href = 'index.html';
+  });
+</script>
+</body>
+</html>

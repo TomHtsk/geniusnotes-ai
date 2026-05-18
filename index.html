@@ -171,8 +171,8 @@
     .yt-section {
       background: var(--surface); border: 1px solid rgba(139,92,246,0.28);
       border-radius: 24px; padding: 48px; display: grid;
-      grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
-      position: relative; overflow: hidden;
+      grid-template-columns: 1fr; gap: 48px; align-items: center;
+      position: relative; overflow: hidden; max-width: 680px; margin: 0 auto;
     }
     .yt-section::before { content: ''; position: absolute; top: -80px; left: -80px; width: 240px; height: 240px; background: radial-gradient(circle, rgba(139,92,246,0.18), transparent 70%); pointer-events: none; }
     .yt-new { display: inline-flex; align-items: center; gap: 6px; background: rgba(236,72,153,0.12); border: 1px solid rgba(236,72,153,0.3); color: #EC4899; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 100px; margin-bottom: 16px; }
@@ -455,32 +455,6 @@
       <div class="summary-box" id="summary-box">
         <div class="summary-label" id="summary-label">AI Summary</div>
         <div id="summary-text"></div>
-      </div>
-    </div>
-    <div class="yt-flow">
-      <div class="flow-card">
-        <div class="flow-lbl">YouTube Video</div>
-        <div class="flow-thumb">▶</div>
-        <div class="flow-vid-title">Understanding Quantum Physics</div>
-      </div>
-      <div class="flow-card">
-        <div class="flow-lbl">AI Processing</div>
-        <div class="flow-proc">🧠 Analyzing content...</div>
-        <div class="flow-prog"><div class="flow-prog-fill"></div></div>
-        <div class="flow-prog-pct">82% complete</div>
-      </div>
-      <div class="flow-card">
-        <div class="flow-lbl">AI Summary</div>
-        <div class="flow-summary">Quantum physics is the study of matter and energy at the smallest scales. It explains phenomena that classical physics cannot, such as...</div>
-      </div>
-      <div class="flow-card">
-        <div class="flow-lbl">Generated Content</div>
-        <div class="flow-items">
-          <div class="flow-item">Notes</div>
-          <div class="flow-item">Flashcards</div>
-          <div class="flow-item">Quiz</div>
-          <div class="flow-item">Key Concepts</div>
-        </div>
       </div>
     </div>
   </div>

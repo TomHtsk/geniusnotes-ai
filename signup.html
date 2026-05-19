@@ -124,6 +124,7 @@
     measurementId: "G-6MEN0RBSEF"
   });
   const auth = firebase.auth();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
   auth.onAuthStateChanged(user => { if (user) window.location.href = 'dashboard.html'; });
   if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');

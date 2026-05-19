@@ -276,9 +276,10 @@
     <a href="#">Pricing</a>
     <a href="#">Resources ▾</a>
   </div>
-  <div class="nav-auth">
-    <a href="signin.html" class="nav-login">Log in</a>
-    <a href="signup.html" class="nav-cta">Start Free →</a>
+  <div class="nav-auth" id="nav-auth">
+    <a href="signin.html" class="nav-login" id="nav-login">Log in</a>
+    <a href="signup.html" class="nav-cta" id="nav-signup">Start Free →</a>
+    <a href="dashboard.html" class="nav-cta" id="nav-dashboard" style="display:none">My Dashboard →</a>
   </div>
 </nav>
 
@@ -289,14 +290,14 @@
     <h1>Study smarter.<br><span class="grad">Not longer.</span></h1>
     <p>AI-generated notes, flashcards, quizzes, and summaries from your lectures in seconds.</p>
     <div class="hero-ctas">
-      <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="btn-primary">Start Free – It's Free →</a>
+      <a href="signup.html" class="btn-primary">Start Free – It's Free →</a>
     </div>
   </div>
 </div>
 
 
 <!-- YOUTUBE CONVERTER -->
-<div class="yt-wrap">
+<div class="yt-wrap" id="youtube-summarizer">
   <div class="yt-section">
     <div>
       <div class="yt-new">New ✦</div>
@@ -474,6 +475,33 @@
       btn.disabled = false;
     }
   }
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+    authDomain: "geniusnotes-ai.firebaseapp.com",
+    projectId: "geniusnotes-ai",
+    storageBucket: "geniusnotes-ai.firebasestorage.app",
+    messagingSenderId: "1041746856723",
+    appId: "1:1041746856723:web:fae9072e0292c3946068e6"
+  });
+  firebase.auth().onAuthStateChanged(user => {
+    const login     = document.getElementById('nav-login');
+    const signup    = document.getElementById('nav-signup');
+    const dashboard = document.getElementById('nav-dashboard');
+    if (user) {
+      login.style.display     = 'none';
+      signup.style.display    = 'none';
+      dashboard.style.display = '';
+    } else {
+      login.style.display     = '';
+      signup.style.display    = '';
+      dashboard.style.display = 'none';
+    }
+  });
 </script>
 </body>
 </html>

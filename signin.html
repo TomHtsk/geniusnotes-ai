@@ -117,6 +117,7 @@
     measurementId: "G-6MEN0RBSEF"
   });
   const auth = firebase.auth();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
   // Redirect if already signed in
   auth.onAuthStateChanged(user => { if (user) window.location.href = 'dashboard.html'; });

@@ -84,6 +84,8 @@ function getPrompt(mode, transcript) {
       return `Generate structured study notes from the following YouTube video transcript. Format your response as:\n\n# Topic\n\n## Section 1\n- note\n- note\n\n## Section 2\n- note\n- note\n\n(Organize into clear sections with bullet points, suitable for studying.)\n\nTranscript:\n${t}`;
     case 'quizzes':
       return `Generate 5 quiz questions with answers from the following YouTube video transcript. Format your response as:\n\nQ1: [question]\nA: [answer]\n\nQ2: [question]\nA: [answer]\n\n...\n\n(Make questions specific and educational, covering the main concepts.)\n\nTranscript:\n${t}`;
+    case 'flashcards':
+      return `Generate exactly 8 flashcard pairs from the following text. Respond with ONLY a valid JSON array — no markdown, no explanation, nothing else:\n[{"front":"term or question","back":"definition or answer"},{"front":"...","back":"..."},...]\n\nText:\n${t}`;
     default:
       return `Summarize the following YouTube video transcript. Structure your response as:\n\nOverview: One sentence.\n\nKey Points:\n• point 1\n• point 2\n• ...\n\nTakeaway: One sentence conclusion.\n\nTranscript:\n${t}`;
   }
@@ -97,14 +99,30 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { url, mode = 'summarize' } = req.body || {};
-    if (!url) return res.status(400).json({ error: 'Missing YouTube URL' });
-
-    const videoId = getVideoId(url);
-    if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
+    const { url, text, mode = 'summarize' } = req.body || {};
+    if (!url && !text) return res.status(400).json({ error: 'Missing YouTube URL or text content' });
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+
+    // Direct text input path (upload panel)
+    if (text) {
+      if (mode === 'transcribe') return res.status(400).json({ error: 'Transcribe mode requires a YouTube URL.' });
+      const prompt = getPrompt(mode, text);
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 1000, temperature: 0.3 })
+      });
+      const data = await groqRes.json();
+      if (!groqRes.ok) return res.status(500).json({ error: data.error?.message || 'Groq error' });
+      const summary = data.choices?.[0]?.message?.content;
+      if (!summary) return res.status(500).json({ error: 'No result returned' });
+      return res.status(200).json({ summary });
+    }
+
+    const videoId = getVideoId(url);
+    if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
 
     if (mode === 'transcribe') {
       try {

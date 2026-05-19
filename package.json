@@ -2,5 +2,8 @@
   "name": "geniusnotes-ai",
   "version": "1.0.0",
   "private": true,
-  "dependencies": {}
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.0"
+  }
 }

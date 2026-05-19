@@ -3,8 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>geniusnotes ai — study smarter, not longer</title>
-  <meta name="description" content="AI-generated notes, flashcards, quizzes, and summaries from your lectures in seconds." />
+  <title>GeniusNotes AI — YouTube Video Summarizer & AI Study Tool</title>
+  <meta name="description" content="Turn any YouTube video into notes, flashcards, quizzes, and summaries in seconds. Free YouTube AI summarizer for students." />
+  <link rel="canonical" href="https://geniusnotes.ai" />
+  <meta property="og:title" content="GeniusNotes AI — YouTube Video Summarizer & AI Study Tool" />
+  <meta property="og:description" content="Turn any YouTube video into notes, flashcards, quizzes, and summaries in seconds. Free to try — no credit card required." />
+  <meta property="og:url" content="https://geniusnotes.ai" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GeniusNotes AI — YouTube Video Summarizer & AI Study Tool" />
+  <meta name="twitter:description" content="Turn any YouTube video into notes, flashcards, quizzes, and summaries in seconds. Free to try — no credit card required." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -211,7 +219,7 @@
     .summary-box.loading { color: var(--muted); }
     .summary-box-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .summary-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--purple2); margin-bottom: 0; }
-    .copy-btn { background: none; border: 1px solid rgba(139,92,246,0.3); border-radius: 6px; color: var(--muted); font-size: 0.7rem; font-family: inherit; padding: 3px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .copy-btn { background: none; border: 1px solid rgba(139,92,246,0.3); border-radius: 6px; color: var(--muted); padding: 4px 7px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; line-height: 1; }
     .copy-btn:hover { border-color: var(--purple2); color: var(--purple2); }
     .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
     .dots span { animation: blink 1.2s infinite; display: inline-block; }
@@ -233,6 +241,64 @@
     .flow-items { display: flex; flex-direction: column; gap: 5px; }
     .flow-item { font-size: 0.68rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .flow-item::before { content: '✓'; color: var(--cyan); font-weight: 700; }
+
+    /* ── CONVERTER CAROUSEL ── */
+    .conv-carousel { overflow: hidden; border-radius: 24px; max-width: 680px; margin: 0 auto; }
+    .conv-track { display: flex; }
+    .conv-panel { min-width: 100%; background: var(--surface); border: 1px solid rgba(139,92,246,0.28); border-radius: 24px; padding: 48px; position: relative; overflow: hidden; box-sizing: border-box; }
+    .conv-panel::before { content: ''; position: absolute; top: -80px; left: -80px; width: 240px; height: 240px; background: radial-gradient(circle, rgba(139,92,246,0.18), transparent 70%); pointer-events: none; }
+    .panel-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .panel-pills { display: flex; gap: 6px; }
+    .panel-pill { font-size: 0.78rem; font-weight: 600; padding: 5px 14px; border-radius: 100px; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .panel-pill.active { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.4); color: var(--purple2); }
+    .panel-arrow-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 1.1rem; line-height: 1; transition: all 0.15s; flex-shrink: 0; }
+    .panel-arrow-btn:not([disabled]):hover { color: var(--text); border-color: var(--purple2); }
+    .panel-arrow-btn[disabled] { opacity: 0.3; cursor: not-allowed; }
+
+    /* Upload zone */
+    .upload-zone { border: 2px dashed rgba(139,92,246,0.35); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 16px; position: relative; }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--purple2); background: rgba(139,92,246,0.05); }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 2rem; margin-bottom: 10px; }
+    .upload-zone h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 6px; }
+    .upload-zone p { font-size: 0.8rem; color: var(--muted); }
+    .upload-types { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+    .upload-type-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 5px; }
+    .upload-type-badge.pdf { background: rgba(239,68,68,0.15); color: #EF4444; }
+    .upload-type-badge.docx { background: rgba(59,130,246,0.15); color: #3B82F6; }
+    .upload-type-badge.txt { background: rgba(16,185,129,0.15); color: #10B981; }
+    .file-chosen { display: none; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid rgba(139,92,246,0.25); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+    .file-chosen.show { display: flex; }
+    .file-chosen-icon { font-size: 1.4rem; }
+    .file-chosen-info { flex: 1; min-width: 0; }
+    .file-chosen-name { font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-chosen-size { font-size: 0.72rem; color: var(--muted); }
+    .file-remove-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px; line-height: 1; transition: color 0.15s; }
+    .file-remove-btn:hover { color: #EF4444; }
+
+    /* ── FLASHCARDS ── */
+    .fc-locked-overlay { text-align:center; padding: 32px 20px; }
+    .fc-locked-overlay p { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
+    .fc-textarea { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; color: var(--text); font-family: inherit; outline: none; resize: vertical; min-height: 110px; transition: border-color 0.15s; }
+    .fc-textarea:focus { border-color: var(--purple2); }
+    .fc-textarea::placeholder { color: var(--muted); }
+    .fc-char-count { font-size: 0.72rem; color: var(--muted); text-align: right; margin-top: 4px; margin-bottom: 12px; }
+    .fc-container { perspective: 1200px; margin: 20px 0 8px; }
+    .fc-card { position: relative; width: 100%; height: 180px; cursor: pointer; transform-style: preserve-3d; transition: transform 0.4s; }
+    .fc-card.flipped { transform: rotateY(180deg); }
+    .fc-front, .fc-back { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+    .fc-front { background: rgba(139,92,246,0.08); border: 1.5px solid rgba(139,92,246,0.3); }
+    .fc-back { background: rgba(79,195,247,0.08); border: 1.5px solid rgba(79,195,247,0.3); transform: rotateY(180deg); }
+    .fc-front .fc-text { font-size: 0.95rem; font-weight: 600; line-height: 1.5; }
+    .fc-back .fc-text { font-size: 0.9rem; line-height: 1.6; color: var(--cyan); }
+    .fc-hint { font-size: 0.68rem; color: var(--muted); margin-top: 10px; }
+    .fc-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+    .fc-counter { font-size: 0.8rem; color: var(--muted); }
+    .fc-nav-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 18px; color: var(--text); font-size: 0.85rem; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+    .fc-nav-btn:not([disabled]):hover { border-color: var(--purple2); color: var(--purple2); }
+    .fc-nav-btn[disabled] { opacity: 0.3; cursor: not-allowed; }
+    .fc-regen { display: block; width: 100%; margin-top: 14px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 0.78rem; color: var(--muted); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .fc-regen:hover { border-color: var(--purple2); color: var(--purple2); }
 
     /* ── TESTIMONIALS ── */
     .testi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
@@ -262,6 +328,8 @@
       .mockup-wrap { display: none; }
       .features-grid { grid-template-columns: repeat(2,1fr); }
       .yt-section { grid-template-columns: 1fr; padding: 32px 24px; }
+      .conv-panel { padding: 32px 24px; }
+      .panel-nav { margin-bottom: 20px; }
       .yt-flow { display: none; }
       .testi-grid { grid-template-columns: 1fr; }
       .cta-bar { flex-direction: column; text-align: center; }
@@ -316,6 +384,7 @@
     <div class="hero-ctas">
       <a href="signup.html" class="btn-primary">Sign Up Now for Free! →</a>
     </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:-16px;">3 free conversions · No credit card required</p>
   </div>
 </div>
 
@@ -349,33 +418,124 @@
   </div>
 </div>
 
-<!-- YOUTUBE CONVERTER -->
+<!-- CONVERTER (YouTube + Upload + Flashcards) -->
 <div class="yt-wrap" id="youtube-summarizer">
-  <div class="yt-section">
-    <div>
-      <h2>YouTube AI Converter <span id="yt-mode-label">with Summary</span></h2>
-      <p class="yt-desc">Turn any YouTube video into notes, summaries, flashcards, and quizzes instantly.</p>
-      <div class="yt-input-row">
-        <input class="yt-input" id="yt-url" type="url" placeholder="▶ Paste YouTube video link here..." />
-        <button class="yt-btn" id="yt-btn" onclick="summarize()">Convert →</button>
-      </div>
-      <div class="yt-chips">
-        <span class="yt-chip" onclick="setYtMode(this,'with Transcription')">Transcribe</span>
-        <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
-        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Notes')">🔒 Generate Notes</span>
-        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Quizzes')">🔒 Create Quizzes</span>
-      </div>
-      <div id="free-uses-banner" style="display:none;margin-top:12px;font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;">
-        <span id="free-uses-text"></span>
-        <a href="signup.html" style="color:var(--purple2);font-weight:600;text-decoration:none;margin-left:4px;">Sign up for full access →</a>
-      </div>
-      <div class="summary-box" id="summary-box">
-        <div class="summary-box-header">
-          <div class="summary-label" id="summary-label">AI Summary</div>
-          <button class="copy-btn" id="copy-btn" onclick="copyResult()">Copy</button>
+  <!-- Shared nav sits above the carousel -->
+  <div class="panel-nav" style="max-width:680px;margin:0 auto 0;">
+    <button class="panel-arrow-btn" id="panel-arrow-left" onclick="goToPanel(currentPanel-1)" disabled aria-label="Previous">←</button>
+    <div class="panel-pills">
+      <span class="panel-pill active" onclick="goToPanel(0)">▶ YouTube</span>
+      <span class="panel-pill" onclick="goToPanel(1)">📄 Upload</span>
+      <span class="panel-pill" onclick="goToPanel(2)">🃏 Flashcards</span>
+    </div>
+    <button class="panel-arrow-btn" id="panel-arrow-right" onclick="goToPanel(currentPanel+1)" aria-label="Next">→</button>
+  </div>
+
+  <div class="conv-carousel" style="margin-top:12px;">
+    <div class="conv-track" id="conv-track">
+
+      <!-- Panel 0: YouTube Converter -->
+      <div class="conv-panel">
+        <h2>YouTube AI Converter <span id="yt-mode-label">with Summary</span></h2>
+        <p class="yt-desc">Turn any YouTube video into notes, summaries, flashcards, and quizzes instantly.</p>
+        <div class="yt-input-row">
+          <input class="yt-input" id="yt-url" type="url" placeholder="▶ Paste YouTube video link here..." />
+          <button class="yt-btn" id="yt-btn" onclick="summarize()">Convert →</button>
         </div>
-        <div id="summary-text"></div>
+        <div class="yt-chips" id="yt-chips-container">
+          <span class="yt-chip" onclick="setYtMode(this,'with Transcription')">Transcribe</span>
+          <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
+          <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Notes')">🔒 Generate Notes</span>
+          <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Quizzes')">🔒 Create Quizzes</span>
+        </div>
+        <div id="free-uses-banner" style="display:none;margin-top:12px;font-size:0.8rem;color:var(--muted);align-items:center;gap:6px;">
+          <span id="free-uses-text"></span>
+          <a href="signup.html" style="color:var(--purple2);font-weight:600;text-decoration:none;margin-left:4px;">Sign up for full access →</a>
+        </div>
+        <div class="summary-box" id="summary-box">
+          <div class="summary-box-header">
+            <div class="summary-label" id="summary-label">AI Summary</div>
+            <button class="copy-btn" id="copy-btn" onclick="copyResult()" aria-label="Copy"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div id="summary-text"></div>
+        </div>
       </div>
+
+      <!-- Panel 1: Upload Converter -->
+      <div class="conv-panel" id="upload-panel">
+        <h2>Document AI Converter <span id="up-mode-label">with Summary</span></h2>
+        <p class="yt-desc">Upload a PDF, DOCX, or TXT and convert it into notes, summaries, or quizzes.</p>
+
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept=".pdf,.docx,.txt" onchange="handleFileSelect(this.files[0])" />
+          <div class="upload-icon">📤</div>
+          <h3>Drop your file here</h3>
+          <p>or click to browse</p>
+          <div class="upload-types">
+            <span class="upload-type-badge pdf">PDF</span>
+            <span class="upload-type-badge docx">DOCX</span>
+            <span class="upload-type-badge txt">TXT</span>
+          </div>
+        </div>
+
+        <div class="file-chosen" id="file-chosen">
+          <div class="file-chosen-icon" id="file-chosen-icon">📄</div>
+          <div class="file-chosen-info">
+            <div class="file-chosen-name" id="file-chosen-name"></div>
+            <div class="file-chosen-size" id="file-chosen-size"></div>
+          </div>
+          <button class="file-remove-btn" onclick="removeFile()" aria-label="Remove file">✕</button>
+        </div>
+
+        <div class="yt-chips" id="upload-chips" style="margin-bottom:16px;">
+          <span class="yt-chip yt-chip-active" onclick="setUpMode(this,'with Summary')">Summarize</span>
+          <span class="yt-chip yt-chip-locked" onclick="tryLockedUpMode(this,'with Notes')">🔒 Generate Notes</span>
+          <span class="yt-chip yt-chip-locked" onclick="tryLockedUpMode(this,'with Quizzes')">🔒 Create Quizzes</span>
+        </div>
+
+        <button class="yt-btn" id="upload-btn" onclick="uploadConvert()" style="width:100%;">Convert →</button>
+
+        <div class="summary-box" id="upload-summary-box" style="margin-top:16px;">
+          <div class="summary-box-header">
+            <div class="summary-label" id="upload-summary-label">AI Summary</div>
+            <button class="copy-btn" onclick="copyUploadResult(event)" aria-label="Copy"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div id="upload-summary-text"></div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Flashcard Generator -->
+      <div class="conv-panel" id="flashcard-panel">
+        <h2>Flashcard Generator</h2>
+        <p class="yt-desc">Paste any text and AI will generate interactive flip cards you can study with.</p>
+
+        <div id="fc-locked" class="fc-locked-overlay" style="display:none;">
+          <p>🔒 Sign in to generate flashcards from your content.</p>
+          <a href="signup.html" class="btn-primary" style="display:inline-flex;font-size:0.88rem;padding:10px 22px;">Sign Up Free →</a>
+        </div>
+
+        <div id="fc-input-area">
+          <textarea class="fc-textarea" id="fc-text" placeholder="Paste your notes, lecture transcript, or any study material here..." oninput="fcCharCount(this)"></textarea>
+          <div class="fc-char-count"><span id="fc-char-num">0</span> / 5000 chars</div>
+          <button class="yt-btn" id="fc-btn" onclick="generateFlashcards()" style="width:100%;">Generate Flashcards ✦</button>
+        </div>
+
+        <div id="fc-result" style="display:none;">
+          <div class="fc-container">
+            <div class="fc-card" id="fc-card" onclick="flipCard()">
+              <div class="fc-front"><div class="fc-text" id="fc-front-text"></div><div class="fc-hint">Click to reveal answer</div></div>
+              <div class="fc-back"><div class="fc-text" id="fc-back-text"></div><div class="fc-hint">Click to see question</div></div>
+            </div>
+          </div>
+          <div class="fc-nav">
+            <button class="fc-nav-btn" id="fc-prev" onclick="fcNav(-1)" disabled>← Prev</button>
+            <span class="fc-counter" id="fc-counter">1 / 8</span>
+            <button class="fc-nav-btn" id="fc-next" onclick="fcNav(1)">Next →</button>
+          </div>
+          <button class="fc-regen" onclick="generateFlashcards()">↻ Regenerate cards</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -442,12 +602,12 @@
     </div>
   </div>
   <div class="cta-bar-right">
-    <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="btn-primary" style="font-size:1rem;padding:15px 32px;">Sign Up Now for Free! →</a>
+    <a href="signup.html" class="btn-primary" style="font-size:1rem;padding:15px 32px;">Sign Up Now for Free! →</a>
     <span class="cta-sub">No credit card required</span>
   </div>
 </div>
 
-<footer>&copy; 2026 GeniusNotes AI &nbsp;·&nbsp; <a href="mailto:noreply@geniusnotes-ai.firebaseapp.com">noreply@geniusnotes-ai.firebaseapp.com</a></footer>
+<footer>&copy; 2026 GeniusNotes AI &nbsp;·&nbsp; <a href="mailto:support@geniusnotes.ai">support@geniusnotes.ai</a></footer>
 
 <script>
   function toggleTheme() {
@@ -471,8 +631,8 @@
   let currentMode = 'summarize';
 
   function isLocked(chipText) {
-    if (chipText === 'Summarize') return !isSignedIn && parseInt(localStorage.getItem('gn-free-uses') || '0') >= 3;
-    if (chipText === 'Transcribe') return false;
+    if (chipText === 'Summarize' || chipText === 'Transcribe')
+      return !isSignedIn && parseInt(localStorage.getItem('gn-free-uses') || '0') >= 3;
     return !isSignedIn;
   }
 
@@ -518,9 +678,9 @@
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById('copy-btn');
-      btn.textContent = 'Copied!';
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
       btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      setTimeout(() => { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; btn.classList.remove('copied'); }, 2000);
     });
   }
 
@@ -530,16 +690,11 @@
   }
 
   async function summarize() {
-    if (currentMode !== 'summarize' && currentMode !== 'transcribe') {
-      const box = document.getElementById('summary-box');
-      const label = document.getElementById('summary-label');
-      const text = document.getElementById('summary-text');
-      label.textContent = 'Coming Soon';
-      text.textContent = 'This feature is coming soon. Stay tuned!';
-      box.className = 'summary-box visible';
+    if ((currentMode === 'notes' || currentMode === 'quizzes') && !isSignedIn) {
+      document.getElementById('firewall-popup').classList.add('active');
       return;
     }
-    if (!isSignedIn && currentMode === 'summarize') {
+    if (!isSignedIn && (currentMode === 'summarize' || currentMode === 'transcribe')) {
       const uses = parseInt(localStorage.getItem('gn-free-uses') || '0');
       if (uses >= 3) {
         document.getElementById('firewall-popup').classList.add('active');
@@ -573,7 +728,7 @@
       label.textContent = labelMap[currentMode] || 'AI Summary';
       text.textContent = data.summary;
       box.className = 'summary-box visible';
-      if (!isSignedIn && currentMode === 'summarize') {
+      if (!isSignedIn && (currentMode === 'summarize' || currentMode === 'transcribe')) {
         const newUses = parseInt(localStorage.getItem('gn-free-uses') || '0') + 1;
         localStorage.setItem('gn-free-uses', newUses);
         updateUsesBanner();
@@ -617,34 +772,47 @@
         a.classList.remove('nav-mode-locked');
         a.textContent = navLabels[i];
       });
-      // Unlock all chips
+      // Unlock YouTube chips
       const chipData = [
-        { text: 'Transcribe',   mode: 'with Transcription' },
-        { text: 'Summarize',    mode: 'with Summary' },
+        { text: 'Transcribe',     mode: 'with Transcription' },
+        { text: 'Summarize',      mode: 'with Summary' },
         { text: 'Generate Notes', mode: 'with Notes' },
         { text: 'Create Quizzes', mode: 'with Quizzes' }
       ];
-      document.querySelectorAll('.yt-chip').forEach((chip, i) => {
+      document.querySelectorAll('#yt-chips-container .yt-chip').forEach((chip, i) => {
         chip.classList.remove('yt-chip-locked');
         chip.textContent = chipData[i].text;
         const m = chipData[i].mode;
         chip.onclick = function() { setYtMode(this, m); };
       });
+      // Unlock upload chips
+      document.querySelectorAll('#upload-chips .yt-chip').forEach(chip => {
+        chip.classList.remove('yt-chip-locked');
+        if (chip.textContent.includes('Generate Notes')) { chip.textContent = 'Generate Notes'; chip.onclick = function(){ setUpMode(this,'with Notes'); }; }
+        if (chip.textContent.includes('Create Quizzes')) { chip.textContent = 'Create Quizzes'; chip.onclick = function(){ setUpMode(this,'with Quizzes'); }; }
+      });
+      // Unlock flashcard panel if currently shown
+      initFlashcardPanel();
       return;
     }
     const used = parseInt(localStorage.getItem('gn-free-uses') || '0');
     const left = Math.max(0, 3 - used);
-    textEl.textContent = `${left} ${left === 1 ? 'summary' : 'summaries'} left — Sign up to continue`;
+    textEl.textContent = `${left} ${left === 1 ? 'conversion' : 'conversions'} left — Sign up to continue`;
     banner.style.display = 'flex';
-    // Lock Summarize nav link + chip after 2 uses
-    const summarizeNav = document.querySelector('.nav-mode-link:nth-child(2)');
-    const summarizeChip = document.querySelector('.yt-chip:nth-child(2)');
+    const transcribeNav  = document.querySelector('.nav-mode-link:first-child');
+    const transcribeChip = document.querySelector('#yt-chips-container .yt-chip:first-child');
+    const summarizeNav   = document.querySelector('.nav-mode-link:nth-child(2)');
+    const summarizeChip  = document.querySelector('#yt-chips-container .yt-chip:nth-child(2)');
     if (left === 0) {
-      if (summarizeNav) { summarizeNav.classList.add('nav-mode-locked'); summarizeNav.textContent = '🔒 Summarize'; }
-      if (summarizeChip) { summarizeChip.classList.add('yt-chip-locked'); summarizeChip.textContent = '🔒 Summarize'; summarizeChip.onclick = () => showSignupWall(); }
+      if (transcribeNav)  { transcribeNav.classList.add('nav-mode-locked');  transcribeNav.textContent  = '🔒 Transcribe'; }
+      if (transcribeChip) { transcribeChip.classList.add('yt-chip-locked');  transcribeChip.textContent = '🔒 Transcribe'; transcribeChip.onclick = () => showSignupWall(); }
+      if (summarizeNav)   { summarizeNav.classList.add('nav-mode-locked');   summarizeNav.textContent   = '🔒 Summarize'; }
+      if (summarizeChip)  { summarizeChip.classList.add('yt-chip-locked');   summarizeChip.textContent  = '🔒 Summarize'; summarizeChip.onclick = () => showSignupWall(); }
     } else {
-      if (summarizeNav) { summarizeNav.classList.remove('nav-mode-locked'); summarizeNav.textContent = 'Summarize'; }
-      if (summarizeChip) { summarizeChip.classList.remove('yt-chip-locked'); summarizeChip.textContent = 'Summarize'; summarizeChip.onclick = function(){ setYtMode(this,'with Summary'); }; }
+      if (transcribeNav)  { transcribeNav.classList.remove('nav-mode-locked');  transcribeNav.textContent  = 'Transcribe'; }
+      if (transcribeChip) { transcribeChip.classList.remove('yt-chip-locked');  transcribeChip.textContent = 'Transcribe'; transcribeChip.onclick = function(){ setYtMode(this,'with Transcription'); }; }
+      if (summarizeNav)   { summarizeNav.classList.remove('nav-mode-locked');   summarizeNav.textContent   = 'Summarize'; }
+      if (summarizeChip)  { summarizeChip.classList.remove('yt-chip-locked');   summarizeChip.textContent  = 'Summarize'; summarizeChip.onclick = function(){ setYtMode(this,'with Summary'); }; }
     }
   }
 
@@ -684,6 +852,250 @@
     sessionStorage.setItem('fw-dismissed', '1');
     document.getElementById('firewall-popup').classList.remove('active');
   }
+
+  // ── CAROUSEL ──
+  let currentPanel = 0;
+  const PANEL_COUNT = 3;
+  function goToPanel(n) {
+    currentPanel = Math.max(0, Math.min(PANEL_COUNT - 1, n));
+    document.getElementById('conv-track').style.transform = `translateX(-${currentPanel * 100}%)`;
+    document.querySelectorAll('.panel-pill').forEach((p, i) => p.classList.toggle('active', i === currentPanel));
+    document.getElementById('panel-arrow-left').disabled  = currentPanel === 0;
+    document.getElementById('panel-arrow-right').disabled = currentPanel === PANEL_COUNT - 1;
+    if (currentPanel === 2) initFlashcardPanel();
+  }
+
+  // ── UPLOAD PANEL ──
+  let uploadedText = '';
+  let uploadCurrentMode = 'summarize';
+
+  function setUpMode(chip, label) {
+    document.querySelectorAll('#upload-chips .yt-chip').forEach(c => c.classList.remove('yt-chip-active'));
+    chip.classList.add('yt-chip-active');
+    document.getElementById('up-mode-label').textContent = label;
+    uploadCurrentMode = label === 'with Summary' ? 'summarize' : label === 'with Notes' ? 'notes' : 'quizzes';
+    document.getElementById('upload-summary-box').className = 'summary-box';
+  }
+
+  function tryLockedUpMode(chip, label) {
+    if (!isSignedIn) { document.getElementById('firewall-popup').classList.add('active'); return; }
+    chip.classList.remove('yt-chip-locked');
+    setUpMode(chip, label);
+  }
+
+  async function handleFileSelect(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf','docx','txt'].includes(ext)) { alert('Please upload a PDF, DOCX, or TXT file.'); return; }
+    const icons = { pdf: '📕', docx: '📘', txt: '📄' };
+    document.getElementById('file-chosen-icon').textContent = icons[ext] || '📄';
+    document.getElementById('file-chosen-name').textContent = file.name;
+    document.getElementById('file-chosen-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('file-chosen').classList.add('show');
+    document.getElementById('upload-zone').style.display = 'none';
+    const btn = document.getElementById('upload-btn');
+    btn.textContent = ext === 'docx' ? 'Running OCR… (may take ~30s)' : 'Reading file…';
+    btn.disabled = true;
+    try {
+      uploadedText = await readFile(file, ext);
+      btn.textContent = 'Convert →';
+      btn.disabled = false;
+    } catch (e) {
+      btn.textContent = 'Convert →';
+      btn.disabled = false;
+      alert('Could not read file: ' + e.message);
+      removeFile();
+    }
+  }
+
+  function removeFile() {
+    uploadedText = '';
+    document.getElementById('file-chosen').classList.remove('show');
+    document.getElementById('upload-zone').style.display = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('upload-summary-box').className = 'summary-box';
+  }
+
+  async function readFile(file, ext) {
+    if (ext === 'txt') {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Could not read file.'));
+        reader.readAsText(file);
+      });
+    }
+    if (ext === 'pdf') {
+      if (typeof pdfjsLib === 'undefined') throw new Error('PDF reader not loaded. Please refresh the page.');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(s => s.str).join(' ') + '\n';
+      }
+      if (!text.trim()) throw new Error('This PDF appears to be image-based. Only text PDFs are supported.');
+      return text;
+    }
+    if (ext === 'docx') {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      const res = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: base64 })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not extract text from this DOCX file.');
+      return data.text;
+    }
+    throw new Error('Unsupported file type.');
+  }
+
+  async function uploadConvert() {
+    if (!uploadedText) { alert('Please select a file first.'); return; }
+    if ((uploadCurrentMode === 'notes' || uploadCurrentMode === 'quizzes') && !isSignedIn) {
+      document.getElementById('firewall-popup').classList.add('active'); return;
+    }
+    if (!isSignedIn && uploadCurrentMode === 'summarize') {
+      const uses = parseInt(localStorage.getItem('gn-free-uses') || '0');
+      if (uses >= 3) { document.getElementById('firewall-popup').classList.add('active'); return; }
+    }
+    const box = document.getElementById('upload-summary-box');
+    const textEl = document.getElementById('upload-summary-text');
+    const labelEl = document.getElementById('upload-summary-label');
+    const btn = document.getElementById('upload-btn');
+    box.className = 'summary-box visible loading';
+    textEl.innerHTML = 'Processing<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+    btn.disabled = true;
+    btn.textContent = 'Converting…';
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: uploadedText.slice(0, 12000), mode: uploadCurrentMode })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      box.className = 'summary-box visible';
+      textEl.textContent = data.summary;
+      const labels = { summarize: 'AI Summary', notes: 'AI Notes', quizzes: 'Quiz Questions' };
+      labelEl.textContent = labels[uploadCurrentMode] || 'Result';
+      if (!isSignedIn && uploadCurrentMode === 'summarize') {
+        const newUses = parseInt(localStorage.getItem('gn-free-uses') || '0') + 1;
+        localStorage.setItem('gn-free-uses', newUses);
+        updateUsesBanner();
+      }
+    } catch (e) {
+      box.className = 'summary-box visible';
+      textEl.textContent = '⚠ ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Convert →';
+    }
+  }
+
+  function copyUploadResult(e) {
+    const text = document.getElementById('upload-summary-text').textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = e.target;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // ── FLASHCARDS ──
+  let fcCards = [];
+  let fcIndex = 0;
+
+  function initFlashcardPanel() {
+    const locked = document.getElementById('fc-locked');
+    const inputArea = document.getElementById('fc-input-area');
+    if (!isSignedIn) {
+      locked.style.display = '';
+      inputArea.style.display = 'none';
+      document.getElementById('fc-result').style.display = 'none';
+    } else {
+      locked.style.display = 'none';
+      inputArea.style.display = '';
+    }
+  }
+
+  function fcCharCount(el) {
+    document.getElementById('fc-char-num').textContent = el.value.length;
+  }
+
+  async function generateFlashcards() {
+    if (!isSignedIn) { document.getElementById('firewall-popup').classList.add('active'); return; }
+    const text = document.getElementById('fc-text').value.trim();
+    if (!text) { alert('Please paste some text first.'); return; }
+
+    const btn = document.getElementById('fc-btn');
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+    document.getElementById('fc-result').style.display = 'none';
+
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 5000), mode: 'flashcards' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+
+      // Parse JSON – strip possible markdown fences
+      const raw = data.summary.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+      fcCards = JSON.parse(raw);
+      if (!Array.isArray(fcCards) || fcCards.length === 0) throw new Error('No cards returned.');
+
+      fcIndex = 0;
+      renderFcCard();
+      document.getElementById('fc-result').style.display = '';
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generate Flashcards ✦';
+    }
+  }
+
+  function renderFcCard() {
+    const card = document.getElementById('fc-card');
+    card.classList.remove('flipped');
+    document.getElementById('fc-front-text').textContent = fcCards[fcIndex].front;
+    document.getElementById('fc-back-text').textContent  = fcCards[fcIndex].back;
+    document.getElementById('fc-counter').textContent = `${fcIndex + 1} / ${fcCards.length}`;
+    document.getElementById('fc-prev').disabled = fcIndex === 0;
+    document.getElementById('fc-next').disabled = fcIndex === fcCards.length - 1;
+  }
+
+  function flipCard() { document.getElementById('fc-card').classList.toggle('flipped'); }
+
+  function fcNav(dir) {
+    fcIndex = Math.max(0, Math.min(fcCards.length - 1, fcIndex + dir));
+    renderFcCard();
+  }
+
+  // Drag & drop for upload zone
+  (function() {
+    const zone = document.getElementById('upload-zone');
+    if (!zone) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const file = e.dataTransfer && e.dataTransfer.files[0];
+      if (file) handleFileSelect(file);
+    });
+  })();
 </script>
 
 <style>
@@ -738,5 +1150,7 @@
     <button class="firewall-dismiss" onclick="dismissFirewall()">No thanks, continue browsing</button>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </body>
 </html>

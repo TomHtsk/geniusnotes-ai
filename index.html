@@ -186,7 +186,8 @@
     .yt-btn:hover { opacity: 0.85; }
     .yt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .yt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .yt-chip { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; font-weight: 500; padding: 5px 12px; border-radius: 100px; }
+    .yt-chip { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; font-weight: 500; padding: 5px 12px; border-radius: 100px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+    .yt-chip-active { border-color: var(--purple); color: var(--purple2); }
     .summary-box { background: var(--surface2); border: 1.5px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 16px; font-size: 0.85rem; line-height: 1.7; display: none; margin-top: 16px; white-space: pre-wrap; }
     .summary-box.visible { display: block; }
     .summary-box.loading { color: var(--muted); }
@@ -303,17 +304,28 @@
   <div class="yt-section">
     <div>
       <div class="yt-new">New ✦</div>
-      <h2>YouTube AI Converter <span>with Summary</span></h2>
+      <h2>YouTube AI Converter <span id="yt-mode-label">with Summary</span></h2>
       <p class="yt-desc">Turn any YouTube video into notes, summaries, flashcards, and quizzes instantly.</p>
       <div class="yt-input-row">
         <input class="yt-input" id="yt-url" type="url" placeholder="▶ Paste YouTube video link here..." />
         <button class="yt-btn" id="yt-btn" onclick="summarize()">Convert →</button>
       </div>
       <div class="yt-chips">
-        <span class="yt-chip">Summarize</span>
-        <span class="yt-chip">Extract Key Points</span>
-        <span class="yt-chip">Generate Notes</span>
-        <span class="yt-chip">Create Quizzes</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="yt-chip" onclick="setYtMode(this,'with Key Points')">Extract Key Points</span>
+          <span style="font-size:0.75rem;">🔒</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="yt-chip" onclick="setYtMode(this,'with Notes')">Generate Notes</span>
+          <span style="font-size:0.75rem;">🔒</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="yt-chip" onclick="setYtMode(this,'with Quizzes')">Create Quizzes</span>
+          <span style="font-size:0.75rem;">🔒</span>
+        </div>
       </div>
       <div class="summary-box" id="summary-box">
         <div class="summary-label" id="summary-label">AI Summary</div>
@@ -440,6 +452,12 @@
     document.documentElement.classList.add('light');
     document.getElementById('theme-icon').textContent = '🌙';
     document.getElementById('theme-label').textContent = 'Dark';
+  }
+
+  function setYtMode(el, label) {
+    document.querySelectorAll('.yt-chip').forEach(c => c.classList.remove('yt-chip-active'));
+    el.classList.add('yt-chip-active');
+    document.getElementById('yt-mode-label').textContent = label;
   }
 
   async function summarize() {

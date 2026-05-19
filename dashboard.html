@@ -54,6 +54,7 @@
 </head>
 <body>
 <nav>
+  <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;padding:6px 12px;border-radius:8px;transition:color 0.15s,background 0.15s;" onmouseover="this.style.color='var(--text)';this.style.background='var(--surface)'" onmouseout="this.style.color='var(--muted)';this.style.background='transparent'">← Back</a>
   <a href="index.html" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
   <div class="nav-right">
     <span class="user-name" id="userName"></span>
@@ -73,12 +74,11 @@
   </div>
 
   <div class="cards">
-    <div class="card">
-      <div class="card-icon">📝</div>
-      <div class="card-title">AI Notes</div>
-      <div class="card-desc">Upload a lecture or paste text and get structured notes instantly.</div>
-      <span class="card-badge">Coming soon</span>
-    </div>
+    <a href="index.html#youtube-summarizer" class="card" style="text-decoration:none;color:inherit;">
+      <div class="card-icon">▶️</div>
+      <div class="card-title">YouTube Summarizer</div>
+      <div class="card-desc">Paste any YouTube URL and get a full AI summary in seconds.</div>
+    </a>
     <div class="card">
       <div class="card-icon">🃏</div>
       <div class="card-title">Flashcards</div>
@@ -97,12 +97,12 @@
       <div class="card-desc">Ask anything. Get clear, detailed explanations on any subject.</div>
       <span class="card-badge">Coming soon</span>
     </div>
-    <a href="index.html#youtube-summarizer" class="card" style="text-decoration:none;color:inherit;">
-      <div class="card-icon">▶️</div>
-      <div class="card-title">YouTube Summarizer</div>
-      <div class="card-desc">Paste any YouTube URL and get a full AI summary in seconds.</div>
-      <span class="card-badge" style="background:rgba(79,195,247,0.15);color:var(--cyan)">Live</span>
-    </a>
+    <div class="card">
+      <div class="card-icon">📝</div>
+      <div class="card-title">AI Notes</div>
+      <div class="card-desc">Upload a lecture or paste text and get structured notes instantly.</div>
+      <span class="card-badge">Coming soon</span>
+    </div>
     <div class="card">
       <div class="card-icon">📤</div>
       <div class="card-title">Upload Docs</div>

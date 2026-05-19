@@ -58,6 +58,9 @@
     .nav-links { display: flex; align-items: center; gap: 2px; flex: 1; }
     .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 6px 12px; border-radius: 8px; transition: color 0.15s, background 0.15s; }
     .nav-links a:hover { color: var(--text); background: var(--surface); }
+    .nav-links a.nav-mode-active { color: var(--purple2); background: rgba(139,92,246,0.1); }
+    .nav-links a.nav-mode-locked { opacity: 0.55; cursor: pointer; }
+    .nav-links a.nav-mode-locked:hover { opacity: 0.85; color: var(--muted); background: none; }
     .nav-auth { display: flex; align-items: center; gap: 12px; margin-left: auto; }
     .nav-login { color: var(--muted); font-size: 0.875rem; font-weight: 500; text-decoration: none; padding: 6px 12px; border-radius: 8px; transition: color 0.15s; }
     .nav-login:hover { color: var(--text); }
@@ -188,6 +191,8 @@
     .yt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .yt-chip { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; font-weight: 500; padding: 5px 12px; border-radius: 100px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
     .yt-chip-active { border-color: var(--purple); color: var(--purple2); }
+    .yt-chip-locked { opacity: 0.55; }
+    .yt-chip-locked:hover { opacity: 0.85; }
     .summary-box { background: var(--surface2); border: 1.5px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 16px; font-size: 0.85rem; line-height: 1.7; display: none; margin-top: 16px; white-space: pre-wrap; }
     .summary-box.visible { display: block; }
     .summary-box.loading { color: var(--muted); }
@@ -272,17 +277,16 @@
 <nav>
   <a href="#" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
   <div class="nav-links">
-    <a href="#ai-notes">AI Notes</a>
-    <a href="#flashcards">Flashcards</a>
-    <a href="#quizzes">Quizzes</a>
-    <a href="#ai-tutor">AI Tutor</a>
-    <a href="#youtube-summarizer">YouTube Converter</a>
-    <a href="#upload-docs">Upload Docs</a>
+    <a href="#youtube-summarizer" class="nav-mode-link nav-mode-active" onclick="navSetMode('Summarize','with Summary',this);return false;">Summarize</a>
+    <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Transcribe','with Transcription',this);return false;">🔒 Transcribe</a>
+    <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Generate Notes','with Notes',this);return false;">🔒 Generate Notes</a>
+    <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Create Quizzes','with Quizzes',this);return false;">🔒 Create Quizzes</a>
   </div>
   <div class="nav-auth" id="nav-auth">
     <a href="signin.html" class="nav-login" id="nav-login">Log in</a>
-    <a href="signup.html" class="nav-cta" id="nav-signup">Start Free →</a>
+    <a href="signup.html" class="nav-cta" id="nav-signup">Sign Up →</a>
     <a href="dashboard.html" class="nav-cta" id="nav-dashboard" style="display:none">My Dashboard →</a>
+    <button id="nav-signout" onclick="signOut()" style="display:none;padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:0.875rem;font-weight:600;cursor:pointer;transition:color 0.15s,border-color 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--muted)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Sign out</button>
   </div>
 </nav>
 
@@ -293,7 +297,7 @@
     <h1>Study smarter.<br><span class="grad">Not longer.</span></h1>
     <p>AI-generated notes, flashcards, quizzes, and summaries from your lectures in seconds.</p>
     <div class="hero-ctas">
-      <a href="signup.html" class="btn-primary">Start Free – It's Free →</a>
+      <a href="signup.html" class="btn-primary">Sign Up Now for Free! →</a>
     </div>
   </div>
 </div>
@@ -303,7 +307,6 @@
 <div class="yt-wrap" id="youtube-summarizer">
   <div class="yt-section">
     <div>
-      <div class="yt-new">New ✦</div>
       <h2>YouTube AI Converter <span id="yt-mode-label">with Summary</span></h2>
       <p class="yt-desc">Turn any YouTube video into notes, summaries, flashcards, and quizzes instantly.</p>
       <div class="yt-input-row">
@@ -312,9 +315,14 @@
       </div>
       <div class="yt-chips">
         <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
-        <span class="yt-chip" onclick="setYtMode(this,'with Key Points')">Extract Key Points</span>
-        <span class="yt-chip" onclick="setYtMode(this,'with Notes')">Generate Notes</span>
-        <span class="yt-chip" onclick="setYtMode(this,'with Quizzes')">Create Quizzes</span>
+        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Transcription')">🔒 Transcribe</span>
+        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Notes')">🔒 Generate Notes</span>
+        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Quizzes')">🔒 Create Quizzes</span>
+      </div>
+      <div id="free-uses-banner" style="display:none;margin-top:12px;font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;">
+        <span id="free-uses-dots"></span>
+        <span id="free-uses-text"></span>
+        <a href="signup.html" style="color:var(--purple2);font-weight:600;text-decoration:none;margin-left:4px;">Sign up for unlimited →</a>
       </div>
       <div class="summary-box" id="summary-box">
         <div class="summary-label" id="summary-label">AI Summary</div>
@@ -326,7 +334,7 @@
 
 <!-- FEATURES -->
 <div id="features" class="section">
-  <div class="section-tag">Powerful AI Features</div>
+  <div class="section-tag" style="color:var(--purple2);text-transform:none;font-size:0.9rem;letter-spacing:0;">Powerful AI features coming soon!</div>
   <div class="section-title">Everything you need to ace your exams</div>
   <div class="features-grid">
     <div class="feat-card" id="ai-notes">
@@ -360,43 +368,6 @@
         <div class="frow" style="border-bottom:none;">○ C. Ribosome</div>
       </div>
     </div>
-    <div class="feat-card" id="ai-tutor">
-      <div class="feat-icon" style="background:rgba(236,72,153,0.15);">🤖</div>
-      <h3>AI Tutor</h3>
-      <p>Get instant answers and explanations.</p>
-      <div class="feat-preview">
-        <div class="frow" style="color:#4FC3F7;">Explain this concept in simple terms...</div>
-        <div class="frow" style="border-bottom:none;font-size:0.65rem;">Sure! Think of it like a charging station for the cell.</div>
-      </div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon" style="background:rgba(52,211,153,0.15);">⚡</div>
-      <h3>Smart Summary</h3>
-      <p>Summarize any content in seconds.</p>
-      <div class="feat-preview">
-        <div class="frow"><span style="color:#34D399;font-weight:700;">TL;DR</span></div>
-        <div class="frow"><div class="fbar on" style="background:#34D399;"></div></div>
-        <div class="frow"><div class="fbar" style="width:65%;"></div></div>
-        <div class="frow" style="border-bottom:none;"><div class="fbar" style="width:40%;"></div></div>
-      </div>
-    </div>
-    <div class="feat-card" id="upload-docs">
-      <div class="feat-icon" style="background:rgba(139,92,246,0.15);">📊</div>
-      <h3>Study Analytics</h3>
-      <p>Track your progress and improve faster.</p>
-      <div class="feat-preview">
-        <div class="frow">This Week</div>
-        <div style="display:flex;align-items:flex-end;gap:4px;height:38px;margin-top:4px;">
-          <div style="flex:1;background:rgba(139,92,246,0.25);border-radius:3px 3px 0 0;height:40%"></div>
-          <div style="flex:1;background:rgba(139,92,246,0.25);border-radius:3px 3px 0 0;height:65%"></div>
-          <div style="flex:1;background:rgba(139,92,246,0.25);border-radius:3px 3px 0 0;height:80%"></div>
-          <div style="flex:1;background:#8B5CF6;border-radius:3px 3px 0 0;height:100%"></div>
-          <div style="flex:1;background:rgba(79,195,247,0.5);border-radius:3px 3px 0 0;height:70%"></div>
-          <div style="flex:1;background:rgba(79,195,247,0.4);border-radius:3px 3px 0 0;height:55%"></div>
-          <div style="flex:1;background:#4FC3F7;border-radius:3px 3px 0 0;height:85%"></div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -423,7 +394,7 @@
     </div>
   </div>
   <div class="cta-bar-right">
-    <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="btn-primary" style="font-size:1rem;padding:15px 32px;">Start Free – It's Free →</a>
+    <a href="mailto:tskhenrytx@gmail.com?subject=GeniusNotes.ai Early Access" class="btn-primary" style="font-size:1rem;padding:15px 32px;">Sign Up Now for Free! →</a>
     <span class="cta-sub">No credit card required</span>
   </div>
 </div>
@@ -445,11 +416,35 @@
 
   const modeMap = {
     'with Summary':    'summarize',
-    'with Key Points': 'keypoints',
+    'with Transcription': 'keypoints',
     'with Notes':      'notes',
     'with Quizzes':    'quizzes'
   };
   let currentMode = 'summarize';
+
+  function isLocked(chipText) {
+    if (chipText !== 'Summarize') return !isSignedIn;
+    return !isSignedIn && parseInt(localStorage.getItem('gn-free-uses') || '0') >= 2;
+  }
+
+  function showSignupWall() {
+    document.getElementById('firewall-popup').classList.add('active');
+  }
+
+  function tryLockedMode(el, label) {
+    if (!isSignedIn) { showSignupWall(); return; }
+    setYtMode(el, label);
+  }
+
+  function navSetMode(chipText, label, navEl) {
+    if (isLocked(chipText)) { showSignupWall(); return false; }
+    document.querySelectorAll('.yt-chip').forEach(chip => {
+      if (chip.textContent.replace('🔒 ','').trim() === chipText) setYtMode(chip, label);
+    });
+    document.querySelectorAll('.nav-mode-link').forEach(l => l.classList.remove('nav-mode-active'));
+    navEl.classList.add('nav-mode-active');
+    document.getElementById('youtube-summarizer').scrollIntoView({ behavior: 'smooth' });
+  }
 
   function setYtMode(el, label) {
     document.querySelectorAll('.yt-chip').forEach(c => c.classList.remove('yt-chip-active'));
@@ -464,6 +459,13 @@
     if (currentMode !== 'summarize') {
       document.getElementById('signup-modal').style.display = 'flex';
       return;
+    }
+    if (!isSignedIn) {
+      const uses = parseInt(localStorage.getItem('gn-free-uses') || '0');
+      if (uses >= 2) {
+        document.getElementById('firewall-popup').classList.add('active');
+        return;
+      }
     }
     const url = document.getElementById('yt-url').value.trim();
     const box = document.getElementById('summary-box');
@@ -488,10 +490,14 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to summarize');
-      const labelMap = { summarize: 'AI Summary', keypoints: 'Key Points', notes: 'Study Notes', quizzes: 'Quiz Questions' };
+      const labelMap = { summarize: 'AI Summary', keypoints: 'Transcript', notes: 'Study Notes', quizzes: 'Quiz Questions' };
       label.textContent = labelMap[currentMode] || 'AI Summary';
       text.textContent = data.summary;
       box.className = 'summary-box visible';
+      if (!isSignedIn) {
+        localStorage.setItem('gn-free-uses', parseInt(localStorage.getItem('gn-free-uses') || '0') + 1);
+        updateUsesBanner();
+      }
     } catch (err) {
       label.textContent = 'Error';
       text.textContent = err.message;
@@ -513,24 +519,110 @@
     messagingSenderId: "1041746856723",
     appId: "1:1041746856723:web:fae9072e0292c3946068e6"
   });
+  let isSignedIn = false;
+  let fwTimer = null;
+
+  function updateUsesBanner() {
+    const banner = document.getElementById('free-uses-banner');
+    const dotsEl = document.getElementById('free-uses-dots');
+    const textEl = document.getElementById('free-uses-text');
+    if (!banner) return;
+    if (isSignedIn) {
+      banner.style.display = 'none';
+      // Unlock all nav links
+      const navLabels = ['Summarize','Transcribe','Generate Notes','Create Quizzes'];
+      document.querySelectorAll('.nav-mode-link').forEach((a, i) => {
+        a.classList.remove('nav-mode-locked');
+        a.textContent = navLabels[i];
+      });
+      // Unlock all chips
+      const chipData = [
+        { text: 'Summarize',    mode: 'with Summary' },
+        { text: 'Transcribe',   mode: 'with Transcription' },
+        { text: 'Generate Notes', mode: 'with Notes' },
+        { text: 'Create Quizzes', mode: 'with Quizzes' }
+      ];
+      document.querySelectorAll('.yt-chip').forEach((chip, i) => {
+        chip.classList.remove('yt-chip-locked');
+        chip.textContent = chipData[i].text;
+        const m = chipData[i].mode;
+        chip.onclick = function() { setYtMode(this, m); };
+      });
+      return;
+    }
+    const used = parseInt(localStorage.getItem('gn-free-uses') || '0');
+    const left = Math.max(0, 2 - used);
+    const dots = [0,1].map(i => i < left ? '🟢' : '⚫').join(' ');
+    dotsEl.textContent = dots;
+    textEl.textContent = `${left} ${left === 1 ? 'summary' : 'summaries'} left — Sign up to continue`;
+    banner.style.display = 'flex';
+    // Lock Summarize nav link + chip after 2 uses
+    const summarizeNav = document.querySelector('.nav-mode-link:first-child');
+    const summarizeChip = document.querySelector('.yt-chip:first-child');
+    if (left === 0) {
+      if (summarizeNav) { summarizeNav.classList.add('nav-mode-locked'); summarizeNav.textContent = '🔒 Summarize'; }
+      if (summarizeChip) { summarizeChip.classList.add('yt-chip-locked'); summarizeChip.textContent = '🔒 Summarize'; summarizeChip.onclick = () => showSignupWall(); }
+    } else {
+      if (summarizeNav) { summarizeNav.classList.remove('nav-mode-locked'); summarizeNav.textContent = 'Summarize'; }
+      if (summarizeChip) { summarizeChip.classList.remove('yt-chip-locked'); summarizeChip.textContent = 'Summarize'; summarizeChip.onclick = function(){ setYtMode(this,'with Summary'); }; }
+    }
+  }
+
   firebase.auth().onAuthStateChanged(user => {
     const login     = document.getElementById('nav-login');
     const signup    = document.getElementById('nav-signup');
     const dashboard = document.getElementById('nav-dashboard');
+    const signoutBtn = document.getElementById('nav-signout');
     if (user) {
+      isSignedIn = true;
       login.style.display     = 'none';
       signup.style.display    = 'none';
       dashboard.style.display = '';
+      if (signoutBtn) signoutBtn.style.display = '';
+      clearTimeout(fwTimer);
+      updateUsesBanner();
     } else {
+      isSignedIn = false;
+      if (signoutBtn) signoutBtn.style.display = 'none';
+      updateUsesBanner();
       login.style.display     = '';
       signup.style.display    = '';
       dashboard.style.display = 'none';
+      if (!sessionStorage.getItem('fw-dismissed')) {
+        fwTimer = setTimeout(() => {
+          document.getElementById('firewall-popup').classList.add('active');
+        }, 15000);
+      }
     }
   });
+
+  function signOut() {
+    firebase.auth().signOut().then(() => { window.location.href = 'index.html'; });
+  }
+
+  function dismissFirewall() {
+    sessionStorage.setItem('fw-dismissed', '1');
+    document.getElementById('firewall-popup').classList.remove('active');
+  }
 </script>
 
 <style>
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); z-index: 500; align-items: center; justify-content: center; }
+
+  /* ── FIREWALL POPUP ── */
+  .firewall-overlay { position: fixed; inset: 0; background: rgba(6,6,15,0.88); backdrop-filter: blur(10px); z-index: 900; display: none; align-items: center; justify-content: center; }
+  .firewall-overlay.active { display: flex; animation: fwFade 0.5s ease; }
+  @keyframes fwFade { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+  .firewall-box { background: var(--surface); border: 1px solid rgba(139,92,246,0.35); border-radius: 24px; padding: 48px 40px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.1); }
+  .firewall-badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3); color: var(--purple2); font-size: 0.75rem; font-weight: 700; padding: 4px 14px; border-radius: 100px; margin-bottom: 20px; }
+  .firewall-box h2 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .firewall-box p { color: var(--muted); font-size: 0.9rem; line-height: 1.65; margin-bottom: 28px; }
+  .firewall-signup { display: block; padding: 14px 20px; border-radius: 100px; background: var(--purple); color: #fff; font-size: 0.95rem; font-weight: 700; text-decoration: none; margin-bottom: 12px; transition: opacity 0.15s, transform 0.15s; box-shadow: 0 0 28px rgba(139,92,246,0.45); }
+  .firewall-signup:hover { opacity: 0.88; transform: translateY(-1px); }
+  .firewall-login { display: block; color: var(--purple2); font-size: 0.88rem; font-weight: 600; text-decoration: none; margin-bottom: 22px; }
+  .firewall-login:hover { text-decoration: underline; }
+  .firewall-dismiss { background: none; border: none; color: var(--muted); font-size: 0.75rem; cursor: pointer; transition: color 0.15s; }
+  .firewall-dismiss:hover { color: var(--text); }
   .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; max-width: 380px; width: 90%; text-align: center; }
   .modal-icon { font-size: 2.2rem; margin-bottom: 14px; }
   .modal-box h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
@@ -552,6 +644,18 @@
     <a href="signup.html" class="modal-signup-btn">Sign Up Free →</a>
     <p class="modal-signin-link">Already have an account? <a href="signin.html">Sign in</a></p>
     <button class="modal-close" onclick="document.getElementById('signup-modal').style.display='none'">No thanks, maybe later</button>
+  </div>
+</div>
+
+<!-- FIREWALL POPUP -->
+<div class="firewall-overlay" id="firewall-popup">
+  <div class="firewall-box" style="position:relative;">
+    <button onclick="dismissFirewall()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.4rem;line-height:1;cursor:pointer;opacity:0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
+    <h2>Enjoying GeniusNotes <span style="background:linear-gradient(135deg,var(--purple2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">AI?</span></h2>
+    <p>Sign up for free to use the YouTube AI Converter, generate notes, create flashcards, quizzes, and more — no credit card needed.</p>
+    <a href="signup.html" class="firewall-signup">Sign Up Now for Free! →</a>
+    <a href="signin.html" class="firewall-login">Already have an account? Log in</a>
+    <button class="firewall-dismiss" onclick="dismissFirewall()">No thanks, continue browsing</button>
   </div>
 </div>
 </body>

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>sign in — geniusnotes ai</title>
+  <title>sign in â€” geniusnotes ai</title>
   <style>
     :root {
       --bg: #06060F; --surface: #12121E; --border: rgba(255,255,255,0.07);
@@ -46,7 +46,8 @@
 
     .field-row { position: relative; }
     .field-row input { padding-right: 44px; }
-    .toggle-pw { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px; }
+    .toggle-pw { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; outline: none; }
+    .toggle-pw:hover { color: var(--text); }
 
     .forgot { display: block; text-align: right; font-size: 0.8rem; color: var(--purple2); text-decoration: none; margin-bottom: 20px; }
     .forgot:hover { text-decoration: underline; }
@@ -65,8 +66,8 @@
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
-  <a href="signup.html" class="nav-link">Create account →</a>
+  <a href="index.html" class="nav-logo">âœ¦ GeniusNotes <span class="ai">AI</span></a>
+  <a href="signup.html" class="nav-link">Create account â†’</a>
 </nav>
 
 <div class="auth-wrap">
@@ -91,8 +92,8 @@
     <div class="field">
       <label>Password</label>
       <div class="field-row">
-        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
-        <button class="toggle-pw" id="togglePw" type="button">👁</button>
+        <input type="password" id="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="current-password" />
+        <button class="toggle-pw" id="togglePw" type="button"><svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
     </div>
 
@@ -120,7 +121,7 @@
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
   // Redirect if already signed in
-  auth.onAuthStateChanged(user => { if (user) window.location.href = 'dashboard.html'; });
+  auth.onAuthStateChanged(user => { if (user) window.location.href = 'index.html'; });
 
   // Theme
   if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
@@ -136,9 +137,14 @@
   }
   function clearError() { errorMsg.classList.remove('show'); }
 
-  // Toggle password visibility
-  document.getElementById('togglePw').addEventListener('click', () => {
-    passEl.type = passEl.type === 'password' ? 'text' : 'password';
+  const EYE_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const EYE_CLOSED = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+  const toggleBtn = document.getElementById('togglePw');
+  toggleBtn.addEventListener('click', () => {
+    const show = passEl.type === 'password';
+    passEl.type = show ? 'text' : 'password';
+    toggleBtn.innerHTML = show ? EYE_CLOSED : EYE_OPEN;
+    toggleBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
 
   // Email/password sign in
@@ -148,10 +154,10 @@
     const pass  = passEl.value;
     if (!email || !pass) return showError('Please fill in all fields.');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Signing in…';
+    submitBtn.textContent = 'Signing inâ€¦';
     try {
       await auth.signInWithEmailAndPassword(email, pass);
-      window.location.href = 'dashboard.html';
+      window.location.href = 'index.html';
     } catch (e) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Sign in';
@@ -171,7 +177,7 @@
     clearError();
     try {
       await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-      window.location.href = 'dashboard.html';
+      window.location.href = 'index.html';
     } catch (e) {
       if (e.code !== 'auth/popup-closed-by-user') showError(e.message);
     }
@@ -182,3 +188,4 @@
 </script>
 </body>
 </html>
+

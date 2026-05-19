@@ -3,6 +3,55 @@ function getVideoId(url) {
   return m ? m[1] : null;
 }
 
+async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
+  const params = `url=${encodeURIComponent(youtubeUrl)}${lang ? `&lang=${lang}` : ''}${nativeOnly ? '&mode=native' : ''}`;
+  const res = await fetch(`https://api.supadata.ai/v1/transcript?${params}`, {
+    headers: { 'x-api-key': apiKey }
+  });
+
+  const body = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(body); } catch { throw new Error(body || 'Invalid response.'); }
+  if (!res.ok) throw new Error(parsed.message || `HTTP ${res.status}`);
+
+  if (res.status === 202) {
+    const jobId = parsed.id;
+    // Poll for up to 50s (10 attempts × 5s) — fits inside 60s Vercel limit
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      const poll = await fetch(`https://api.supadata.ai/v1/transcript/${jobId}`, { headers: { 'x-api-key': apiKey } });
+      if (!poll.ok) continue;
+      let result;
+      try { result = JSON.parse(await poll.text()); } catch { continue; }
+      if (result.status === 'done') return extractText(result.content);
+    }
+    throw new Error('Transcription timed out. Try a shorter video.');
+  }
+
+  return extractText(parsed.content);
+}
+
+async function fetchFullTranscript(videoId) {
+  const supadataKey = process.env.SUPADATA_API_KEY;
+  if (!supadataKey) throw new Error('Transcription service not configured.');
+
+  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`; // canonical — no tracking params
+  // 1. Try English native captions (fast, no AI cost)
+  // 2. Fall back to primary native captions in whatever language the video is in
+  // 3. Fall back to AI transcription if no native captions exist at all
+  const text = await supadataFetch(youtubeUrl, supadataKey, 'en', true)
+    .catch(() => supadataFetch(youtubeUrl, supadataKey, null, true))
+    .catch(() => supadataFetch(youtubeUrl, supadataKey, null, false));
+  return text;
+}
+
+function extractText(content) {
+  if (!content) throw new Error('Empty transcript returned.');
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) return content.map(s => s.text || '').join(' ').trim();
+  throw new Error('Unexpected transcript format.');
+}
+
 async function fetchVideoContent(videoId, url) {
   try {
     const jinaRes = await fetch(`https://r.jina.ai/https://www.youtube.com/watch?v=${videoId}`, {
@@ -56,6 +105,16 @@ module.exports = async function handler(req, res) {
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+
+    if (mode === 'transcribe') {
+      try {
+        const transcript = await fetchFullTranscript(videoId);
+        if (!transcript || transcript.length < 50) throw new Error();
+        return res.status(200).json({ summary: transcript });
+      } catch (_) {
+        throw new Error('This video does not have captions available. Try a video with auto-generated or manual subtitles.');
+      }
+    }
 
     const transcript = await fetchVideoContent(videoId, url);
     if (!transcript || transcript.length < 50) throw new Error('Could not extract enough content from this video.');

@@ -168,6 +168,19 @@
     .step h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 5px; }
     .step p { font-size: 0.75rem; color: var(--muted); max-width: 130px; }
 
+    /* ── VIDEO SHOWCASE ── */
+    .vid-showcase { padding: 60px 40px 20px; max-width: 1200px; margin: 0 auto; }
+    .vid-showcase-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+    .vid-showcase-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 28px; }
+    .vid-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .vid-card { background: var(--surface); border: 1px solid rgba(139,92,246,0.2); border-radius: 16px; overflow: hidden; }
+    .vid-card iframe { width: 100%; aspect-ratio: 16/9; display: block; border: none; }
+    .vid-card-foot { padding: 12px 14px; display: flex; align-items: center; gap: 8px; }
+    .vid-url { flex: 1; font-size: 0.7rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; cursor: text; user-select: all; }
+    .vid-try-btn { background: var(--purple); color: #fff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; transition: opacity 0.15s; flex-shrink: 0; }
+    .vid-try-btn:hover { opacity: 0.85; }
+    @media(max-width:768px){ .vid-grid { grid-template-columns: 1fr; } .vid-showcase { padding: 40px 16px 10px; } }
+
     /* ── YT SECTION ── */
     .yt-wrap { padding: 60px 40px; max-width: 1200px; margin: 0 auto; }
     .yt-section {
@@ -196,7 +209,11 @@
     .summary-box { background: var(--surface2); border: 1.5px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 16px; font-size: 0.85rem; line-height: 1.7; display: none; margin-top: 16px; white-space: pre-wrap; }
     .summary-box.visible { display: block; }
     .summary-box.loading { color: var(--muted); }
-    .summary-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--purple2); margin-bottom: 8px; }
+    .summary-box-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .summary-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--purple2); margin-bottom: 0; }
+    .copy-btn { background: none; border: 1px solid rgba(139,92,246,0.3); border-radius: 6px; color: var(--muted); font-size: 0.7rem; font-family: inherit; padding: 3px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .copy-btn:hover { border-color: var(--purple2); color: var(--purple2); }
+    .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
     .dots span { animation: blink 1.2s infinite; display: inline-block; }
     .dots span:nth-child(2) { animation-delay: 0.2s; }
     .dots span:nth-child(3) { animation-delay: 0.4s; }
@@ -277,8 +294,8 @@
 <nav>
   <a href="#" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
   <div class="nav-links">
+    <a href="#youtube-summarizer" class="nav-mode-link" onclick="navSetMode('Transcribe','with Transcription',this);return false;">Transcribe</a>
     <a href="#youtube-summarizer" class="nav-mode-link nav-mode-active" onclick="navSetMode('Summarize','with Summary',this);return false;">Summarize</a>
-    <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Transcribe','with Transcription',this);return false;">🔒 Transcribe</a>
     <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Generate Notes','with Notes',this);return false;">🔒 Generate Notes</a>
     <a href="#youtube-summarizer" class="nav-mode-link nav-mode-locked" onclick="navSetMode('Create Quizzes','with Quizzes',this);return false;">🔒 Create Quizzes</a>
   </div>
@@ -303,6 +320,35 @@
 </div>
 
 
+<!-- VIDEO SHOWCASE -->
+<div class="vid-showcase">
+  <div class="vid-showcase-title">Try it with these videos</div>
+  <div class="vid-showcase-sub">Pick any video below — then hit "Try this →" to load it into the converter.</div>
+  <div class="vid-grid">
+    <div class="vid-card">
+      <iframe src="https://www.youtube.com/embed/UF8uR6Z6KLc" allowfullscreen loading="lazy"></iframe>
+      <div class="vid-card-foot">
+        <span class="vid-url">https://www.youtube.com/watch?v=UF8uR6Z6KLc</span>
+        <button class="vid-try-btn" onclick="useVideo('https://www.youtube.com/watch?v=UF8uR6Z6KLc')">Try this →</button>
+      </div>
+    </div>
+    <div class="vid-card">
+      <iframe src="https://www.youtube.com/embed/Iocm-1dXr-Q" allowfullscreen loading="lazy"></iframe>
+      <div class="vid-card-foot">
+        <span class="vid-url">https://www.youtube.com/watch?v=Iocm-1dXr-Q</span>
+        <button class="vid-try-btn" onclick="useVideo('https://www.youtube.com/watch?v=Iocm-1dXr-Q')">Try this →</button>
+      </div>
+    </div>
+    <div class="vid-card">
+      <iframe src="https://www.youtube.com/embed/IFx8eABfivg" allowfullscreen loading="lazy"></iframe>
+      <div class="vid-card-foot">
+        <span class="vid-url">https://www.youtube.com/watch?v=IFx8eABfivg</span>
+        <button class="vid-try-btn" onclick="useVideo('https://www.youtube.com/watch?v=IFx8eABfivg')">Try this →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- YOUTUBE CONVERTER -->
 <div class="yt-wrap" id="youtube-summarizer">
   <div class="yt-section">
@@ -314,18 +360,20 @@
         <button class="yt-btn" id="yt-btn" onclick="summarize()">Convert →</button>
       </div>
       <div class="yt-chips">
+        <span class="yt-chip" onclick="setYtMode(this,'with Transcription')">Transcribe</span>
         <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
-        <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Transcription')">🔒 Transcribe</span>
         <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Notes')">🔒 Generate Notes</span>
         <span class="yt-chip yt-chip-locked" onclick="tryLockedMode(this,'with Quizzes')">🔒 Create Quizzes</span>
       </div>
       <div id="free-uses-banner" style="display:none;margin-top:12px;font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;">
-        <span id="free-uses-dots"></span>
         <span id="free-uses-text"></span>
-        <a href="signup.html" style="color:var(--purple2);font-weight:600;text-decoration:none;margin-left:4px;">Sign up for unlimited →</a>
+        <a href="signup.html" style="color:var(--purple2);font-weight:600;text-decoration:none;margin-left:4px;">Sign up for full access →</a>
       </div>
       <div class="summary-box" id="summary-box">
-        <div class="summary-label" id="summary-label">AI Summary</div>
+        <div class="summary-box-header">
+          <div class="summary-label" id="summary-label">AI Summary</div>
+          <button class="copy-btn" id="copy-btn" onclick="copyResult()">Copy</button>
+        </div>
         <div id="summary-text"></div>
       </div>
     </div>
@@ -416,15 +464,16 @@
 
   const modeMap = {
     'with Summary':    'summarize',
-    'with Transcription': 'keypoints',
+    'with Transcription': 'transcribe',
     'with Notes':      'notes',
     'with Quizzes':    'quizzes'
   };
   let currentMode = 'summarize';
 
   function isLocked(chipText) {
-    if (chipText !== 'Summarize') return !isSignedIn;
-    return !isSignedIn && parseInt(localStorage.getItem('gn-free-uses') || '0') >= 2;
+    if (chipText === 'Summarize') return !isSignedIn && parseInt(localStorage.getItem('gn-free-uses') || '0') >= 3;
+    if (chipText === 'Transcribe') return false;
+    return !isSignedIn;
   }
 
   function showSignupWall() {
@@ -452,17 +501,47 @@
     document.getElementById('yt-mode-label').textContent = label;
     currentMode = modeMap[label] || 'summarize';
     document.getElementById('yt-url').placeholder = '▶ Paste YouTube video link here...';
+    const box = document.getElementById('summary-box');
+    box.className = 'summary-box';
+    document.getElementById('summary-text').textContent = '';
+    document.getElementById('summary-label').textContent = 'AI Summary';
+    const chipText = el.textContent.replace('🔒 ', '').trim();
+    document.querySelectorAll('.nav-mode-link').forEach(l => {
+      const lt = l.textContent.replace('🔒 ', '').trim();
+      l.classList.toggle('nav-mode-active', lt === chipText);
+    });
   }
 
 
+  function copyResult() {
+    const text = document.getElementById('summary-text').textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function useVideo(url) {
+    document.getElementById('yt-url').value = url;
+    document.getElementById('youtube-summarizer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   async function summarize() {
-    if (currentMode !== 'summarize') {
-      document.getElementById('signup-modal').style.display = 'flex';
+    if (currentMode !== 'summarize' && currentMode !== 'transcribe') {
+      const box = document.getElementById('summary-box');
+      const label = document.getElementById('summary-label');
+      const text = document.getElementById('summary-text');
+      label.textContent = 'Coming Soon';
+      text.textContent = 'This feature is coming soon. Stay tuned!';
+      box.className = 'summary-box visible';
       return;
     }
-    if (!isSignedIn) {
+    if (!isSignedIn && currentMode === 'summarize') {
       const uses = parseInt(localStorage.getItem('gn-free-uses') || '0');
-      if (uses >= 2) {
+      if (uses >= 3) {
         document.getElementById('firewall-popup').classList.add('active');
         return;
       }
@@ -490,13 +569,17 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to summarize');
-      const labelMap = { summarize: 'AI Summary', keypoints: 'Transcript', notes: 'Study Notes', quizzes: 'Quiz Questions' };
+      const labelMap = { summarize: 'AI Summary', transcribe: 'Transcript', keypoints: 'Key Points', notes: 'Study Notes', quizzes: 'Quiz Questions' };
       label.textContent = labelMap[currentMode] || 'AI Summary';
       text.textContent = data.summary;
       box.className = 'summary-box visible';
-      if (!isSignedIn) {
-        localStorage.setItem('gn-free-uses', parseInt(localStorage.getItem('gn-free-uses') || '0') + 1);
+      if (!isSignedIn && currentMode === 'summarize') {
+        const newUses = parseInt(localStorage.getItem('gn-free-uses') || '0') + 1;
+        localStorage.setItem('gn-free-uses', newUses);
         updateUsesBanner();
+        if (newUses >= 3) {
+          setTimeout(() => document.getElementById('firewall-popup').classList.add('active'), 800);
+        }
       }
     } catch (err) {
       label.textContent = 'Error';
@@ -524,21 +607,20 @@
 
   function updateUsesBanner() {
     const banner = document.getElementById('free-uses-banner');
-    const dotsEl = document.getElementById('free-uses-dots');
     const textEl = document.getElementById('free-uses-text');
     if (!banner) return;
     if (isSignedIn) {
       banner.style.display = 'none';
       // Unlock all nav links
-      const navLabels = ['Summarize','Transcribe','Generate Notes','Create Quizzes'];
+      const navLabels = ['Transcribe','Summarize','Generate Notes','Create Quizzes'];
       document.querySelectorAll('.nav-mode-link').forEach((a, i) => {
         a.classList.remove('nav-mode-locked');
         a.textContent = navLabels[i];
       });
       // Unlock all chips
       const chipData = [
-        { text: 'Summarize',    mode: 'with Summary' },
         { text: 'Transcribe',   mode: 'with Transcription' },
+        { text: 'Summarize',    mode: 'with Summary' },
         { text: 'Generate Notes', mode: 'with Notes' },
         { text: 'Create Quizzes', mode: 'with Quizzes' }
       ];
@@ -551,14 +633,12 @@
       return;
     }
     const used = parseInt(localStorage.getItem('gn-free-uses') || '0');
-    const left = Math.max(0, 2 - used);
-    const dots = [0,1].map(i => i < left ? '🟢' : '⚫').join(' ');
-    dotsEl.textContent = dots;
+    const left = Math.max(0, 3 - used);
     textEl.textContent = `${left} ${left === 1 ? 'summary' : 'summaries'} left — Sign up to continue`;
     banner.style.display = 'flex';
     // Lock Summarize nav link + chip after 2 uses
-    const summarizeNav = document.querySelector('.nav-mode-link:first-child');
-    const summarizeChip = document.querySelector('.yt-chip:first-child');
+    const summarizeNav = document.querySelector('.nav-mode-link:nth-child(2)');
+    const summarizeChip = document.querySelector('.yt-chip:nth-child(2)');
     if (left === 0) {
       if (summarizeNav) { summarizeNav.classList.add('nav-mode-locked'); summarizeNav.textContent = '🔒 Summarize'; }
       if (summarizeChip) { summarizeChip.classList.add('yt-chip-locked'); summarizeChip.textContent = '🔒 Summarize'; summarizeChip.onclick = () => showSignupWall(); }

@@ -276,7 +276,7 @@
     <a href="#flashcards">Flashcards</a>
     <a href="#quizzes">Quizzes</a>
     <a href="#ai-tutor">AI Tutor</a>
-    <a href="#youtube-summarizer">YouTube Summarizer</a>
+    <a href="#youtube-summarizer">YouTube Converter</a>
     <a href="#upload-docs">Upload Docs</a>
   </div>
   <div class="nav-auth" id="nav-auth">
@@ -311,21 +311,10 @@
         <button class="yt-btn" id="yt-btn" onclick="summarize()">Convert →</button>
       </div>
       <div class="yt-chips">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <span class="yt-chip" onclick="setYtMode(this,'with Key Points')">Extract Key Points</span>
-          <span style="font-size:0.75rem;">🔒</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <span class="yt-chip" onclick="setYtMode(this,'with Notes')">Generate Notes</span>
-          <span style="font-size:0.75rem;">🔒</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <span class="yt-chip" onclick="setYtMode(this,'with Quizzes')">Create Quizzes</span>
-          <span style="font-size:0.75rem;">🔒</span>
-        </div>
+        <span class="yt-chip yt-chip-active" onclick="setYtMode(this,'with Summary')">Summarize</span>
+        <span class="yt-chip" onclick="setYtMode(this,'with Key Points')">Extract Key Points</span>
+        <span class="yt-chip" onclick="setYtMode(this,'with Notes')">Generate Notes</span>
+        <span class="yt-chip" onclick="setYtMode(this,'with Quizzes')">Create Quizzes</span>
       </div>
       <div class="summary-box" id="summary-box">
         <div class="summary-label" id="summary-label">AI Summary</div>
@@ -458,6 +447,14 @@
     document.querySelectorAll('.yt-chip').forEach(c => c.classList.remove('yt-chip-active'));
     el.classList.add('yt-chip-active');
     document.getElementById('yt-mode-label').textContent = label;
+    const input = document.getElementById('yt-url');
+    const btn   = document.getElementById('yt-btn');
+    const locked = label !== 'with Summary';
+    input.disabled = locked;
+    btn.disabled   = locked;
+    input.placeholder = locked ? '🔒 Unlock to use this feature' : '▶ Paste YouTube video link here...';
+    input.style.opacity = locked ? '0.5' : '1';
+    input.style.cursor  = locked ? 'not-allowed' : '';
   }
 
   async function summarize() {

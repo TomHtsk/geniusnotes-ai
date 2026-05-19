@@ -443,21 +443,28 @@
     document.getElementById('theme-label').textContent = 'Dark';
   }
 
+  const modeMap = {
+    'with Summary':    'summarize',
+    'with Key Points': 'keypoints',
+    'with Notes':      'notes',
+    'with Quizzes':    'quizzes'
+  };
+  let currentMode = 'summarize';
+
   function setYtMode(el, label) {
     document.querySelectorAll('.yt-chip').forEach(c => c.classList.remove('yt-chip-active'));
     el.classList.add('yt-chip-active');
     document.getElementById('yt-mode-label').textContent = label;
-    const input = document.getElementById('yt-url');
-    const btn   = document.getElementById('yt-btn');
-    const locked = label !== 'with Summary';
-    input.disabled = locked;
-    btn.disabled   = locked;
-    input.placeholder = locked ? '🔒 Unlock to use this feature' : '▶ Paste YouTube video link here...';
-    input.style.opacity = locked ? '0.5' : '1';
-    input.style.cursor  = locked ? 'not-allowed' : '';
+    currentMode = modeMap[label] || 'summarize';
+    document.getElementById('yt-url').placeholder = '▶ Paste YouTube video link here...';
   }
 
+
   async function summarize() {
+    if (currentMode !== 'summarize') {
+      document.getElementById('signup-modal').style.display = 'flex';
+      return;
+    }
     const url = document.getElementById('yt-url').value.trim();
     const box = document.getElementById('summary-box');
     const label = document.getElementById('summary-label');
@@ -477,11 +484,12 @@
       const res = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url, mode: currentMode })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to summarize');
-      label.textContent = 'AI Summary';
+      const labelMap = { summarize: 'AI Summary', keypoints: 'Key Points', notes: 'Study Notes', quizzes: 'Quiz Questions' };
+      label.textContent = labelMap[currentMode] || 'AI Summary';
       text.textContent = data.summary;
       box.className = 'summary-box visible';
     } catch (err) {
@@ -520,5 +528,31 @@
     }
   });
 </script>
+
+<style>
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); z-index: 500; align-items: center; justify-content: center; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; max-width: 380px; width: 90%; text-align: center; }
+  .modal-icon { font-size: 2.2rem; margin-bottom: 14px; }
+  .modal-box h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+  .modal-box p { color: var(--muted); font-size: 0.88rem; margin-bottom: 24px; line-height: 1.6; }
+  .modal-signup-btn { display: block; width: 100%; padding: 13px; border-radius: 10px; border: none; background: var(--purple); color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer; text-decoration: none; margin-bottom: 10px; transition: opacity 0.15s; }
+  .modal-signup-btn:hover { opacity: 0.88; }
+  .modal-signin-link { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; }
+  .modal-signin-link a { color: var(--purple2); text-decoration: none; font-weight: 600; }
+  .modal-signin-link a:hover { text-decoration: underline; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 0.78rem; cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+</style>
+
+<div class="modal-overlay" id="signup-modal">
+  <div class="modal-box">
+    <div class="modal-icon">✦</div>
+    <h2>Sign up to convert</h2>
+    <p>Create a free account to use the YouTube AI Converter and unlock all features.</p>
+    <a href="signup.html" class="modal-signup-btn">Sign Up Free →</a>
+    <p class="modal-signin-link">Already have an account? <a href="signin.html">Sign in</a></p>
+    <button class="modal-close" onclick="document.getElementById('signup-modal').style.display='none'">No thanks, maybe later</button>
+  </div>
+</div>
 </body>
 </html>

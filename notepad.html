@@ -419,6 +419,18 @@
     .ic-spin { width:14px; height:14px; border:2px solid rgba(139,92,246,0.3); border-top-color:#8b5cf6; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ── FONT SIZE ── */
+    #fs-wrap { position:relative; display:inline-flex; align-items:center; }
+    #fs-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:700; padding:3px 6px; cursor:pointer; font-family:inherit; min-width:36px; text-align:center; transition:border-color 0.12s; display:flex; align-items:center; gap:3px; }
+    #fs-display:hover { border-color:var(--purple); color:var(--purple2); }
+    #fs-popup { display:none; position:absolute; top:calc(100% + 5px); left:50%; transform:translateX(-50%); background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.7); min-width:80px; }
+    #fs-popup.on { display:block; }
+    .fs-opt { display:block; width:100%; text-align:center; padding:5px 10px; border:none; background:none; color:var(--text); font-family:inherit; cursor:pointer; border-radius:6px; font-size:0.8rem; font-weight:600; transition:background 0.1s; }
+    .fs-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
+    .fs-opt.active { background:rgba(139,92,246,0.2); color:var(--purple2); }
+    #fs-custom-row { display:flex; gap:4px; padding:4px 6px 2px; border-top:1px solid var(--border); margin-top:2px; }
+    #fs-custom-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; padding:3px 6px; font-family:inherit; outline:none; width:44px; }
+
     /* ── COLOR PICKERS ── */
     .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.7); width:176px; }
     .color-picker-pop .cp-label { font-size:0.64rem; font-weight:700; color:#555577; letter-spacing:0.07em; margin-bottom:7px; text-transform:uppercase; }
@@ -577,6 +589,31 @@
         <button class="tb-btn" onclick="fmt('bold')" title="Bold"><b>B</b></button>
         <button class="tb-btn" onclick="fmt('italic')" title="Italic"><i>I</i></button>
         <button class="tb-btn" onclick="fmt('underline')" title="Underline"><u>U</u></button>
+        <div class="tb-sep"></div>
+        <!-- Font size -->
+        <div id="fs-wrap">
+          <button id="fs-display" onclick="toggleFsPop()" title="Font size">
+            <span id="fs-label">16</span><span style="font-size:0.55rem;opacity:0.6;">px</span>
+          </button>
+          <div id="fs-popup">
+            <button class="fs-opt" onclick="applyFontSize(10)">10</button>
+            <button class="fs-opt" onclick="applyFontSize(12)">12</button>
+            <button class="fs-opt" onclick="applyFontSize(14)">14</button>
+            <button class="fs-opt active" onclick="applyFontSize(16)">16</button>
+            <button class="fs-opt" onclick="applyFontSize(18)">18</button>
+            <button class="fs-opt" onclick="applyFontSize(20)">20</button>
+            <button class="fs-opt" onclick="applyFontSize(24)">24</button>
+            <button class="fs-opt" onclick="applyFontSize(28)">28</button>
+            <button class="fs-opt" onclick="applyFontSize(32)">32</button>
+            <button class="fs-opt" onclick="applyFontSize(36)">36</button>
+            <button class="fs-opt" onclick="applyFontSize(48)">48</button>
+            <button class="fs-opt" onclick="applyFontSize(72)">72</button>
+            <div id="fs-custom-row">
+              <input id="fs-custom-input" type="number" min="6" max="200" placeholder="px" title="Custom size">
+              <button class="fs-opt" style="padding:3px 7px;min-width:0;" onclick="applyFontSize(+document.getElementById('fs-custom-input').value)">↵</button>
+            </div>
+          </div>
+        </div>
         <div class="tb-sep"></div>
         <button class="tb-btn" onclick="fmt('formatBlock','h1')" title="Heading 1">H1</button>
         <button class="tb-btn" onclick="fmt('formatBlock','h2')" title="Heading 2">H2</button>
@@ -4051,6 +4088,82 @@ function _applyDiffHighlightsToEl(markedText, el) {
     }
   });
 }
+
+// ── FONT SIZE ────────────────────────────────────────────────
+function toggleFsPop() {
+  const pop = document.getElementById('fs-popup');
+  pop.classList.toggle('on');
+  if (pop.classList.contains('on')) {
+    document.addEventListener('mousedown', function _close(e) {
+      if (!document.getElementById('fs-wrap').contains(e.target)) {
+        pop.classList.remove('on');
+        document.removeEventListener('mousedown', _close);
+      }
+    });
+  }
+}
+
+function applyFontSize(px) {
+  if (!px || px < 6 || px > 400) return;
+  const el = _getActiveEditorEl(); el.focus();
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount && !sel.isCollapsed) {
+    // Wrap selected text in a styled span
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontSize = px + 'px';
+    try { range.surroundContents(span); }
+    catch(e) {
+      // Selection spans multiple elements — use execCommand fallback
+      document.execCommand('insertHTML', false,
+        `<span style="font-size:${px}px">${range.toString()}</span>`);
+    }
+  } else {
+    // No selection — set default size for new typing via execCommand
+    document.execCommand('fontSize', false, '7');
+    el.querySelectorAll('font[size="7"]').forEach(f => {
+      const s = document.createElement('span');
+      s.style.fontSize = px + 'px';
+      s.innerHTML = f.innerHTML;
+      f.replaceWith(s);
+    });
+  }
+  // Update display
+  document.getElementById('fs-label').textContent = px;
+  document.querySelectorAll('.fs-opt').forEach(b => b.classList.toggle('active', +b.textContent === px));
+  document.getElementById('fs-popup').classList.remove('on');
+  scheduleSave();
+}
+
+// Detect font size at cursor and update the display
+function _updateFsDisplay() {
+  try {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const node = sel.getRangeAt(0).startContainer;
+    let el = node.nodeType === 3 ? node.parentElement : node;
+    while (el && el.id !== 'editor' && el.id !== 'editor-right') {
+      const fs = window.getComputedStyle(el).fontSize;
+      if (fs && el.style.fontSize) {
+        const px = Math.round(parseFloat(fs));
+        document.getElementById('fs-label').textContent = px;
+        document.querySelectorAll('.fs-opt').forEach(b => b.classList.toggle('active', +b.textContent === px));
+        return;
+      }
+      el = el.parentElement;
+    }
+    document.getElementById('fs-label').textContent = '16';
+    document.querySelectorAll('.fs-opt').forEach(b => b.classList.toggle('active', +b.textContent === 16));
+  } catch(e) {}
+}
+
+['editor','editor-right'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('keyup', _updateFsDisplay);
+    el.addEventListener('mouseup', _updateFsDisplay);
+  }
+});
 
 // ── TEXT COLOR & BACKGROUND COLOR ────────────────────────────
 const _TC_COLORS = ['#ffffff','#d1d5db','#6b7280','#111827','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','transparent'];

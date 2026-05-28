@@ -419,6 +419,16 @@
     .ic-spin { width:14px; height:14px; border:2px solid rgba(139,92,246,0.3); border-top-color:#8b5cf6; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ── FONT FAMILY ── */
+    #ff-wrap { position:relative; display:inline-flex; align-items:center; }
+    #ff-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:600; padding:3px 7px; cursor:pointer; font-family:inherit; min-width:72px; text-align:left; transition:border-color 0.12s; display:flex; align-items:center; justify-content:space-between; gap:4px; }
+    #ff-display:hover { border-color:var(--purple); color:var(--purple2); }
+    #ff-popup { display:none; position:absolute; top:calc(100% + 5px); left:0; background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.7); min-width:180px; }
+    #ff-popup.on { display:block; }
+    .ff-opt { display:block; width:100%; text-align:left; padding:6px 12px; border:none; background:none; color:var(--text); cursor:pointer; border-radius:6px; font-size:0.82rem; transition:background 0.1s; }
+    .ff-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
+    .ff-opt.active { background:rgba(139,92,246,0.2); color:var(--purple2); }
+
     /* ── FONT SIZE ── */
     #fs-wrap { position:relative; display:inline-flex; align-items:center; }
     #fs-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:700; padding:3px 6px; cursor:pointer; font-family:inherit; min-width:36px; text-align:center; transition:border-color 0.12s; display:flex; align-items:center; gap:3px; }
@@ -612,6 +622,24 @@
               <input id="fs-custom-input" type="number" min="6" max="200" placeholder="px" title="Custom size">
               <button class="fs-opt" style="padding:3px 7px;min-width:0;" onclick="applyFontSize(+document.getElementById('fs-custom-input').value)">↵</button>
             </div>
+          </div>
+        </div>
+        <!-- Font family -->
+        <div id="ff-wrap">
+          <button id="ff-display" onclick="toggleFfPop()" title="Font family">
+            <span id="ff-label">Default</span><span style="font-size:0.55rem;opacity:0.5;">▾</span>
+          </button>
+          <div id="ff-popup">
+            <button class="ff-opt active" onclick="applyFont('')"           style="font-family:inherit;">Default (Inter)</button>
+            <button class="ff-opt" onclick="applyFont('Arial, sans-serif')"           style="font-family:Arial;">Arial</button>
+            <button class="ff-opt" onclick="applyFont('Georgia, serif')"              style="font-family:Georgia;">Georgia</button>
+            <button class="ff-opt" onclick="applyFont('\'Times New Roman\', serif')"  style="font-family:'Times New Roman';">Times New Roman</button>
+            <button class="ff-opt" onclick="applyFont('\'Courier New\', monospace')"  style="font-family:'Courier New';">Courier New</button>
+            <button class="ff-opt" onclick="applyFont('Verdana, sans-serif')"         style="font-family:Verdana;">Verdana</button>
+            <button class="ff-opt" onclick="applyFont('Tahoma, sans-serif')"          style="font-family:Tahoma;">Tahoma</button>
+            <button class="ff-opt" onclick="applyFont('\'Trebuchet MS\', sans-serif')" style="font-family:'Trebuchet MS';">Trebuchet MS</button>
+            <button class="ff-opt" onclick="applyFont('Impact, sans-serif')"          style="font-family:Impact;">Impact</button>
+            <button class="ff-opt" onclick="applyFont('\'Comic Sans MS\', cursive')"  style="font-family:'Comic Sans MS';">Comic Sans</button>
           </div>
         </div>
         <div class="tb-sep"></div>
@@ -4089,6 +4117,58 @@ function _applyDiffHighlightsToEl(markedText, el) {
   });
 }
 
+// ── FONT FAMILY ──────────────────────────────────────────────
+const _FF_NAMES = { '':'Default', 'Arial, sans-serif':'Arial', 'Georgia, serif':'Georgia',
+  "'Times New Roman', serif":'Times New Roman', "'Courier New', monospace":'Courier New',
+  'Verdana, sans-serif':'Verdana', 'Tahoma, sans-serif':'Tahoma',
+  "'Trebuchet MS', sans-serif":'Trebuchet MS', 'Impact, sans-serif':'Impact',
+  "'Comic Sans MS', cursive":'Comic Sans' };
+
+function toggleFfPop() {
+  const pop = document.getElementById('ff-popup');
+  pop.classList.toggle('on');
+  if (pop.classList.contains('on')) {
+    document.addEventListener('mousedown', function _cl(e) {
+      if (!document.getElementById('ff-wrap').contains(e.target)) {
+        pop.classList.remove('on');
+        document.removeEventListener('mousedown', _cl);
+      }
+    });
+  }
+}
+
+function applyFont(family) {
+  const el = _getActiveEditorEl(); el.focus();
+  const sel = window.getSelection();
+  const label = _FF_NAMES[family] || 'Default';
+  if (sel && sel.rangeCount && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    if (family) span.style.fontFamily = family;
+    try {
+      range.surroundContents(span);
+    } catch(e) {
+      const frag = range.extractContents();
+      // Strip existing fontFamily from children
+      frag.querySelectorAll && frag.querySelectorAll('*').forEach(c => { if (c.style) c.style.fontFamily = ''; });
+      span.appendChild(frag);
+      range.insertNode(span);
+    }
+    // Strip child font-family overrides
+    span.querySelectorAll('*').forEach(c => { if (c.style && c !== span) c.style.fontFamily = ''; });
+    sel.removeAllRanges();
+    const r = document.createRange(); r.selectNodeContents(span); sel.addRange(r);
+  } else {
+    // Apply to whole editor if nothing selected
+    if (family) el.style.fontFamily = family;
+    else el.style.fontFamily = '';
+  }
+  document.getElementById('ff-label').textContent = label;
+  document.querySelectorAll('.ff-opt').forEach(b => b.classList.toggle('active', b.textContent.trim() === label));
+  document.getElementById('ff-popup').classList.remove('on');
+  scheduleSave();
+}
+
 // ── FONT SIZE ────────────────────────────────────────────────
 function toggleFsPop() {
   const pop = document.getElementById('fs-popup');
@@ -4497,9 +4577,9 @@ function recSave() {
   document.addEventListener('click', e => {
     const img = e.target.closest('img');
     if (img && (img.closest('#editor') || img.closest('#editor-right'))) {
-      e.preventDefault();
+      // Don't preventDefault — let normal cursor placement happen
       selectImage(img);
-    } else if (!e.target.classList.contains('img-handle')) {
+    } else if (!e.target.classList.contains('img-handle') && !e.target.closest('.img-wrap')) {
       deselectImage();
     }
   });
@@ -4542,12 +4622,15 @@ function recSave() {
   // ── DRAG to reposition ──
   function startDrag(e) {
     if (e.target.classList.contains('img-handle')) return;
-    e.preventDefault();
     const img = _selImg;
     let lastX = e.clientX, lastY = e.clientY;
+    let dragging = false;
 
     function onMove(ev) {
       const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
+      if (!dragging && Math.hypot(dx, dy) < 4) return;
+      dragging = true;
+      ev.preventDefault(); // only prevent default once we're actually dragging
       lastX = ev.clientX; lastY = ev.clientY;
       img.style.marginLeft = (parseInt(img.style.marginLeft || 0) + dx) + 'px';
       img.style.marginTop  = (parseInt(img.style.marginTop  || 0) + dy) + 'px';
@@ -4555,7 +4638,7 @@ function recSave() {
     function onUp() {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
-      scheduleSave();
+      if (dragging) scheduleSave();
     }
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);

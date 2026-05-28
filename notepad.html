@@ -4120,6 +4120,14 @@ function applyFontSize(px) {
       span.appendChild(frag);
       range.insertNode(span);
     }
+    // Strip any existing font-size from all children so the new size wins
+    span.querySelectorAll('*').forEach(child => {
+      if (child.style) child.style.fontSize = '';
+    });
+    // Also convert legacy <font size> tags inside
+    span.querySelectorAll('font[size]').forEach(f => {
+      f.removeAttribute('size');
+    });
     // Restore selection inside the new span
     sel.removeAllRanges();
     const r = document.createRange();

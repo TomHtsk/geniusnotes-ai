@@ -54,11 +54,11 @@ module.exports = async function handler(req, res) {
 
     // 1. Try mammoth text extraction first (fast, no API cost)
     const mammothResult = await mammoth.extractRawText({ buffer });
-    if (mammothResult.value.trim().length > 100) {
+    if (mammothResult.value.trim().length > 0) {
       return res.status(200).json({ text: mammothResult.value });
     }
 
-    // 2. Fallback: OCR each image embedded in the DOCX
+    // 2. Fallback: OCR images embedded in DOCX (cap at 4 to avoid timeout)
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error('OCR service not configured.');
 
@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
 
     const imageEntries = Object.values(zip.files).filter(f =>
       !f.dir && f.name.startsWith('word/media/') && /\.(png|jpe?g|gif|bmp)$/i.test(f.name)
-    );
+    ).slice(0, 4); // cap to avoid 60s timeout
 
     if (imageEntries.length === 0) {
       throw new Error('No readable text or images found in this DOCX file.');

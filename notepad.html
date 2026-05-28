@@ -398,6 +398,36 @@
     .ic-spin { width:14px; height:14px; border:2px solid rgba(139,92,246,0.3); border-top-color:#8b5cf6; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ── RECORD MODAL ── */
+    #rec-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:8000; align-items:center; justify-content:center; }
+    #rec-modal.on { display:flex; }
+    #rec-card { background:#12121E; border:1.5px solid rgba(239,68,68,0.5); border-radius:18px; width:420px; max-width:96vw; padding:22px 22px 18px; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
+    #rec-title { font-size:0.88rem; font-weight:700; color:#f87171; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    #rec-dot { width:9px; height:9px; border-radius:50%; background:#f87171; animation:rpulse 1.2s ease-in-out infinite; flex-shrink:0; display:none; }
+    #rec-dot.on { display:block; }
+    @keyframes rpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.7)} }
+    #rec-timer { font-size:0.78rem; font-weight:700; color:#888; font-variant-numeric:tabular-nums; margin-left:auto; }
+    #rec-live-box { background:rgba(0,0,0,0.35); border-radius:10px; padding:12px 14px; min-height:80px; max-height:160px; overflow-y:auto; margin-bottom:14px; font-size:0.82rem; line-height:1.7; }
+    #rec-live-final { color:#e8e8f0; white-space:pre-wrap; word-break:break-word; }
+    #rec-live-interim { color:#555577; font-style:italic; }
+    #rec-placeholder { color:#333355; font-style:italic; font-size:0.78rem; }
+    #rec-status { font-size:0.72rem; color:#555577; margin-bottom:12px; min-height:16px; }
+    #rec-actions { display:flex; gap:8px; }
+    #rec-start-btn { flex:1; background:#f87171; color:#fff; border:none; border-radius:10px; padding:9px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
+    #rec-start-btn:hover { background:#ef4444; }
+    #rec-stop-btn { flex:1; display:none; background:rgba(239,68,68,0.15); border:1.5px solid rgba(239,68,68,0.4); color:#f87171; border-radius:10px; padding:9px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
+    #rec-stop-btn.on { display:block; }
+    #rec-stop-btn:hover { background:rgba(239,68,68,0.28); }
+    #rec-save-btn { flex:1; display:none; background:rgba(139,92,246,0.18); border:1.5px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:10px; padding:9px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
+    #rec-save-btn.on { display:block; }
+    #rec-save-btn:hover { background:rgba(139,92,246,0.3); }
+    #rec-cancel-btn { background:none; border:1.5px solid rgba(255,255,255,0.1); color:#555; border-radius:10px; padding:9px 14px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
+    #rec-cancel-btn:hover { border-color:rgba(255,255,255,0.2); color:#888; }
+    .np-import-menu { display:none; position:absolute; top:calc(100% + 6px); right:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:5px; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:200; }
+    .np-import-menu.on { display:block; }
+    .np-import-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 12px; border:none; background:none; color:var(--text); font-size:0.81rem; font-weight:600; border-radius:7px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .np-import-item:hover { background:rgba(139,92,246,0.1); }
+
     /* Mobile */
     @media (max-width: 640px) {
       .np-sidebar { width: 200px; min-width: 200px; }
@@ -458,7 +488,14 @@
         <button onclick="exportGoogleDocs()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📝 Google Docs</button>
       </div>
     </div>
-    <label class="np-btn">📂 <span class="np-btn-label">Import</span><input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this)"></label>
+    <div style="position:relative;" id="import-wrap">
+      <button onclick="toggleImportMenu()" class="np-btn">📂 <span class="np-btn-label">Import</span> <span style="font-size:0.6rem;opacity:0.7;">▾</span></button>
+      <div class="np-import-menu" id="import-menu">
+        <label class="np-import-item">📄 Document (.txt/.docx/.pdf)<input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this);toggleImportMenu()"></label>
+        <label class="np-import-item">🎬 Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu()"></label>
+      </div>
+    </div>
+    <button onclick="openRecModal()" class="np-btn" style="color:#f87171;" title="Record Meeting/Lecture">🎙 <span class="np-btn-label">Record</span></button>
     <button id="save-btn" onclick="manualSave()" class="np-btn np-btn-primary">💾 <span class="np-btn-label">Save</span></button>
     <button onclick="copyNote()" class="np-btn" id="copy-btn">📋 <span class="np-btn-label">Copy</span></button>
     <button class="np-close-btn" onclick="window.location.href='history.html?type=notepad'" title="My Notes">✕</button>
@@ -3848,6 +3885,160 @@ function _applyDiffHighlightsToEl(markedText, el) {
     }
   });
 }
+
+// ── IMPORT DROPDOWN ──────────────────────────────────────────
+function toggleImportMenu() {
+  const m = document.getElementById('import-menu');
+  const isOpen = m.classList.contains('on');
+  document.querySelectorAll('.np-import-menu.on, #export-menu, #conv-menu').forEach(el => el.classList.remove('on'));
+  if (!isOpen) {
+    m.classList.add('on');
+    document.addEventListener('click', function _close(e) {
+      if (!document.getElementById('import-wrap').contains(e.target)) {
+        m.classList.remove('on');
+        document.removeEventListener('click', _close);
+      }
+    });
+  }
+}
+
+// ── IMPORT VIDEO → TRANSCRIBE → NEW NOTE ─────────────────────
+async function importVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const name = file.name.replace(/\.[^.]+$/, '');
+  const status = document.createElement('div');
+  status.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid rgba(139,92,246,0.4);border-radius:10px;padding:12px 20px;color:#a78bfa;font-size:0.82rem;font-weight:600;z-index:9999;display:flex;align-items:center;gap:10px;';
+  status.innerHTML = '<div style="width:14px;height:14px;border:2px solid rgba(139,92,246,0.3);border-top-color:#a78bfa;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div> Transcribing video…';
+  document.body.appendChild(status);
+  try {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    const r = await fetch('/api/transcribe', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ audio: base64, mimeType: file.type || 'video/mp4' })
+    });
+    const d = await _safeJson(r);
+    if (!r.ok) throw new Error(d.error || 'Transcription failed');
+    const text = d.transcript || '';
+    if (!text.trim()) throw new Error('No speech detected in this video.');
+    const origNote = notes.find(n => n.id === activeId);
+    const htmlContent = text.split('\n').map(l => l.trim() ? '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>' : '<p><br></p>').join('');
+    const newNote = { id: genId(), title: name + ' — Transcript', content: htmlContent, created: Date.now(), updated: Date.now() };
+    notes.unshift(newNote); saveNotes();
+    openNote(newNote.id); renderSidebar();
+    if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
+    status.remove();
+  } catch(err) {
+    status.remove();
+    alert(err.message || 'Video import failed.');
+  }
+}
+
+// ── RECORD MODAL ─────────────────────────────────────────────
+var _recSR = null, _recFinal = '', _recTimer = null, _recSecs = 0, _recMR = null, _recChunks = [], _recMime = '';
+
+function openRecModal() {
+  document.getElementById('rec-modal').classList.add('on');
+  _recReset();
+}
+function closeRecModal() {
+  recStop(true);
+  document.getElementById('rec-modal').classList.remove('on');
+  _recReset();
+}
+function _recReset() {
+  _recFinal = ''; _recSecs = 0;
+  clearInterval(_recTimer); _recTimer = null;
+  document.getElementById('rec-live-final').textContent = '';
+  document.getElementById('rec-live-interim').textContent = '';
+  document.getElementById('rec-placeholder').style.display = '';
+  document.getElementById('rec-timer').textContent = '0:00';
+  document.getElementById('rec-dot').classList.remove('on');
+  document.getElementById('rec-start-btn').style.display = '';
+  document.getElementById('rec-stop-btn').classList.remove('on');
+  document.getElementById('rec-save-btn').classList.remove('on');
+  document.getElementById('rec-status').textContent = '';
+}
+
+async function recStart() {
+  const SRApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SRApi) { document.getElementById('rec-status').textContent = '⚠ Live transcription requires Chrome. Try "Import Video Recording" after recording.'; return; }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // MediaRecorder for backup audio
+    _recMime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    _recChunks = [];
+    _recMR = new MediaRecorder(stream, { mimeType: _recMime });
+    _recMR.ondataavailable = e => { if (e.data.size > 0) _recChunks.push(e.data); };
+    _recMR.start(1000);
+  } catch(e) { /* mic optional — SR still works */ }
+
+  // Speech Recognition
+  _recSR = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  _recSR.continuous = true;
+  _recSR.interimResults = true;
+  _recSR.lang = 'en-US';
+  _recSR.onresult = function(e) {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) _recFinal += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('rec-placeholder').style.display = 'none';
+    document.getElementById('rec-live-final').textContent = _recFinal;
+    document.getElementById('rec-live-interim').textContent = interim;
+    const box = document.getElementById('rec-live-box');
+    box.scrollTop = box.scrollHeight;
+  };
+  _recSR.onerror = e => { document.getElementById('rec-status').textContent = '⚠ Mic error: ' + e.error; };
+  _recSR.onend = () => { if (_recTimer) _recSR.start(); }; // auto-restart while recording
+  _recSR.start();
+
+  // Timer
+  _recSecs = 0;
+  _recTimer = setInterval(() => {
+    _recSecs++;
+    const m = Math.floor(_recSecs/60), s = _recSecs%60;
+    document.getElementById('rec-timer').textContent = m + ':' + (s<10?'0':'') + s;
+  }, 1000);
+
+  document.getElementById('rec-dot').classList.add('on');
+  document.getElementById('rec-start-btn').style.display = 'none';
+  document.getElementById('rec-stop-btn').classList.add('on');
+  document.getElementById('rec-status').textContent = '🎙 Recording… speak clearly';
+}
+
+function recStop(silent) {
+  clearInterval(_recTimer); _recTimer = null;
+  if (_recSR) { try { _recSR.stop(); } catch(e){} _recSR = null; }
+  if (_recMR && _recMR.state !== 'inactive') { _recMR.stop(); _recMR.stream?.getTracks().forEach(t=>t.stop()); }
+  document.getElementById('rec-dot').classList.remove('on');
+  document.getElementById('rec-stop-btn').classList.remove('on');
+  if (!silent && _recFinal.trim()) {
+    document.getElementById('rec-save-btn').classList.add('on');
+    document.getElementById('rec-status').textContent = '✓ Recording stopped — review and save as note';
+  }
+}
+
+function recSave() {
+  const text = _recFinal.trim();
+  if (!text) { closeRecModal(); return; }
+  const origNote = notes.find(n => n.id === activeId);
+  const d = new Date();
+  const title = 'Recording ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const htmlContent = text.split(/\n+/).map(l => l.trim() ? '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>' : '').filter(Boolean).join('');
+  const newNote = { id: genId(), title, content: htmlContent || '<p>' + text.replace(/&/g,'&amp;') + '</p>', created: Date.now(), updated: Date.now() };
+  notes.unshift(newNote); saveNotes();
+  closeRecModal();
+  openNote(newNote.id); renderSidebar();
+  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
+}
 </script>
 <script src="js/recorder.js"></script>
 
@@ -3869,6 +4060,29 @@ function _applyDiffHighlightsToEl(markedText, el) {
   <div style="display:flex;gap:6px;margin-top:9px;justify-content:flex-end;">
     <button onclick="_cancelAiInline()" style="padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#666;font-size:0.74rem;cursor:pointer;font-family:inherit;">Cancel</button>
     <button id="ai-inline-btn" onclick="_submitAiInline()" style="padding:5px 15px;background:rgba(139,92,246,0.22);border:1px solid rgba(139,92,246,0.5);border-radius:7px;color:#a78bfa;font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">✦ Generate</button>
+  </div>
+</div>
+
+<!-- RECORD MODAL -->
+<div id="rec-modal" onclick="if(event.target===this)closeRecModal()">
+  <div id="rec-card">
+    <div id="rec-title">
+      <div id="rec-dot"></div>
+      <span id="rec-title-text">🎙 Record Meeting / Lecture</span>
+      <span id="rec-timer">0:00</span>
+    </div>
+    <div id="rec-live-box">
+      <span id="rec-placeholder">Press Start — live transcript appears here as you speak…</span>
+      <span id="rec-live-final"></span>
+      <span id="rec-live-interim"></span>
+    </div>
+    <div id="rec-status"></div>
+    <div id="rec-actions">
+      <button id="rec-start-btn" onclick="recStart()">▶ Start</button>
+      <button id="rec-stop-btn" onclick="recStop()">⏹ Stop</button>
+      <button id="rec-save-btn" onclick="recSave()">↩ Save as Note</button>
+      <button id="rec-cancel-btn" onclick="closeRecModal()">✕</button>
+    </div>
   </div>
 </div>
 </body>

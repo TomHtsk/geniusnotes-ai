@@ -4037,7 +4037,6 @@ function recSave() {
   notes.unshift(newNote); saveNotes();
   closeRecModal();
   openNote(newNote.id); renderSidebar();
-  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 </script>
 <script src="js/recorder.js"></script>

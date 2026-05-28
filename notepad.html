@@ -1174,7 +1174,7 @@ function fmtDate(ts) {
 
 // ── RENDER SIDEBAR ──
 function renderNoteItem(n) {
-  const preview = n.content.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,60) || 'Empty note';
+  const preview = n.content.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim().slice(0,60) || 'Empty note';
   const folder = n.folderId ? folders.find(f => f.id === n.folderId) : null;
   const folderTag = folder ? `<span class="note-folder-tag">📁 ${escHtml(folder.name)}</span><br>` : '';
   const fpMenu = folders.length > 0 ? `
@@ -2457,7 +2457,7 @@ function runInterpret(mode) {
   function _runHlFetch(prompt) {
     document.getElementById('ic-body-wrap').innerHTML = '<div class="ic-loading"><div class="ic-spin"></div>Highlighting…</div>';
     fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt || '' }) })
-    .then(r => r.json())
+    .then(r => _safeJson(r))
     .then(d => {
       if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
       const raw = d.result || '';
@@ -2476,7 +2476,7 @@ function runInterpret(mode) {
     : fetch('/api/interpret', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode, noteTitle, noteContext }) });
 
   fetchPromise
-  .then(r => r.json())
+  .then(r => _safeJson(r))
   .then(d => {
     if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
     const raw = d.result || '';

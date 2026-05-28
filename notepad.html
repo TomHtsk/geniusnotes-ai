@@ -150,10 +150,22 @@
     .split-divider:hover, .split-divider.dragging { background:rgba(139,92,246,0.6); }
     .right-pane { display:none; flex:1; flex-direction:column; overflow:hidden; min-width:0; border-left:1px solid rgba(139,92,246,0.25); }
     .right-pane.visible { display:flex; }
-    .right-pane-hd { display:flex; align-items:center; gap:8px; padding:6px 14px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .right-pane-hd { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
     .right-pane-title { font-size:0.78rem; font-weight:700; color:var(--muted); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .right-pane-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.9rem; padding:3px 7px; border-radius:5px; transition:color 0.12s; }
     .right-pane-close:hover { color:#ff5555; }
+    .rp-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:0.72rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.12s; flex-shrink:0; }
+    .rp-btn:hover { border-color:var(--purple); color:var(--purple2); }
+    .sort-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:0.68rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.12s; }
+    .sort-btn:hover { border-color:var(--purple); color:var(--purple2); }
+    /* Detach floating panel */
+    #detach-panel { display:none; position:fixed; top:80px; right:24px; width:420px; max-width:92vw; height:55vh; background:var(--surface); border:1.5px solid rgba(139,92,246,0.45); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.7); z-index:7000; flex-direction:column; overflow:hidden; resize:both; }
+    #detach-panel.on { display:flex; }
+    #detach-hd { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(139,92,246,0.08); border-bottom:1px solid var(--border); cursor:grab; user-select:none; flex-shrink:0; }
+    #detach-hd:active { cursor:grabbing; }
+    #detach-title { font-size:0.8rem; font-weight:700; color:var(--purple2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #detach-body { flex:1; overflow-y:auto; padding:18px 20px; font-family:'Inter',system-ui,sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text); outline:none; }
+    #detach-body:focus { outline:none; }
     .right-editor-wrap { flex:1; overflow-y:auto; padding:28px 20px; background:#08081a; }
     #editor-right { font-family:'Inter',system-ui,sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text); outline:none; min-height:100%; cursor:text; }
     #editor-right:empty::before { content:attr(data-placeholder); color:var(--muted); pointer-events:none; }
@@ -263,9 +275,18 @@
     #editor a { color: var(--purple2); }
     #editor hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
     #editor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
-    .img-rz { display: inline-block; position: relative; resize: both; overflow: hidden; max-width: 100%; min-width: 80px; min-height: 40px; margin: 8px 0; border-radius: 8px; border: 2px solid transparent; transition: border-color 0.15s; }
-    .img-rz:hover { border-color: var(--purple2); }
-    .img-rz img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 6px; margin: 0; }
+    .img-wrap { display:inline-block; position:relative; line-height:0; vertical-align:middle; margin: 4px 0; }
+    .img-wrap.selected { outline:2px solid #8B5CF6; }
+    .img-wrap img { display:block; max-width:100%; border-radius:6px; cursor:move; }
+    .img-handle { position:absolute; width:10px; height:10px; background:#8B5CF6; border:2px solid #fff; border-radius:2px; z-index:10; }
+    .img-handle[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
+    .img-handle[data-pos="n"]  { top:-5px; left:calc(50% - 5px); cursor:n-resize; }
+    .img-handle[data-pos="ne"] { top:-5px; right:-5px; cursor:ne-resize; }
+    .img-handle[data-pos="e"]  { top:calc(50% - 5px); right:-5px; cursor:e-resize; }
+    .img-handle[data-pos="se"] { bottom:-5px; right:-5px; cursor:se-resize; }
+    .img-handle[data-pos="s"]  { bottom:-5px; left:calc(50% - 5px); cursor:s-resize; }
+    .img-handle[data-pos="sw"] { bottom:-5px; left:-5px; cursor:sw-resize; }
+    .img-handle[data-pos="w"]  { top:calc(50% - 5px); left:-5px; cursor:w-resize; }
     .no-note { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 12px; }
     .no-note-icon { font-size: 2.5rem; opacity: 0.4; }
     .no-note p { font-size: 0.9rem; }
@@ -398,6 +419,18 @@
     .ic-spin { width:14px; height:14px; border:2px solid rgba(139,92,246,0.3); border-top-color:#8b5cf6; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ── COLOR PICKERS ── */
+    .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.7); width:176px; }
+    .color-picker-pop .cp-label { font-size:0.64rem; font-weight:700; color:#555577; letter-spacing:0.07em; margin-bottom:7px; text-transform:uppercase; }
+    .color-picker-pop .cp-swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin-bottom:8px; }
+    .color-picker-pop .cp-swatch { width:18px; height:18px; border-radius:4px; cursor:pointer; border:2px solid transparent; transition:transform 0.1s,border-color 0.1s; flex-shrink:0; }
+    .color-picker-pop .cp-swatch:hover { transform:scale(1.2); border-color:rgba(255,255,255,0.4); }
+    .color-picker-pop .cp-swatch.cp-clear { background:linear-gradient(135deg,#fff 40%,#f00 40%,#f00 60%,#fff 60%); }
+    .color-picker-pop .cp-custom { display:flex; align-items:center; gap:6px; margin-top:4px; }
+    .color-picker-pop .cp-custom input[type=color] { width:28px; height:22px; border:none; border-radius:4px; cursor:pointer; padding:0; background:none; }
+    .color-picker-pop .cp-custom span { font-size:0.7rem; color:#888; }
+    #tc-btn-bar { display:inline-block; height:3px; border-radius:2px; width:12px; margin-top:2px; transition:background 0.2s; }
+
     /* ── RECORD MODAL ── */
     #rec-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:8000; align-items:center; justify-content:center; }
     #rec-modal.on { display:flex; }
@@ -508,7 +541,10 @@
   <!-- SIDEBAR -->
   <div class="np-sidebar" id="np-sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-title">📝 My Notes</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="sidebar-title" style="margin-bottom:0;">📝 My Notes</div>
+        <button class="sort-btn" id="sort-toggle-btn" onclick="cycleSortMode()" title="Change sort order">⇅ <span id="sort-label">Recent</span></button>
+      </div>
       <div style="display:flex;gap:6px;">
         <div style="flex:1;">
           <button id="add-note-btn" class="btn-new" onclick="toggleNewNoteMenu()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;">+ Add Note <span style="font-size:0.65rem;opacity:0.7;">▾</span></button>
@@ -553,6 +589,31 @@
         <button class="tb-btn" onclick="insertHR()" title="Divider">— HR</button>
         <div class="tb-sep"></div>
         <button class="tb-btn" onclick="fmt('removeFormat')" title="Clear formatting">✕ Clear</button>
+        <div class="tb-sep"></div>
+        <!-- Text color -->
+        <div style="position:relative;" id="tc-wrap">
+          <button class="tb-btn" onclick="toggleCp('tc')" title="Text color" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;">
+            <b style="font-size:0.88rem;line-height:1;">A</b>
+            <span id="tc-btn-bar" style="display:inline-block;height:3px;border-radius:2px;width:13px;background:#ef4444;"></span>
+          </button>
+          <div id="tc-picker" class="color-picker-pop" style="display:none;">
+            <div class="cp-label">Text Color</div>
+            <div class="cp-swatches" id="tc-swatches"></div>
+            <div class="cp-custom"><input type="color" id="tc-custom" value="#ef4444" oninput="applyTc(this.value)"><span>Custom</span></div>
+          </div>
+        </div>
+        <!-- Background / highlight color -->
+        <div style="position:relative;" id="bc-wrap">
+          <button class="tb-btn" onclick="toggleCp('bc')" title="Highlight color" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;">
+            <span style="font-size:0.82rem;line-height:1;">🖍</span>
+            <span id="bc-btn-bar" style="display:inline-block;height:3px;border-radius:2px;width:13px;background:#fbbf24;"></span>
+          </button>
+          <div id="bc-picker" class="color-picker-pop" style="display:none;">
+            <div class="cp-label">Highlight Color</div>
+            <div class="cp-swatches" id="bc-swatches"></div>
+            <div class="cp-custom"><input type="color" id="bc-custom" value="#fbbf24" oninput="applyBc(this.value)"><span>Custom</span></div>
+          </div>
+        </div>
         <div class="tb-sep"></div>
         <button class="tb-btn" onclick="triggerPhotoUpload()" title="Insert photo">📷 Photo</button>
         <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="insertPhotos(this)"/>
@@ -637,6 +698,8 @@
         <div class="right-pane" id="right-pane">
           <div class="right-pane-hd">
             <span class="right-pane-title" id="right-pane-title">Comparison Note</span>
+            <button class="rp-btn" onclick="saveRightNote()" title="Save right note">💾 Save</button>
+            <button class="rp-btn" onclick="detachRightPanel()" title="Detach into floating window">⬔ Detach</button>
             <button class="right-pane-close" onclick="exitSplitMode()" title="Close split view">✕ Close</button>
           </div>
           <div class="right-editor-wrap" id="right-editor-wrap">
@@ -1200,15 +1263,9 @@ function renderNoteItem(n) {
 function renderSidebar() {
   const list = document.getElementById('notes-list');
   const q = searchQuery.toLowerCase();
-  const filtered = [...notes]
-    .filter(n => !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q))
-    .sort((a,b) => {
-      const as = a.sortOrder ?? null, bs = b.sortOrder ?? null;
-      if (as !== null && bs !== null) return as - bs;
-      if (as !== null) return 1;   // no sortOrder = new note → appears above manual-ordered notes
-      if (bs !== null) return -1;
-      return b.updated - a.updated;
-    });
+  const filtered = _sortNotes(
+    notes.filter(n => !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q))
+  );
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-state">${searchQuery ? 'No notes match your search.' : 'No notes yet.<br>Click "+ Add Note" to start.'}</div>`;
     return;
@@ -1724,7 +1781,7 @@ function openCodeConvert() {
   if (!activeId) return;
   const note = notes.find(n => n.id === activeId);
   if (!note) return;
-  _pfNoteText = document.getElementById('editor').innerText || '';
+  _pfNoteText = _getActiveEditorEl().innerText || '';
   if (!_pfNoteText.trim()) {
     document.getElementById('code-modal-status').textContent = '⚠ Note is empty.';
     document.getElementById('code-modal').classList.add('open');
@@ -1974,7 +2031,7 @@ function openDocFormat(mode) {
   if (!activeId) return;
   const note = notes.find(n => n.id === activeId);
   if (!note) return;
-  _dfNoteText = document.getElementById('editor').innerText || '';
+  _dfNoteText = _getActiveEditorEl().innerText || '';
   if (!_dfNoteText.trim()) {
     const lbl = document.getElementById('save-label');
     if (lbl) { const prev=lbl.textContent; lbl.textContent='Add notes first!'; lbl.style.color='#ff7777'; setTimeout(()=>{lbl.textContent=prev;lbl.style.color='';},2500); }
@@ -2322,7 +2379,7 @@ function closeDocModal() {
 
 function sendNoteToFlashcards() {
   if (!activeId) return;
-  const text = document.getElementById('editor').innerText || '';
+  const text = _getActiveEditorEl().innerText || '';
   if (!text.trim()) return;
   localStorage.setItem('gn-to-flashcards', text.trim());
   toggleConvMenu();
@@ -2394,6 +2451,8 @@ function copyInterpResult() {
 function _replaceSelection(btn) {
   const corrected = btn.getAttribute('data-text');
   if (!corrected || !_selRange) return;
+  const el = _getActiveEditorEl();
+  el.focus();
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(_selRange);
@@ -2418,7 +2477,7 @@ function _rerunHighlight() {
   const card = document.getElementById('interp-card');
   document.getElementById('ic-body-wrap').innerHTML = '<div class="ic-loading"><div class="ic-spin"></div>Highlighting…</div>';
   fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt }) })
-  .then(r => r.json())
+  .then(r => _safeJson(r))
   .then(d => {
     if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
     const raw = d.result || '';
@@ -2499,21 +2558,27 @@ let _aiInlineMarker = null, _aiInlineActive = false;
 document.getElementById('editor').addEventListener('keydown', e => {
   if (_aiInlineActive && e.key === 'Escape') { _cancelAiInline(); e.preventDefault(); }
 });
+document.getElementById('editor-right').addEventListener('keydown', e => {
+  if (_aiInlineActive && e.key === 'Escape') { _cancelAiInline(); e.preventDefault(); }
+});
 
-document.getElementById('editor').addEventListener('input', () => {
+function _handlePromptInput(editorId) {
   if (_aiInlineActive) return;
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
-  if (!document.getElementById('editor').contains(range.startContainer)) return;
+  if (!document.getElementById(editorId).contains(range.startContainer)) return;
   const offset = range.startOffset;
   const text = range.startContainer.textContent;
   const before = text.slice(0, offset);
   // Trigger when the word just typed is '/prompt' (preceded by space, newline, or start)
   if (!/(?:^|[\s\n])\/prompt$/.test(before)) return;
   _triggerAiInline(range, '/prompt'.length);
-});
+}
+
+document.getElementById('editor').addEventListener('input', () => _handlePromptInput('editor'));
+document.getElementById('editor-right').addEventListener('input', () => _handlePromptInput('editor-right'));
 
 function _triggerAiInline(range, charsToDelete) {
   _aiInlineActive = true;
@@ -2558,7 +2623,7 @@ function _cancelAiInline() {
   if (_aiInlineMarker && _aiInlineMarker.parentNode) _aiInlineMarker.parentNode.removeChild(_aiInlineMarker);
   _aiInlineMarker = null;
   _aiInlineActive = false;
-  document.getElementById('editor').focus();
+  _getActiveEditorEl().focus();
 }
 
 async function _submitAiInline() {
@@ -2593,7 +2658,7 @@ async function _submitAiInline() {
     document.getElementById('ai-inline-popup').style.display = 'none';
     _aiInlineActive = false;
     scheduleSave();
-    document.getElementById('editor').focus();
+    _getActiveEditorEl().focus();
   } catch(e) {
     status.textContent = '⚠ ' + e.message;
     btn.textContent = '✦ Generate'; btn.disabled = false;
@@ -2610,11 +2675,13 @@ const _CMD_INFO = {
   format_academic: { icon:'🎓', title:'Academic Essay',    desc:'Format as structured APA / MLA / Chicago essay' },
   format_flash:    { icon:'🃏', title:'Flashcards',        desc:'Create a flashcard deck from this note' },
   format_code:     { icon:'🍪', title:'Format Code',       desc:'Clean and format code with syntax highlighting' },
+  highlight:       { icon:'✦',  title:'Highlight Note',    desc:'AI-highlight key concepts in the current note' },
 };
 
-// Returns canonical family ('solve'|'format'|'convert'|'cornellnotes'|'flashcards'|'academic'|'cornell'|'homeworksolver') if verb matches a known command
+// Returns canonical family ('solve'|'format'|'convert'|'cornellnotes'|'flashcards'|'academic'|'cornell'|'homeworksolver'|'highlight') if verb matches a known command
 function _cmdFamily(verb) {
   const v = (verb || '').toLowerCase();
+  if (v === 'highlight' || (v.length >= 3 && 'highlight'.startsWith(v))) return 'highlight';
   if (v === 'flashcards' || 'flashcards'.startsWith(v) && v.length >= 2) return 'flashcards';
   if (v === 'academic' || (v.length >= 2 && 'academic'.startsWith(v))) return 'academic';
   if (v === 'apa') return 'apa';
@@ -2631,6 +2698,7 @@ function _cmdFamily(verb) {
 
 function _getSlashAction(family, sub) {
   const s = (sub || '').toLowerCase().trim();
+  if (family === 'highlight') return () => { document.getElementById('hl-sb-panel').style.display = 'block'; setTimeout(() => { document.getElementById('hl-sb-prompt').focus(); }, 50); };
   if (family === 'solve') return openHomeworkSolver;
   if (family === 'homeworksolver') return openHomeworkSolver;
   if (family === 'cornellnotes') return () => openDocFormat('cornell');
@@ -2659,7 +2727,9 @@ function _updateCmdPanel(text) {
   if (!fam) { _hideCmdPanel(); return; }
 
   let key;
-  if (fam === 'solve' || fam === 'homeworksolver') {
+  if (fam === 'highlight') {
+    key = 'highlight';
+  } else if (fam === 'solve' || fam === 'homeworksolver') {
     key = 'solve';
   } else if (fam === 'cornellnotes' || fam === 'cornell') {
     key = 'cornellnotes';
@@ -2691,13 +2761,13 @@ function _hideCmdPanel() {
 }
 
 // Purple span + panel appear as soon as /[fsc]... prefix is typed
-document.getElementById('editor').addEventListener('input', function() {
+function _handleSlashCmdInput(editorEl) {
   if (_aiInlineActive) return;
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
-  if (!this.contains(range.startContainer)) return;
+  if (!editorEl.contains(range.startContainer)) return;
 
   const parent = range.startContainer.parentElement;
   if (parent.classList.contains('ai-cmd-span')) {
@@ -2733,30 +2803,34 @@ document.getElementById('editor').addEventListener('input', function() {
   sel.removeAllRanges();
   sel.addRange(nr);
   _updateCmdPanel(span.textContent);
-});
+}
+document.getElementById('editor').addEventListener('input', function() { _handleSlashCmdInput(this); });
+document.getElementById('editor-right').addEventListener('input', function() { _handleSlashCmdInput(this); });
 
 // Clean up span + panel whenever cursor moves outside a cmd span
 document.addEventListener('selectionchange', () => {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
   const node = sel.getRangeAt(0).startContainer;
-  const editor = document.getElementById('editor');
-  if (!editor.contains(node)) return;
+  const editorL = document.getElementById('editor');
+  const editorR = document.getElementById('editor-right');
+  const activeEd = editorL.contains(node) ? editorL : editorR.contains(node) ? editorR : null;
+  if (!activeEd) return;
   const parent = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
   if (!parent.classList.contains('ai-cmd-span')) {
     _hideCmdPanel();
-    editor.querySelectorAll('.ai-cmd-span').forEach(s => s.replaceWith(document.createTextNode(s.textContent)));
-    editor.normalize();
+    activeEd.querySelectorAll('.ai-cmd-span').forEach(s => s.replaceWith(document.createTextNode(s.textContent)));
+    activeEd.normalize();
   }
 });
 
-// Execute on Enter, cancel on Escape
-document.getElementById('editor').addEventListener('keydown', function(e) {
+// Execute on Enter, cancel on Escape — shared handler for both editors
+function _handleSlashCmdKeydown(e, editorEl) {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   const node = range.startContainer;
-  if (!this.contains(node)) return;
+  if (!editorEl.contains(node)) return;
 
   if (e.key === 'Escape') {
     const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
@@ -2787,6 +2861,8 @@ document.getElementById('editor').addEventListener('keydown', function(e) {
   if (!action) return;
 
   e.preventDefault();
+  // Ensure _activeEditor is set correctly before the action runs
+  if (editorEl.id === 'editor-right') _activeEditor = 'right'; else _activeEditor = 'left';
   _hideCmdPanel();
   const delRange = document.createRange();
   if (span) {
@@ -2796,10 +2872,12 @@ document.getElementById('editor').addEventListener('keydown', function(e) {
     const mm = bef.match(/(\/[a-z]+(?:\s+.*)?)$/i);
     if (mm) { delRange.setStart(node, range.startOffset - mm[1].length); delRange.setEnd(node, range.startOffset); delRange.deleteContents(); }
   }
-  document.getElementById('editor').normalize();
+  editorEl.normalize();
   scheduleSave();
   action();
-});
+}
+document.getElementById('editor').addEventListener('keydown', function(e) { _handleSlashCmdKeydown(e, this); });
+document.getElementById('editor-right').addEventListener('keydown', function(e) { _handleSlashCmdKeydown(e, this); });
 
 // Close AI popup on outside click
 document.addEventListener('mousedown', e => {
@@ -2839,12 +2917,13 @@ function removeManualHighlight() {
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(_selRange);
+  const activeEditorEl = _getActiveEditorEl();
   let node = _selRange.commonAncestorContainer;
-  while (node && node !== document.getElementById('editor')) {
+  while (node && node !== activeEditorEl) {
     if (node.nodeName === 'MARK') {
       const txt = document.createTextNode(node.textContent);
       node.parentNode.replaceChild(txt, node);
-      document.getElementById('editor').normalize();
+      activeEditorEl.normalize();
       hideSelectionPopup();
       scheduleSave();
       return;
@@ -3066,7 +3145,7 @@ function insertPhotos(input) {
     const f = files[idx++];
     const reader = new FileReader();
     reader.onload = e => {
-      document.execCommand('insertHTML', false, `<div class="img-rz" style="width:420px;height:auto;"><img src="${e.target.result}" alt="${f.name}" /></div><br>`);
+      const wrap = document.createElement('span'); wrap.className = 'img-wrap'; wrap.contentEditable = 'false'; const im = document.createElement('img'); im.src = e.target.result; im.alt = f.name; im.style.width = '420px'; im.draggable = false; wrap.appendChild(im); document.execCommand('insertHTML', false, wrap.outerHTML + '<br>');
       next();
     };
     reader.readAsDataURL(f);
@@ -3450,7 +3529,7 @@ function _extractEditorText(editorEl) {
 
 function openHomeworkSolver() {
   document.getElementById('conv-menu').style.display = 'none';
-  const editorEl = document.getElementById('editor');
+  const editorEl = _getActiveEditorEl();
   const text = _extractEditorText(editorEl);
   if (!text.trim()) { alert('Write something in your note first.'); return; }
   document.getElementById('hw-solver-modal').style.display = 'flex';
@@ -3971,6 +4050,163 @@ function _applyDiffHighlightsToEl(markedText, el) {
   });
 }
 
+// ── TEXT COLOR & BACKGROUND COLOR ────────────────────────────
+const _TC_COLORS = ['#ffffff','#d1d5db','#6b7280','#111827','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','transparent'];
+const _BC_COLORS = ['transparent','#fef08a','#bbf7d0','#bfdbfe','#e9d5ff','#fecaca','#fed7aa','#a7f3d0','#c7d2fe','#fbcfe8','#d1fae5','#fce7f3','#f3f4f6'];
+
+(function _initColorPickers() {
+  function buildSwatches(containerId, colors, applyFn, isText) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    colors.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'cp-swatch' + (color === 'transparent' ? ' cp-clear' : '');
+      if (color !== 'transparent') btn.style.background = color;
+      btn.title = color === 'transparent' ? 'Remove' : color;
+      btn.onclick = () => applyFn(color === 'transparent' ? null : color);
+      wrap.appendChild(btn);
+    });
+  }
+  buildSwatches('tc-swatches', _TC_COLORS, applyTc, true);
+  buildSwatches('bc-swatches', _BC_COLORS, applyBc, false);
+
+  // Close pickers on outside click
+  document.addEventListener('mousedown', e => {
+    ['tc','bc'].forEach(id => {
+      const wrap = document.getElementById(id+'-wrap');
+      const picker = document.getElementById(id+'-picker');
+      if (wrap && picker && !wrap.contains(e.target)) picker.style.display = 'none';
+    });
+  });
+})();
+
+function toggleCp(id) {
+  const picker = document.getElementById(id+'-picker');
+  const other  = document.getElementById(id === 'tc' ? 'bc-picker' : 'tc-picker');
+  if (other) other.style.display = 'none';
+  picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyTc(color) {
+  const el = _getActiveEditorEl(); el.focus();
+  if (!color) { document.execCommand('removeFormat', false, null); }
+  else { document.execCommand('foreColor', false, color); }
+  const bar = document.getElementById('tc-btn-bar');
+  if (bar) bar.style.background = color || '#ef4444';
+  document.getElementById('tc-picker').style.display = 'none';
+  scheduleSave();
+}
+
+function applyBc(color) {
+  const el = _getActiveEditorEl(); el.focus();
+  if (!color) { document.execCommand('hiliteColor', false, 'transparent'); }
+  else { document.execCommand('hiliteColor', false, color); }
+  const bar = document.getElementById('bc-btn-bar');
+  if (bar) bar.style.background = color || '#fbbf24';
+  document.getElementById('bc-picker').style.display = 'none';
+  scheduleSave();
+}
+
+// ── FOLDER / NOTE SORT ───────────────────────────────────────
+const _SORT_MODES = ['updated','alpha','created'];
+const _SORT_LABELS = { updated:'Recent', alpha:'A–Z', created:'Oldest' };
+let _noteSort = 'updated';
+
+function cycleSortMode() {
+  const idx = (_SORT_MODES.indexOf(_noteSort) + 1) % _SORT_MODES.length;
+  _noteSort = _SORT_MODES[idx];
+  document.getElementById('sort-label').textContent = _SORT_LABELS[_noteSort];
+  renderSidebar();
+}
+
+function _sortNotes(arr) {
+  return [...arr].sort((a,b) => {
+    if (_noteSort === 'alpha') return (a.title||'Untitled').localeCompare(b.title||'Untitled');
+    if (_noteSort === 'created') return (a.created||0) - (b.created||0);
+    // 'updated' — respect manual sortOrder first, then updated timestamp
+    const as = a.sortOrder ?? null, bs = b.sortOrder ?? null;
+    if (as !== null && bs !== null) return as - bs;
+    if (as !== null) return 1; if (bs !== null) return -1;
+    return (b.updated||0) - (a.updated||0);
+  });
+}
+
+// ── RIGHT PANEL SAVE ─────────────────────────────────────────
+function saveRightNote() {
+  if (!_rightNoteId) return;
+  const note = notes.find(n => n.id === _rightNoteId);
+  if (!note) return;
+  const content = document.getElementById('editor-right').innerHTML;
+  note.content = content; note.updated = Date.now();
+  saveNotes();
+  const btn = document.querySelector('.rp-btn[onclick="saveRightNote()"]');
+  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '💾 Save'; }, 1500); }
+  renderSidebar();
+}
+
+// ── DETACH PANEL ─────────────────────────────────────────────
+let _detachedNoteId = null;
+
+function detachRightPanel() {
+  if (!_rightNoteId) return;
+  const note = notes.find(n => n.id === _rightNoteId);
+  if (!note) return;
+  _detachedNoteId = _rightNoteId;
+  document.getElementById('detach-title').textContent = note.title || 'Untitled';
+  document.getElementById('detach-body').innerHTML = document.getElementById('editor-right').innerHTML;
+  document.getElementById('detach-panel').classList.add('on');
+  // Collapse the right pane
+  exitSplitMode();
+  // Make detach panel draggable
+  _initDetachDrag();
+}
+
+function closeDetachPanel() {
+  document.getElementById('detach-panel').classList.remove('on');
+  _detachedNoteId = null;
+}
+
+function reattachPanel() {
+  if (!_detachedNoteId) { closeDetachPanel(); return; }
+  saveDetachedNote();
+  enterSplitMode(_detachedNoteId);
+  closeDetachPanel();
+}
+
+function saveDetachedNote() {
+  if (!_detachedNoteId) return;
+  const note = notes.find(n => n.id === _detachedNoteId);
+  if (!note) return;
+  note.content = document.getElementById('detach-body').innerHTML;
+  note.updated = Date.now();
+  saveNotes(); renderSidebar();
+}
+
+function _initDetachDrag() {
+  const panel = document.getElementById('detach-panel');
+  const hd = document.getElementById('detach-hd');
+  let ox=0,oy=0,mx=0,my=0,dragging=false;
+  hd.onpointerdown = e => {
+    if (e.target.tagName === 'BUTTON') return;
+    dragging=true; hd.setPointerCapture(e.pointerId);
+    ox=panel.offsetLeft; oy=panel.offsetTop;
+    mx=e.clientX; my=e.clientY;
+  };
+  hd.onpointermove = e => {
+    if (!dragging) return;
+    panel.style.left=(ox+e.clientX-mx)+'px'; panel.style.top=(oy+e.clientY-my)+'px';
+    panel.style.right='auto';
+  };
+  hd.onpointerup = () => { dragging=false; };
+}
+
+// Auto-save detached note on input
+document.getElementById('detach-body').addEventListener('input', function() {
+  if (!_detachedNoteId) return;
+  const note = notes.find(n => n.id === _detachedNoteId);
+  if (note) { note.content = this.innerHTML; note.updated = Date.now(); saveNotes(); }
+});
+
 // ── IMPORT DROPDOWN ──────────────────────────────────────────
 function toggleImportMenu() {
   const m = document.getElementById('import-menu');
@@ -4123,7 +4359,144 @@ function recSave() {
   closeRecModal();
   openNote(newNote.id); renderSidebar();
 }
-</script>
+
+// ── IMAGE EDITING SYSTEM ──────────────────────────────────────
+(function() {
+  const HANDLES = ['nw','n','ne','e','se','s','sw','w'];
+  let _selImg = null, _selWrap = null;
+
+  document.addEventListener('click', e => {
+    const img = e.target.closest('img');
+    if (img && (img.closest('#editor') || img.closest('#editor-right'))) {
+      e.preventDefault();
+      selectImage(img);
+    } else if (!e.target.classList.contains('img-handle')) {
+      deselectImage();
+    }
+  });
+
+  function selectImage(img) {
+    deselectImage();
+    _selImg = img;
+    const wrap = img.parentElement && img.parentElement.classList.contains('img-wrap')
+      ? img.parentElement : wrapImage(img);
+    _selWrap = wrap;
+    wrap.classList.add('selected');
+    HANDLES.forEach(pos => {
+      const h = document.createElement('span');
+      h.className = 'img-handle'; h.dataset.pos = pos;
+      h.contentEditable = 'false';
+      h.addEventListener('pointerdown', startResize);
+      wrap.appendChild(h);
+    });
+    img.addEventListener('pointerdown', startDrag);
+  }
+
+  function deselectImage() {
+    if (_selWrap) {
+      _selWrap.classList.remove('selected');
+      _selWrap.querySelectorAll('.img-handle').forEach(h => h.remove());
+      if (_selImg) _selImg.removeEventListener('pointerdown', startDrag);
+    }
+    _selImg = null; _selWrap = null;
+  }
+
+  function wrapImage(img) {
+    const wrap = document.createElement('span');
+    wrap.className = 'img-wrap';
+    wrap.contentEditable = 'false';
+    img.parentNode.insertBefore(wrap, img);
+    wrap.appendChild(img);
+    return wrap;
+  }
+
+  // ── DRAG to reposition ──
+  function startDrag(e) {
+    if (e.target.classList.contains('img-handle')) return;
+    e.preventDefault();
+    const img = _selImg;
+    let lastX = e.clientX, lastY = e.clientY;
+
+    function onMove(ev) {
+      const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
+      lastX = ev.clientX; lastY = ev.clientY;
+      img.style.marginLeft = (parseInt(img.style.marginLeft || 0) + dx) + 'px';
+      img.style.marginTop  = (parseInt(img.style.marginTop  || 0) + dy) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      scheduleSave();
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  // ── RESIZE from handles ──
+  function startResize(e) {
+    e.preventDefault(); e.stopPropagation();
+    const pos = e.currentTarget.dataset.pos;
+    const img = _selImg;
+    const startX = e.clientX, startY = e.clientY;
+    const startW = img.offsetWidth, startH = img.offsetHeight;
+    const ratio = startW / startH;
+    const isCorner = pos.length === 2;
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      let newW = startW, newH = startH;
+
+      if (pos.includes('e')) newW = Math.max(40, startW + dx);
+      if (pos.includes('w')) newW = Math.max(40, startW - dx);
+      if (pos.includes('s')) newH = Math.max(40, startH + dy);
+      if (pos.includes('n')) newH = Math.max(40, startH - dy);
+
+      if (isCorner || ev.shiftKey) {
+        // Maintain aspect ratio: drive off whichever axis moved more
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          newH = newW / ratio;
+        } else {
+          newW = newH * ratio;
+        }
+      }
+
+      img.style.width  = Math.round(newW) + 'px';
+      if (!isCorner && !ev.shiftKey && (pos === 'n' || pos === 's')) {
+        img.style.height = Math.round(newH) + 'px';
+      } else {
+        img.style.height = 'auto';
+      }
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      scheduleSave();
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  // Wrap existing bare images in editors
+  function wrapAllImages(editorEl) {
+    editorEl.querySelectorAll('img').forEach(img => {
+      if (!img.closest('.img-wrap')) wrapImage(img);
+    });
+  }
+
+  const obs = new MutationObserver(() => {
+    ['editor','editor-right'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) wrapAllImages(el);
+    });
+  });
+  ['editor','editor-right'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      wrapAllImages(el);
+      obs.observe(el, { childList:true, subtree:true });
+    }
+  });
+})();</script>
 <script src="js/recorder.js"></script>
 
 <!-- Add Note dropdown — lives outside sidebar so overflow:hidden doesn't clip it -->
@@ -4145,6 +4518,18 @@ function recSave() {
     <button onclick="_cancelAiInline()" style="padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#666;font-size:0.74rem;cursor:pointer;font-family:inherit;">Cancel</button>
     <button id="ai-inline-btn" onclick="_submitAiInline()" style="padding:5px 15px;background:rgba(139,92,246,0.22);border:1px solid rgba(139,92,246,0.5);border-radius:7px;color:#a78bfa;font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">✦ Generate</button>
   </div>
+</div>
+
+<!-- DETACH FLOATING PANEL -->
+<div id="detach-panel">
+  <div id="detach-hd">
+    <span style="font-size:0.8rem;">⬔</span>
+    <span id="detach-title">Detached Note</span>
+    <button class="rp-btn" onclick="reattachPanel()" style="font-size:0.68rem;">↩ Reattach</button>
+    <button class="rp-btn" onclick="saveDetachedNote()" style="font-size:0.68rem;">💾 Save</button>
+    <button onclick="closeDetachPanel()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0 4px;line-height:1;">✕</button>
+  </div>
+  <div id="detach-body" contenteditable="true" spellcheck="true"></div>
 </div>
 
 <!-- RECORD MODAL -->

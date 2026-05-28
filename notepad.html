@@ -630,7 +630,9 @@
           </div>
         </div>
         <!-- Split divider -->
-        <div class="split-divider" id="split-divider" style="display:none;" onmousedown="startSplitResize(event)"></div>
+        <div class="split-divider" id="split-divider" style="display:none;" onmousedown="startSplitResize(event)">
+          <button id="split-swap-btn" title="Swap left and right editors" onclick="swapSplitEditors()" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a2e;border:1px solid rgba(139,92,246,0.5);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.85rem;color:#a78bfa;z-index:10;transition:background 0.15s;padding:0;line-height:1;" onmouseover="this.style.background='rgba(139,92,246,0.3)'" onmouseout="this.style.background='#1a1a2e'">⇄</button>
+        </div>
         <!-- Right pane (split view) -->
         <div class="right-pane" id="right-pane">
           <div class="right-pane-hd">
@@ -1301,15 +1303,34 @@ function filterNotes(q) {
   renderSidebar();
 }
 
+// ── ACTIVE EDITOR TRACKING ──
+let _activeEditor = 'left'; // 'left' | 'right'
+
+function _getActiveEditorEl() {
+  return document.getElementById(_activeEditor === 'right' ? 'editor-right' : 'editor');
+}
+
+// Track which editor was last clicked/focused
+(function() {
+  function _setLeft() { _activeEditor = 'left'; }
+  function _setRight() { _activeEditor = 'right'; }
+  ['mousedown','focus'].forEach(ev => {
+    document.getElementById('editor').addEventListener(ev, _setLeft, true);
+    document.getElementById('editor-right').addEventListener(ev, _setRight, true);
+  });
+})();
+
 // ── EDITING ──
 function fmt(cmd, val) {
+  const el = _getActiveEditorEl();
+  el.focus();
   document.execCommand(cmd, false, val || null);
-  document.getElementById('editor').focus();
 }
 
 function insertHR() {
+  const el = _getActiveEditorEl();
+  el.focus();
   document.execCommand('insertHTML', false, '<hr>');
-  document.getElementById('editor').focus();
 }
 
 function onTitleChange() {
@@ -2336,7 +2357,11 @@ function showSelectionPopup() {
   const sel = window.getSelection();
   const text = sel?.toString().trim();
   const popup = document.getElementById('sel-popup');
-  if (!text || text.length < 3 || !document.getElementById('editor').contains(sel?.anchorNode)) {
+  const editorLeft = document.getElementById('editor');
+  const editorRight = document.getElementById('editor-right');
+  const anchorNode = sel?.anchorNode;
+  if (!text || text.length < 3 ||
+      (!editorLeft.contains(anchorNode) && !editorRight.contains(anchorNode))) {
     popup.style.display = 'none'; return;
   }
   _selText = text;
@@ -2408,9 +2433,11 @@ function _rerunHighlight() {
 function runInterpret(mode) {
   if (!_selText) return;
   hideSelectionPopup();
-  const note = activeId ? notes.find(n => n.id === activeId) : null;
+  // Use the active editor's note context
+  const contextNoteId = _activeEditor === 'right' ? _rightNoteId : activeId;
+  const note = contextNoteId ? notes.find(n => n.id === contextNoteId) : null;
   const noteTitle = note?.title || '';
-  const noteContext = note ? (document.getElementById('editor').innerText || '').slice(0, 600) : '';
+  const noteContext = note ? (_getActiveEditorEl().innerText || '').slice(0, 600) : '';
 
   const modeLabels = { define:'📖 Define', interpret:'🔮 Interpret', comprehend:'💡 Comprehend', grammar:'✏️ Grammar', highlight:'✦ Highlight' };
   const badgeClass = { define:'ic-badge-define', interpret:'ic-badge-interpret', comprehend:'ic-badge-comprehend', grammar:'ic-badge-grammar', highlight:'ic-badge-highlight' };
@@ -2585,21 +2612,34 @@ const _CMD_INFO = {
   format_code:     { icon:'🍪', title:'Format Code',       desc:'Clean and format code with syntax highlighting' },
 };
 
-// Returns canonical family ('solve'|'format'|'convert'|'cornellnotes') if verb is a prefix of a known command
+// Returns canonical family ('solve'|'format'|'convert'|'cornellnotes'|'flashcards'|'academic'|'cornell'|'homeworksolver') if verb matches a known command
 function _cmdFamily(verb) {
   const v = (verb || '').toLowerCase();
+  if (v === 'flashcards' || 'flashcards'.startsWith(v) && v.length >= 2) return 'flashcards';
+  if (v === 'academic' || (v.length >= 2 && 'academic'.startsWith(v))) return 'academic';
+  if (v === 'apa') return 'apa';
+  if (v === 'mla') return 'mla';
+  if (v === 'chicago' || (v.length >= 3 && 'chicago'.startsWith(v))) return 'chicago';
+  if (v === 'cornell' || (v.length >= 3 && 'cornell'.startsWith(v) && !'cornellnotes'.startsWith(v))) return 'cornell';
+  if (v === 'cornellnotes' || (v.length >= 4 && 'cornellnotes'.startsWith(v))) return 'cornellnotes';
+  if (v === 'homeworksolver' || (v.length >= 2 && 'homeworksolver'.startsWith(v))) return 'homeworksolver';
   if ('solve'.startsWith(v)   && v.length > 0) return 'solve';
   if ('format'.startsWith(v)  && v.length > 0) return 'format';
   if ('convert'.startsWith(v) && v.length > 0) return 'convert';
-  // cornellnotes diverges from 'convert' at 'cor' onwards
-  if ('cornellnotes'.startsWith(v) && v.length > 0 && !'convert'.startsWith(v)) return 'cornellnotes';
   return null;
 }
 
 function _getSlashAction(family, sub) {
   const s = (sub || '').toLowerCase().trim();
   if (family === 'solve') return openHomeworkSolver;
+  if (family === 'homeworksolver') return openHomeworkSolver;
   if (family === 'cornellnotes') return () => openDocFormat('cornell');
+  if (family === 'cornell') return () => openDocFormat('cornell');
+  if (family === 'flashcards') return sendNoteToFlashcards;
+  if (family === 'academic') return () => openDocFormat('academic');
+  if (family === 'apa') return () => { _dfStyle = 'APA'; openDocFormat('academic'); };
+  if (family === 'mla') return () => { _dfStyle = 'MLA'; openDocFormat('academic'); };
+  if (family === 'chicago') return () => { _dfStyle = 'Chicago'; openDocFormat('academic'); };
   if (family === 'convert' && /cornell/.test(s)) return () => openDocFormat('cornell');
   if (family === 'format') {
     if (/academic|apa|mla|chicago/.test(s)) return () => openDocFormat('academic');
@@ -2619,10 +2659,14 @@ function _updateCmdPanel(text) {
   if (!fam) { _hideCmdPanel(); return; }
 
   let key;
-  if (fam === 'solve') {
+  if (fam === 'solve' || fam === 'homeworksolver') {
     key = 'solve';
-  } else if (fam === 'cornellnotes') {
+  } else if (fam === 'cornellnotes' || fam === 'cornell') {
     key = 'cornellnotes';
+  } else if (fam === 'flashcards') {
+    key = 'format_flash';
+  } else if (fam === 'academic' || fam === 'apa' || fam === 'mla' || fam === 'chicago') {
+    key = 'format_academic';
   } else if (fam === 'format') {
     if (/flash/.test(sub) || (sub && 'flashcards'.startsWith(sub))) key = 'format_flash';
     else if (/academic|apa|mla|chicago/.test(sub) || (sub && 'academic'.startsWith(sub))) key = 'format_academic';
@@ -2661,9 +2705,15 @@ document.getElementById('editor').addEventListener('input', function() {
   }
 
   const before = range.startContainer.textContent.slice(0, range.startOffset);
-  // Trigger on /[fsc] prefix or full commands — covers solve/format/convert
-  const m = before.match(/(\/[fscFSC][a-zA-Z]*(?:\s+\S+)*)$/);
+  // Trigger on slash commands — only when / is at word start (preceded by space, newline, or start)
+  const m = before.match(/(\/[a-zA-Z][a-zA-Z]*(?:\s+\S+)*)$/);
   if (!m) return;
+  // Check that the slash is at word start: preceded by whitespace, newline, or is at start
+  const slashPos = before.length - m[1].length;
+  if (slashPos > 0) {
+    const charBefore = before[slashPos - 1];
+    if (!/[\s\n]/.test(charBefore)) return;
+  }
   const verbPart = m[1].slice(1).split(/\s/)[0].toLowerCase();
   if (!_cmdFamily(verbPart)) return;
 
@@ -2759,9 +2809,11 @@ document.addEventListener('mousedown', e => {
   }
 });
 
-// Show popup on text selection
+// Show popup on text selection — both left and right editors
 document.getElementById('editor').addEventListener('mouseup', () => setTimeout(showSelectionPopup, 10));
 document.getElementById('editor').addEventListener('keyup', e => { if (e.shiftKey) setTimeout(showSelectionPopup, 10); });
+document.getElementById('editor-right').addEventListener('mouseup', () => setTimeout(showSelectionPopup, 10));
+document.getElementById('editor-right').addEventListener('keyup', e => { if (e.shiftKey) setTimeout(showSelectionPopup, 10); });
 document.addEventListener('mousedown', e => {
   const popup = document.getElementById('sel-popup');
   const card = document.getElementById('interp-card');
@@ -2997,12 +3049,18 @@ function triggerPhotoUpload() {
 function insertPhotos(input) {
   const files = Array.from(input.files);
   if (!files.length) return;
-  document.getElementById('editor').focus();
+  const targetEditor = _getActiveEditorEl();
+  targetEditor.focus();
   let idx = 0;
   function next() {
     if (idx >= files.length) {
-      const note = notes.find(n => n.id === activeId);
-      if (note) { note.content = document.getElementById('editor').innerHTML; note.updated = Date.now(); scheduleSave(); }
+      if (_activeEditor === 'right' && _rightNoteId) {
+        const note = notes.find(n => n.id === _rightNoteId);
+        if (note) { note.content = document.getElementById('editor-right').innerHTML; note.updated = Date.now(); saveNotes(); }
+      } else {
+        const note = notes.find(n => n.id === activeId);
+        if (note) { note.content = document.getElementById('editor').innerHTML; note.updated = Date.now(); scheduleSave(); }
+      }
       return;
     }
     const f = files[idx++];
@@ -3693,6 +3751,33 @@ document.getElementById('editor-right').addEventListener('input', function() {
   const note = notes.find(n => n.id === _rightNoteId);
   if (note) { note.content = this.innerHTML; note.updated = Date.now(); saveNotes(); }
 });
+
+function swapSplitEditors() {
+  if (!_splitActive) return;
+  const leftEditor = document.getElementById('editor');
+  const rightEditor = document.getElementById('editor-right');
+  // Swap HTML content
+  const leftHtml = leftEditor.innerHTML;
+  const rightHtml = rightEditor.innerHTML;
+  leftEditor.innerHTML = rightHtml;
+  rightEditor.innerHTML = leftHtml;
+  // Swap note IDs
+  const tmpId = activeId;
+  activeId = _rightNoteId;
+  _rightNoteId = tmpId;
+  // Update title input
+  const leftNote = notes.find(n => n.id === activeId);
+  if (leftNote) document.getElementById('note-title-input').value = leftNote.title || '';
+  // Update right pane header title
+  const rightNote = notes.find(n => n.id === _rightNoteId);
+  document.getElementById('right-pane-title').textContent = (leftNote?.title||'Left') + '  ⟺  ' + (rightNote?.title||'Untitled');
+  // Persist swapped content to notes
+  if (leftNote) { leftNote.content = rightHtml; leftNote.updated = Date.now(); }
+  if (rightNote) { rightNote.content = leftHtml; rightNote.updated = Date.now(); }
+  saveNotes();
+  renderSidebar();
+  updateStats();
+}
 
 function exitSplitMode() {
   _splitActive = false;

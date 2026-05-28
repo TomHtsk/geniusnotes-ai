@@ -909,7 +909,7 @@ async function importDoc(input) {
           ? 'The file is too large to process — try a smaller DOCX or paste the text directly.'
           : `Server error (${r.status}). Try a smaller file or use .txt format.`);
       }
-      const d = await r.json();
+      const d = await _safeJson(r);
       if (!r.ok) throw new Error(d.error || 'Could not extract DOCX content.');
       text = d.text || '';
     } else {
@@ -1735,7 +1735,7 @@ async function _formatChunk(text) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, mode: 'format', tone: 'Auto-detect' })
   });
-  const d = await r.json();
+  const d = await _safeJson(r);
   if (!r.ok) throw new Error(d.error || 'API error');
   return d.result || '';
 }
@@ -1952,6 +1952,17 @@ function selectAcadStyle(style) {
   _runDocFormat();
 }
 
+async function _safeJson(r) {
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(r.status === 504 || txt.includes('TIMEOUT')
+      ? 'Request timed out — try with a shorter note.'
+      : `Server error (${r.status}). Please try again.`);
+  }
+  return r.json();
+}
+
 async function _runDocFormat() {
   const statusEl = document.getElementById('df-status');
   const tone = _dfMode === 'academic' ? _dfStyle : undefined;
@@ -1962,7 +1973,9 @@ async function _runDocFormat() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const d = await r.json();
+    if (!(r.headers.get('content-type') || '').includes('application/json'))
+      throw new Error(r.status === 504 ? 'Request timed out — try with a shorter note.' : `Server error (${r.status}). Please try again.`);
+    const d = await _safeJson(r);
     if (!r.ok) throw new Error(d.error || 'API error');
     _dfResult = d.result || '';
     if (_dfMode === 'cornell') {
@@ -2494,7 +2507,7 @@ async function _submitAiInline() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: prompt, mode: 'inline' })
     });
-    const d = await r.json();
+    const d = await _safeJson(r);
     if (!r.ok || !d.result) throw new Error(d.error || 'AI error');
     // Replace marker with AI result
     if (_aiInlineMarker && _aiInlineMarker.parentNode) {
@@ -2806,7 +2819,7 @@ async function runHlSb() {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ text: originalText, mode: 'diff', tone: cornellText })
       });
-      const d = await r.json();
+      const d = await _safeJson(r);
       if (!r.ok || !d.result) throw new Error(d.error || 'No result');
       _applyDiffHighlights(d.result, editor);
       status.textContent = '🟠 Missing content highlighted in orange';
@@ -2819,7 +2832,7 @@ async function runHlSb() {
   status.textContent = '⏳ Highlighting…';
   try {
     const r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode:'highlight', tone: prompt }) });
-    const d = await r.json();
+    const d = await _safeJson(r);
     if (!r.ok || !d.result) throw new Error(d.error || 'No result');
     _applyNoteHighlights(d.result);
     status.textContent = '✦ Done — highlights applied';
@@ -3252,7 +3265,7 @@ async function _mathToLatex(input) {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ text: input, mode: 'math' })
   });
-  const d = await r.json();
+  const d = await _safeJson(r);
   if (!r.ok || !d.result) throw new Error(d.error || 'AI error');
   return d.result.trim().replace(/^\$+|\$+$/g,'').trim();
 }
@@ -3358,7 +3371,7 @@ async function _runHomeworkSolver(text) {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ text: text.slice(0, 8000) })
     });
-    const d = await r.json();
+    const d = await _safeJson(r);
     if (!r.ok) throw new Error(d.error || 'API error');
     const hw = d;
     _hwResult = [
@@ -3800,7 +3813,7 @@ async function runHlSbSplit() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ text: rightText, mode:'diff', tone: leftText })
     });
-    const d = await r.json();
+    const d = await _safeJson(r);
     if (!r.ok || !d.result) throw new Error(d.error || 'No result');
     _applyDiffHighlightsToEl(d.result, document.getElementById('editor-right'));
     status.textContent = '🟠 Missing content highlighted in right panel';

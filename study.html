@@ -1923,9 +1923,9 @@
     const isLight = document.documentElement.classList.toggle('light');
     document.getElementById('theme-icon').textContent = isLight ? '🌙' : '☀️';
     document.getElementById('theme-label').textContent = isLight ? 'Dark' : 'Light';
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    localStorage.setItem('gn-theme', isLight ? 'light' : 'dark');
   }
-  if (localStorage.getItem('theme') === 'light') {
+  if (localStorage.getItem('gn-theme') === 'light' || localStorage.getItem('theme') === 'light') {
     document.documentElement.classList.add('light');
     document.getElementById('theme-icon').textContent = '🌙';
     document.getElementById('theme-label').textContent = 'Dark';

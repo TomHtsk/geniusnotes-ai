@@ -1,0 +1,451 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards — GeniusNotes AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.07);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7;}
+    :root.light{--bg:#F5EFE0;--surface:#FAF6EC;--surface2:#EFE9D8;--border:rgba(160,130,80,0.15);--text:#2A1F0A;--muted:#7A6A50;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;}
+    :root.light nav{background:rgba(245,239,224,0.92);}
+    
+    .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;font-size:0.92rem;font-weight:700;color:var(--text);}
+    .nav-logo .ai{color:var(--purple2);}
+    .nav-back{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;padding:6px 12px;border-radius:8px;transition:color 0.15s,background 0.15s;}
+    .nav-back:hover{color:var(--text);background:var(--surface);}
+    .main{max-width:960px;margin:0 auto;padding:48px 40px;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;}
+    .page-heading{font-size:1.6rem;font-weight:800;}
+    .page-sub{font-size:0.85rem;color:var(--muted);margin-top:3px;}
+    .btn-primary{background:var(--purple);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;white-space:nowrap;}
+    .btn-primary:hover{opacity:0.85;}
+    .btn-ghost{background:none;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:9px 18px;font-size:0.83rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+    .btn-ghost:hover{border-color:var(--purple2);color:var(--text);}
+    .decks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+    .deck-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;cursor:pointer;transition:border-color 0.15s,transform 0.15s;position:relative;text-align:left;}
+    .deck-card:hover{border-color:rgba(139,92,246,0.4);transform:translateY(-2px);}
+    .deck-icon{font-size:1.8rem;margin-bottom:12px;}
+    .deck-title{font-size:0.95rem;font-weight:700;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .deck-meta{font-size:0.75rem;color:var(--muted);}
+    .deck-count{display:inline-block;margin-top:12px;padding:3px 10px;border-radius:20px;background:rgba(139,92,246,0.12);color:var(--purple2);font-size:0.72rem;font-weight:700;}
+    .deck-del{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:0.85rem;cursor:pointer;padding:4px 6px;border-radius:6px;opacity:0;transition:opacity 0.15s,color 0.15s;}
+    .deck-card:hover .deck-del{opacity:1;}
+    .deck-del:hover{color:#F87171;}
+    .empty-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:60px 20px;text-align:center;}
+    .empty-icon{font-size:3rem;margin-bottom:16px;}
+    .empty-title{font-size:1.05rem;font-weight:700;margin-bottom:8px;}
+    .empty-desc{font-size:0.85rem;color:var(--muted);line-height:1.6;margin-bottom:24px;}
+    .empty-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+    .empty-actions a,.empty-actions button{padding:10px 22px;border-radius:100px;font-size:0.85rem;font-weight:700;text-decoration:none;cursor:pointer;font-family:inherit;}
+    /* note browser */
+    .nb-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:28px;}
+    .nb-heading{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:14px;}
+    .nb-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+    .nb-chip{padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px;}
+    .nb-chip:hover{border-color:var(--purple2);background:rgba(139,92,246,0.1);}
+    .nb-chip.active{border-color:var(--purple);background:rgba(139,92,246,0.18);color:var(--purple2);}
+    .nb-notes{display:flex;flex-wrap:wrap;gap:8px;}
+    .nb-note{padding:8px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.82rem;font-weight:500;cursor:pointer;transition:all 0.15s;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .nb-note:hover{border-color:var(--purple);background:rgba(139,92,246,0.15);color:var(--purple2);}
+    .nb-note.selected{border-color:var(--purple);background:rgba(139,92,246,0.22);color:var(--purple2);font-weight:700;}
+    .nb-empty{font-size:0.82rem;color:var(--muted);}
+    .nb-back{background:none;border:none;color:var(--muted);font-size:0.78rem;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px;display:flex;align-items:center;gap:4px;}
+    .nb-back:hover{color:var(--text);}
+    .btn-primary:disabled,.btn-primary[data-disabled]{opacity:0.35;cursor:default;pointer-events:none;}
+    /* modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center;padding:20px;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:32px;}
+    .modal-title{font-size:1.2rem;font-weight:800;margin-bottom:20px;}
+    .flabel{font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:6px;display:block;}
+    .finput{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:0.88rem;color:var(--text);font-family:inherit;outline:none;transition:border-color 0.15s;margin-bottom:18px;}
+    .finput:focus{border-color:var(--purple2);}
+    .cards-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+    .crow{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;}
+    .crow-num{font-size:0.68rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;}
+    .crow textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:0.84rem;color:var(--text);font-family:inherit;outline:none;resize:none;margin-bottom:6px;min-height:50px;transition:border-color 0.15s;display:block;}
+    .crow textarea:last-of-type{margin-bottom:0;}
+    .crow textarea:focus{border-color:var(--purple2);}
+    .crow-del{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;padding:2px 5px;border-radius:5px;}
+    .crow-del:hover{color:#F87171;}
+    .modal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px;flex-wrap:wrap;}
+    .btn-cancel{background:none;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:9px 18px;font-size:0.83rem;font-weight:600;cursor:pointer;font-family:inherit;}
+    /* study */
+    #study-view{display:none;}
+    .study-header{display:flex;align-items:center;gap:14px;margin-bottom:28px;flex-wrap:wrap;}
+    .study-title-text{font-size:1.15rem;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .study-progress{font-size:0.82rem;color:var(--muted);font-weight:600;white-space:nowrap;}
+    .pbar{height:4px;background:var(--surface2);border-radius:100px;margin-bottom:28px;overflow:hidden;}
+    .pfill{height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan));border-radius:100px;transition:width 0.3s;}
+    .flip-wrap{perspective:1400px;margin-bottom:24px;}
+    .flip-card{width:100%;height:280px;position:relative;transform-style:preserve-3d;transition:transform 0.48s cubic-bezier(.4,0,.2,1);cursor:pointer;user-select:none;}
+    .flip-card.flipped{transform:rotateY(180deg);}
+    .flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;text-align:center;}
+    .flip-front{background:var(--surface);border:2px solid rgba(139,92,246,0.3);}
+    .flip-back{background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(79,195,247,0.08));border:2px solid rgba(79,195,247,0.3);transform:rotateY(180deg);}
+    .flip-label{font-size:0.66rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px;}
+    .flip-front .flip-label{color:var(--purple2);}
+    .flip-back .flip-label{color:var(--cyan);}
+    .flip-text{font-size:1.1rem;font-weight:600;line-height:1.65;color:var(--text);}
+    .flip-hint{margin-top:14px;font-size:0.7rem;color:var(--muted);}
+    .study-controls{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:22px;flex-wrap:wrap;}
+    .ctrl-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:10px 26px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+    .ctrl-btn:hover:not(:disabled){border-color:var(--purple);color:var(--purple2);}
+    .ctrl-btn:disabled{opacity:0.3;cursor:default;}
+    .ctrl-btn.flip-btn{background:var(--purple);border-color:var(--purple);color:#fff;}
+    .ctrl-btn.flip-btn:hover{opacity:0.85;}
+    .dots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);transition:all 0.2s;cursor:pointer;}
+    .dot.seen{background:rgba(139,92,246,0.4);}
+    .dot.active{background:var(--purple);transform:scale(1.35);}
+    /* Magic Assist panel */
+    .sa-panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:28px 28px 24px;}
+    .sa-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    .sa-title{display:flex;align-items:center;gap:9px;font-size:1rem;font-weight:800;}
+    .sa-badge{background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;font-size:0.58rem;font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:0.06em;}
+    .sa-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:6px;transition:color 0.15s;}
+    .sa-close:hover{color:var(--text);}
+    .sa-textarea{width:100%;min-height:170px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px;font-size:0.87rem;color:var(--text);font-family:inherit;outline:none;resize:vertical;transition:border-color 0.15s;line-height:1.6;}
+    .sa-textarea:focus{border-color:var(--purple2);}
+    .sa-charcount{text-align:right;font-size:0.7rem;color:var(--muted);margin-top:6px;margin-bottom:16px;}
+    .sa-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .sa-upload-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1.5px solid var(--border);color:var(--muted);border-radius:10px;padding:9px 16px;font-size:0.83rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
+    .sa-upload-btn:hover{border-color:var(--purple2);color:var(--text);}
+    .sa-start-btn{background:linear-gradient(135deg,var(--purple),#6D28D9);color:#fff;border:none;border-radius:10px;padding:10px 32px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;}
+    .sa-start-btn:hover:not(:disabled){opacity:0.85;}
+    .sa-start-btn:disabled{opacity:0.5;cursor:default;}
+    .sa-err{display:none;margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;font-size:0.82rem;color:#F87171;}
+    .sa-loading{display:none;margin-top:16px;text-align:center;color:var(--muted);font-size:0.83rem;}
+    .sa-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 10px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    @media(max-width:600px){.main{padding:28px 16px;}nav{padding:0 16px;}.decks-grid{grid-template-columns:1fr;}.flip-card{height:240px;}.flip-text{font-size:0.95rem;}.modal{padding:20px;}.sa-panel{padding:20px;}}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-back">← Home</a>
+  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
+  <span></span>
+</nav>
+
+<div class="main">
+  <!-- DECKS -->
+  <div id="decks-view">
+    <div class="page-header">
+      <div>
+        <div class="page-heading">🃏 My Flashcards</div>
+        <div class="page-sub" id="decks-sub">0 decks</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="create-deck-btn" class="btn-primary" onclick="createDeckWithNote()" data-disabled title="Select a note below first" style="opacity:0.35;cursor:default;pointer-events:none;">＋ Create New Deck</button>
+      </div>
+    </div>
+
+    <!-- Note browser -->
+    <div class="nb-section">
+      <div class="nb-heading">⚡ Generate from a Note</div>
+      <div id="nb-folder-row" class="nb-chips"></div>
+      <div id="nb-notes-row" class="nb-notes"></div>
+    </div>
+
+    <div id="decks-grid" class="decks-grid"></div>
+  </div>
+
+  <!-- STUDY -->
+  <div id="study-view">
+    <div class="study-header">
+      <button class="btn-ghost" onclick="backToDecks()">← All Decks</button>
+      <div class="study-title-text" id="study-title"></div>
+      <div class="study-progress" id="study-progress"></div>
+    </div>
+    <div class="pbar"><div class="pfill" id="pfill"></div></div>
+    <div class="flip-wrap">
+      <div class="flip-card" id="flip-card" onclick="flipCard()">
+        <div class="flip-face flip-front">
+          <div class="flip-label">Question</div>
+          <div class="flip-text" id="card-front"></div>
+          <div class="flip-hint">Tap to reveal answer</div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="flip-label">Answer</div>
+          <div class="flip-text" id="card-back"></div>
+          <div class="flip-hint">Tap to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="study-controls">
+      <button class="ctrl-btn" id="prev-btn" onclick="prevCard()">← Prev</button>
+      <button class="ctrl-btn flip-btn" onclick="flipCard()">Flip Card</button>
+      <button class="ctrl-btn" id="next-btn" onclick="nextCard()">Next →</button>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+</div>
+
+
+<script>
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  // ── find history key immediately, no Firebase needed to display ──
+  let currentUid = null;
+
+  function findUid() {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('gn-history-') && k !== 'gn-history-') {
+        return k.replace('gn-history-', '');
+      }
+    }
+    return null;
+  }
+
+  function getHistory() {
+    if (!currentUid) return [];
+    try { return JSON.parse(localStorage.getItem('gn-history-' + currentUid) || '[]'); } catch { return []; }
+  }
+  function saveHistory(arr) {
+    if (!currentUid) { alert('Please sign in to save decks.'); return; }
+    localStorage.setItem('gn-history-' + currentUid, JSON.stringify(arr));
+  }
+  function getDecks() { return getHistory().filter(i => i.type === 'flashcards').reverse(); }
+  function genId() { return Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); } catch { return ''; } }
+
+  // ── RENDER DECKS ──
+  function renderDecks() {
+    const decks = getDecks();
+    document.getElementById('decks-sub').textContent = decks.length + ' deck' + (decks.length !== 1 ? 's' : '');
+    const grid = document.getElementById('decks-grid');
+    if (!decks.length) {
+      grid.innerHTML = `<div class="empty-box" style="grid-column:1/-1">
+        <div class="empty-icon">🃏</div>
+        <div class="empty-title">No flashcard decks yet</div>
+        <div class="empty-desc">Use AI to generate a deck from any topic or notes, or build one manually.</div>
+        <div class="empty-actions">
+          <button id="create-deck-btn-empty" class="btn-primary" onclick="createDeckWithNote()" ${_selectedHistId ? '' : 'data-disabled title="Select a note above first" style="opacity:0.35;cursor:default;pointer-events:none;"'}>＋ Create New Deck</button>
+        </div>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = decks.map(d => {
+      let count = 0;
+      try { count = JSON.parse(d.content).length; } catch {}
+      return `<div class="deck-card" onclick="openDeck('${d.id}')">
+        <button class="deck-del" onclick="event.stopPropagation();deleteDeck('${d.id}')" title="Delete">🗑</button>
+        <div class="deck-icon">🃏</div>
+        <div class="deck-title">${esc(d.title||'Untitled Deck')}</div>
+        <div class="deck-meta">${fmtDate(d.date)}${d.source?' · '+esc(d.source):''}</div>
+        <span class="deck-count">${count} card${count!==1?'s':''}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function deleteDeck(id) {
+    if (!confirm('Delete this deck?')) return;
+    saveHistory(getHistory().filter(i => i.id !== id));
+    renderDecks();
+  }
+
+
+  // ── STUDY ──
+  let studyCards = [], si = 0, seen = new Set();
+  function openDeck(id) {
+    window.location.href = 'play-deck.html?deck=' + encodeURIComponent(id);
+  }
+  function showCard() {
+    const c = studyCards[si];
+    document.getElementById('card-front').textContent = c.front;
+    document.getElementById('card-back').textContent = c.back;
+    document.getElementById('flip-card').classList.remove('flipped');
+    seen.add(si);
+    const tot = studyCards.length;
+    document.getElementById('study-progress').textContent = (si+1)+' / '+tot;
+    document.getElementById('pfill').style.width = ((si+1)/tot*100)+'%';
+    document.getElementById('prev-btn').disabled = si===0;
+    document.getElementById('next-btn').disabled = si===tot-1;
+    document.getElementById('dots').innerHTML = studyCards.map((_,i)=>
+      `<div class="dot${i===si?' active':seen.has(i)?' seen':''}" onclick="jumpTo(${i})"></div>`).join('');
+  }
+  function flipCard(){ document.getElementById('flip-card').classList.toggle('flipped'); }
+  function nextCard(){ if(si<studyCards.length-1){si++;showCard();} }
+  function prevCard(){ if(si>0){si--;showCard();} }
+  function jumpTo(i){ si=i; showCard(); }
+  function backToDecks(){
+    document.getElementById('study-view').style.display='none';
+    document.getElementById('decks-view').style.display='';
+    renderDecks();
+  }
+  document.addEventListener('keydown', e => {
+    if(document.getElementById('study-view').style.display==='none') return;
+    if(e.key==='ArrowRight') nextCard();
+    else if(e.key==='ArrowLeft') prevCard();
+    else if(e.key===' '){e.preventDefault();flipCard();}
+  });
+
+  // ── NOTE BROWSER ──
+  function getNotepadFolders() {
+    try { return JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]'); } catch { return []; }
+  }
+
+  let _nbFolder = null; // null = show folders, {id,name} = show notes in folder, 'unfiled' = unfiled notes
+
+  function renderNoteBrowser() {
+    const history = getHistory();
+    const folders = getNotepadFolders();
+    const folderRow = document.getElementById('nb-folder-row');
+    const notesRow = document.getElementById('nb-notes-row');
+    if (!folderRow || !notesRow) return;
+
+    if (_nbFolder === null) {
+      // Show folder chips + unfiled chip
+      let html = '';
+      for (const f of folders) {
+        const hasNotes = history.some(i => i.type === 'notepad' && i.folderId === f.id);
+        if (!hasNotes) continue;
+        html += `<button class="nb-chip" onclick="nbOpenFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')">📁 ${f.name}</button>`;
+      }
+      const unfiledNotes = history.filter(i => i.type === 'notepad' && !i.folderId);
+      if (unfiledNotes.length) html += `<button class="nb-chip" onclick="nbOpenFolder('unfiled','Unfiled')">📄 Unfiled</button>`;
+      if (!html) html = '<span class="nb-empty">No saved notes yet — write some in the Notepad first.</span>';
+      folderRow.innerHTML = html;
+      notesRow.innerHTML = '';
+    } else {
+      // Show back + notes in selected folder
+      const folderName = _nbFolder === 'unfiled' ? 'Unfiled' : _nbFolder.name;
+      folderRow.innerHTML = `<button class="nb-back" onclick="nbBack()">← Back</button>
+        <span class="nb-chip active">📁 ${folderName}</span>`;
+
+      let notes;
+      if (_nbFolder === 'unfiled') {
+        notes = history.filter(i => i.type === 'notepad' && !i.folderId);
+      } else {
+        notes = history.filter(i => i.type === 'notepad' && i.folderId === _nbFolder.id);
+      }
+
+      // De-dup by noteId or title, most recent first
+      const seen = new Set();
+      const deduped = [];
+      for (const n of [...notes].reverse()) {
+        const key = n.noteId || n.title || n.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(n);
+      }
+
+      if (!deduped.length) {
+        notesRow.innerHTML = '<span class="nb-empty">No notes in this folder.</span>';
+      } else {
+        notesRow.innerHTML = deduped.map(n =>
+          `<button class="nb-note${_selectedHistId === n.id ? ' selected' : ''}" data-hid="${n.id}" onclick="nbSelectNote('${n.id}')" title="${(n.title||'Untitled').replace(/"/g,'&quot;')}">📝 ${(n.title||'Untitled').slice(0,28)}</button>`
+        ).join('');
+      }
+    }
+  }
+
+  function nbOpenFolder(idOrUnfiled, name) {
+    _nbFolder = idOrUnfiled === 'unfiled' ? 'unfiled' : { id: idOrUnfiled, name };
+    renderNoteBrowser();
+  }
+
+  function nbBack() {
+    _nbFolder = null;
+    _selectedHistId = null;
+    _setCreateBtns(false);
+    renderNoteBrowser();
+  }
+
+  let _selectedHistId = null;
+
+  function _setCreateBtns(enabled) {
+    ['create-deck-btn', 'create-deck-btn-empty'].forEach(id => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      if (enabled) {
+        b.removeAttribute('data-disabled');
+        b.style.opacity = '';
+        b.style.cursor = '';
+        b.style.pointerEvents = '';
+        b.title = '';
+      } else {
+        b.setAttribute('data-disabled', '');
+        b.style.opacity = '0.35';
+        b.style.cursor = 'default';
+        b.style.pointerEvents = 'none';
+        b.title = 'Select a note above first';
+      }
+    });
+  }
+
+  function nbSelectNote(histId) {
+    _selectedHistId = histId;
+    document.querySelectorAll('.nb-note').forEach(b => b.classList.remove('selected'));
+    const btn = document.querySelector(`.nb-note[data-hid="${histId}"]`);
+    if (btn) btn.classList.add('selected');
+    _setCreateBtns(true);
+  }
+
+  function createDeckWithNote() {
+    if (!_selectedHistId) { window.location.href = 'create-deck.html'; return; }
+    const histItem = getHistory().find(i => i.id === _selectedHistId);
+    if (!histItem) { window.location.href = 'create-deck.html'; return; }
+    let plain = '';
+    try {
+      const allNotes = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
+      const fullNote = (histItem.noteId ? allNotes.find(n => n.id === histItem.noteId) : null)
+                    || (histItem.title ? allNotes.find(n => n.title === histItem.title) : null);
+      if (fullNote && fullNote.content) {
+        const div = document.createElement('div');
+        div.innerHTML = fullNote.content;
+        plain = (div.innerText || div.textContent || '').trim();
+      }
+    } catch {}
+    if (!plain && histItem.content) plain = histItem.content.trim();
+    if (!plain) { window.location.href = 'create-deck.html'; return; }
+    localStorage.setItem('gn-to-flashcards', plain);
+    window.location.href = 'create-deck.html';
+  }
+
+  // ── BOOT — render immediately, then update after Firebase ──
+  currentUid = findUid();
+  renderDecks();
+  renderNoteBrowser();
+</script>
+
+<!-- Firebase + Firestore + GNSync for cross-device sync -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="js/cloud-sync.js"></script>
+<script>
+  try {
+    firebase.initializeApp({
+      apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+      authDomain:"geniusnotes-ai.firebaseapp.com",
+      projectId:"geniusnotes-ai",
+      storageBucket:"geniusnotes-ai.firebasestorage.app",
+      messagingSenderId:"1041746856723",
+      appId:"1:1041746856723:web:fae9072e0292c3946068e6"
+    });
+    firebase.auth().onAuthStateChanged(u => {
+      if (u) {
+        currentUid = u.uid;
+        const db = firebase.firestore();
+        GNSync.init(u.uid, db, {
+          onReady:   function() { renderDecks(); renderNoteBrowser(); },
+          onNotes:   function() { renderDecks(); renderNoteBrowser(); },
+          onFolders: function() { renderNoteBrowser(); },
+          onHistory: function() { renderDecks(); renderNoteBrowser(); }
+        });
+      }
+    });
+  } catch(e) { /* Firebase unavailable — local data still shown */ }
+</script>
+
+<script src="js/recorder.js"></script>
+</body>
+</html>

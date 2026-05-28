@@ -31,7 +31,23 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { content } = req.body || {};
+    const { content, ocrImages } = req.body || {};
+
+    // OCR path: scanned PDF pages rendered client-side to JPEG data URLs
+    if (ocrImages && Array.isArray(ocrImages) && ocrImages.length > 0) {
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) throw new Error('OCR service not configured.');
+      const texts = [];
+      for (const dataUrl of ocrImages) {
+        const comma = dataUrl.indexOf(',');
+        const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
+        const b64 = dataUrl.slice(comma + 1);
+        const text = await ocrImage(b64, mime, apiKey);
+        if (text) texts.push(text);
+      }
+      return res.status(200).json({ text: texts.join('\n\n'), pages: texts.length });
+    }
+
     if (!content) return res.status(400).json({ error: 'Missing file content' });
 
     const buffer = Buffer.from(content, 'base64');

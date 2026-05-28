@@ -1,0 +1,472 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Deck — GeniusNotes AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.07);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7;}
+    :root.light{--bg:#F5EFE0;--surface:#FAF6EC;--surface2:#EFE9D8;--border:rgba(160,130,80,0.15);--text:#2A1F0A;--muted:#7A6A50;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;}
+    :root.light nav{background:rgba(245,239,224,0.92);}
+    
+    param($m)
+    $inner = $m.Groups[2].Value
+    if ($inner -notmatch 'display\s*:') {
+      $m.Groups[1].Value + 'display:flex;align-items:center;gap:8px;' + $inner + $m.Groups[3].Value
+    } else { $m.Value }
+  
+    .nav-logo .ai{color:var(--purple2);}
+    .nav-back{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;padding:6px 12px;border-radius:8px;transition:color 0.15s,background 0.15s;}
+    .nav-back:hover{color:var(--text);background:var(--surface);}
+
+    .main{max-width:760px;margin:0 auto;padding:44px 40px 80px;}
+    .page-heading{font-size:1.6rem;font-weight:800;margin-bottom:32px;}
+
+    /* main card */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;}
+
+    /* deck name */
+    .flabel{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:7px;display:block;}
+    .finput{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:0.9rem;color:var(--text);font-family:inherit;outline:none;transition:border-color 0.15s;margin-bottom:24px;}
+    .finput:focus{border-color:var(--purple2);}
+
+    /* magic assist strip */
+    .ma-strip{background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:24px;}
+    .ma-strip-top{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;user-select:none;}
+    .ma-label{display:flex;align-items:center;gap:8px;font-size:0.88rem;font-weight:700;}
+    .ma-label span{font-size:1rem;}
+    .ma-toggle{font-size:0.75rem;color:var(--muted);transition:color 0.15s;}
+    .ma-strip-top:hover .ma-toggle{color:var(--purple2);}
+    .ma-body{display:none;margin-top:14px;}
+    .ma-body.open{display:block;}
+    .ma-textarea{width:100%;min-height:100px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:0.86rem;color:var(--text);font-family:inherit;outline:none;resize:vertical;line-height:1.6;transition:border-color 0.15s;}
+    .ma-textarea:focus{border-color:var(--purple2);}
+    .ma-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;flex-wrap:wrap;}
+    .ma-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+    .ma-charcount{font-size:0.7rem;color:var(--muted);}
+    .ma-count-row{display:flex;align-items:center;gap:7px;font-size:0.78rem;color:var(--muted);}
+    .ma-count-row select{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:4px 8px;font-family:inherit;font-size:0.78rem;outline:none;}
+    .ma-actions{display:flex;align-items:center;gap:8px;}
+    .btn-upload{display:flex;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--border);color:var(--muted);border-radius:9px;padding:8px 14px;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
+    .btn-upload:hover{border-color:var(--purple2);color:var(--text);}
+    .btn-gen{background:linear-gradient(135deg,var(--purple),#6D28D9);color:#fff;border:none;border-radius:9px;padding:9px 22px;font-size:0.84rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;white-space:nowrap;}
+    .btn-gen:hover:not(:disabled){opacity:0.85;}
+    .btn-gen:disabled{opacity:0.5;cursor:default;}
+    .ma-err{display:none;margin-top:10px;padding:9px 13px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;font-size:0.8rem;color:#F87171;}
+    .ma-loading{display:none;align-items:center;gap:10px;margin-top:10px;font-size:0.82rem;color:var(--muted);}
+    .ma-spinner{width:18px;height:18px;border:2.5px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin 0.75s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* card rows */
+    .cards-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .cards-label span{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);}
+    .cards-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+    .crow{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;}
+    .crow-num{font-size:0.67rem;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;}
+    .crow textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:0.85rem;color:var(--text);font-family:inherit;outline:none;resize:none;margin-bottom:8px;min-height:52px;transition:border-color 0.15s;display:block;}
+    .crow textarea:last-of-type{margin-bottom:0;}
+    .crow textarea:focus{border-color:var(--purple2);}
+    .crow-del{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:3px 6px;border-radius:5px;}
+    .crow-del:hover{color:#F87171;}
+    .btn-add{width:100%;background:none;border:1.5px dashed var(--border);color:var(--muted);border-radius:12px;padding:12px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;margin-bottom:24px;}
+    .btn-add:hover{border-color:var(--purple2);color:var(--purple2);}
+
+    /* footer */
+    .form-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .btn-cancel{background:none;border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:10px 20px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;transition:all 0.15s;display:inline-block;}
+    .btn-cancel:hover{border-color:var(--purple2);color:var(--text);}
+    .btn-save{background:var(--purple);color:#fff;border:none;border-radius:10px;padding:11px 36px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;}
+    .btn-save:hover{opacity:0.85;}
+
+    /* Voice input */
+    .ma-mic-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;}
+    .ma-mic-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(139,92,246,0.35);background:rgba(139,92,246,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;}
+    .ma-mic-btn:hover{background:rgba(139,92,246,0.18);}
+    .ma-mic-btn.on{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.1);animation:marp 1.4s ease-in-out infinite;}
+    .ma-mic-btn svg{width:16px;height:16px;stroke:var(--purple2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+    .ma-mic-btn.on svg{stroke:#F87171;}
+    @keyframes marp{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.2);}50%{box-shadow:0 0 0 8px rgba(239,68,68,0);}}
+    .ma-rec-time{font-size:0.78rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);min-width:26px;}
+    .ma-rec-time.on{color:var(--text);}
+    .ma-wv{height:26px;flex:1;border-radius:5px;background:var(--surface2);}
+    .ma-hint{font-size:0.73rem;color:var(--muted);white-space:nowrap;}
+    .ma-proc-row{display:none;align-items:center;gap:8px;font-size:0.79rem;color:var(--muted);padding:4px 0 8px;}
+
+    @media(max-width:600px){.main{padding:24px 16px 60px;}nav{padding:0 16px;}.card{padding:20px;}}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="flashcards.html" class="nav-back">← My Flashcards</a>
+  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
+  <span></span>
+</nav>
+
+<div class="main">
+  <div class="page-heading">Create New Deck</div>
+
+  <div class="card">
+    <!-- Deck name -->
+    <label class="flabel">Deck Name</label>
+    <input class="finput" id="deck-name" placeholder="e.g. Biology Chapter 3 — Cell Division" />
+
+    <!-- Magic Assist strip -->
+    <div class="ma-strip">
+      <div class="ma-strip-top" style="cursor:default;">
+        <div class="ma-label"><span>✦</span> Magic Assist — Generate with AI</div>
+      </div>
+      <div class="ma-body open" id="ma-body">
+        <!-- Voice input bar -->
+        <div class="ma-mic-row">
+          <button class="ma-mic-btn" id="ma-mic-btn" onclick="maTglRec()" title="Record voice">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <span class="ma-rec-time" id="ma-rec-time">0:00</span>
+          <canvas class="ma-wv" id="ma-wv" width="200" height="26"></canvas>
+          <span class="ma-hint" id="ma-hint">Tap mic to dictate</span>
+        </div>
+        <div class="ma-proc-row" id="ma-proc-row"><div class="ma-spinner"></div> Polishing with Whisper…</div>
+        <textarea class="ma-textarea" id="ma-textarea" maxlength="100000"
+          placeholder="Enter a topic (e.g. 'World War 2 causes') or paste your notes…"></textarea>
+        <div class="ma-footer">
+          <div class="ma-meta">
+            <div class="ma-charcount"><span id="ma-count">0</span> / 100,000</div>
+            <div class="ma-count-row">Cards: <select id="ma-card-count"><option value="8">8</option><option value="12">12</option><option value="16">16</option><option value="20">20</option></select></div>
+          </div>
+          <div class="ma-actions">
+            <input type="file" id="ma-file" accept=".txt,.docx,.pdf" style="display:none" onchange="maLoadFile(this)">
+            <button class="btn-upload" onclick="loadAllNotes()" title="Load all saved notes as context">📋 All Notes</button>
+            <button class="btn-upload" onclick="document.getElementById('ma-file').click()">＋ Upload</button>
+            <button class="btn-gen" id="ma-gen-btn" onclick="maGenerate()">✦ Generate</button>
+          </div>
+        </div>
+        <div class="ma-err" id="ma-err"></div>
+        <div class="ma-loading" id="ma-loading"><div class="ma-spinner"></div> Generating flashcards…</div>
+      </div>
+    </div>
+
+    <!-- Card rows -->
+    <div class="cards-label">
+      <span>Cards</span>
+    </div>
+    <div class="cards-list" id="cards-list"></div>
+    <button class="btn-add" onclick="addRow()">＋ Add Card</button>
+
+    <!-- Save -->
+    <div class="form-footer">
+      <a href="flashcards.html" class="btn-cancel">Cancel</a>
+      <button class="btn-save" onclick="saveDeck()">Save Deck →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  // ── UID helpers ──
+  let currentUid = null;
+  function findUid() {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('gn-history-') && k !== 'gn-history-') return k.replace('gn-history-', '');
+    }
+    return null;
+  }
+  function ensureUid() {
+    if (currentUid) return;
+    currentUid = findUid();
+    if (!currentUid) currentUid = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  }
+  function getHistory() {
+    if (!currentUid) return [];
+    try { return JSON.parse(localStorage.getItem('gn-history-' + currentUid) || '[]'); } catch { return []; }
+  }
+  function genId() { return Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  currentUid = findUid();
+
+  // auto-open Magic Assist if ?ai=1
+  if (new URLSearchParams(location.search).get('ai') === '1') {
+    openMA();
+  }
+
+  // ── Magic Assist ──
+  function toggleMA() {
+    const body = document.getElementById('ma-body');
+    const isOpen = body.classList.contains('open');
+    if (isOpen) { body.classList.remove('open'); }
+    else openMA();
+  }
+  function openMA() {
+    document.getElementById('ma-body').classList.add('open');
+    setTimeout(() => document.getElementById('ma-textarea').focus(), 80);
+  }
+
+  document.getElementById('ma-textarea').addEventListener('input', function() {
+    document.getElementById('ma-count').textContent = this.value.length.toLocaleString();
+  });
+
+  async function maLoadFile(input) {
+    const file = input.files[0]; if (!file) return;
+    const btn = document.getElementById('ma-gen-btn');
+    btn.disabled = true; btn.textContent = 'Reading…';
+    try {
+      let text = '';
+      if (file.name.toLowerCase().endsWith('.txt')) {
+        text = await file.text();
+      } else if (file.name.toLowerCase().endsWith('.docx')) {
+        const b64 = await fileToB64(file);
+        const d = await (await fetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({file:b64,name:file.name}) })).json();
+        text = d.text || '';
+      } else if (file.name.toLowerCase().endsWith('.pdf')) {
+        text = await extractPdf(file);
+      }
+      if (text) {
+        const ta = document.getElementById('ma-textarea');
+        ta.value = text.slice(0, 100000);
+        document.getElementById('ma-count').textContent = ta.value.length.toLocaleString();
+      }
+    } catch { showMAErr('Could not read file.'); }
+    btn.disabled = false; btn.textContent = '✦ Generate';
+    input.value = '';
+  }
+
+  function fileToB64(file) {
+    return new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+  }
+  async function extractPdf(file) {
+    if (!window.pdfjsLib) {
+      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+    let t='';
+    for(let i=1;i<=Math.min(pdf.numPages,30);i++){const pg=await pdf.getPage(i);t+=(await pg.getTextContent()).items.map(x=>x.str).join(' ')+'\n';}
+    return t;
+  }
+
+  async function maGenerate() {
+    const text = document.getElementById('ma-textarea').value.trim();
+    if (!text) { showMAErr('Enter a topic or paste some notes first.'); return; }
+    const count = parseInt(document.getElementById('ma-card-count').value) || 8;
+    const btn = document.getElementById('ma-gen-btn');
+    btn.disabled = true; btn.textContent = '…';
+    document.getElementById('ma-loading').style.display = 'flex';
+    document.getElementById('ma-err').style.display = 'none';
+
+    try {
+      const prompt = text.length < 200 ? `Generate ${count} flashcards about: ${text}` : text;
+      const resp = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:prompt, mode:'flashcards', count}) });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
+
+      let raw = data.flashcards || data.summary || '';
+      let cards;
+      if (Array.isArray(raw)) { cards = raw; }
+      else if (typeof raw === 'string') {
+        const s=raw.indexOf('['), e=raw.lastIndexOf(']');
+        if(s!==-1&&e>s){try{cards=JSON.parse(raw.slice(s,e+1));}catch{}}
+        if(!cards){try{cards=JSON.parse(raw);}catch{}}
+      }
+      if (!Array.isArray(cards) || !cards.length) throw new Error('No flashcards returned — try a more specific topic.');
+
+      // populate deck name if empty
+      const nameEl = document.getElementById('deck-name');
+      if (!nameEl.value.trim()) nameEl.value = text.length <= 55 ? text : text.slice(0,52)+'…';
+
+      // replace card rows with AI cards
+      document.getElementById('cards-list').innerHTML = '';
+      rowN = 0;
+      cards.forEach(c => addRow(c.front, c.back));
+
+      // close the MA strip
+      document.getElementById('ma-body').classList.remove('open');
+
+      // scroll to first card
+      document.getElementById('cards-list').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    } catch(e) {
+      showMAErr(e.message || 'Could not generate flashcards. Please try again.');
+    }
+
+    btn.disabled = false; btn.textContent = '✦ Generate';
+    document.getElementById('ma-loading').style.display = 'none';
+  }
+
+  function showMAErr(msg) { const el=document.getElementById('ma-err'); el.textContent=msg; el.style.display='block'; }
+
+  // ── Manual card rows ──
+  let rowN = 0;
+  function addRow(front='', back='') {
+    rowN++;
+    const n=rowN, div=document.createElement('div');
+    div.className='crow'; div.id='cr'+n;
+    div.innerHTML=`<div class="crow-num">Card ${n}</div>
+      <button class="crow-del" onclick="document.getElementById('cr${n}').remove();renumber()">✕</button>
+      <textarea placeholder="Question / Front…" rows="2">${esc(front)}</textarea>
+      <textarea placeholder="Answer / Back…" rows="2">${esc(back)}</textarea>`;
+    document.getElementById('cards-list').appendChild(div);
+    if (!front) div.querySelector('textarea').focus();
+  }
+
+  function renumber() {
+    document.querySelectorAll('.crow').forEach((row,i) => {
+      row.querySelector('.crow-num').textContent = 'Card ' + (i+1);
+    });
+  }
+
+  function saveDeck() {
+    const name = document.getElementById('deck-name').value.trim() || 'My Deck';
+    const cards = [];
+    document.querySelectorAll('.crow').forEach(row => {
+      const [f,b] = row.querySelectorAll('textarea');
+      if (f.value.trim()||b.value.trim()) cards.push({front:f.value.trim()||'(blank)',back:b.value.trim()||'(blank)'});
+    });
+    if (!cards.length) { alert('Add at least one card before saving.'); return; }
+    // Always prefer Firebase UID when signed in so deck appears in My Notes / history
+    try { const fu = firebase.auth().currentUser; if (fu && fu.uid) currentUid = fu.uid; } catch {}
+    ensureUid();
+    const all = getHistory();
+    const id = genId();
+    all.push({id, type:'flashcards', source:'Deck', title:name, content:JSON.stringify(cards), date:new Date().toISOString()});
+    localStorage.setItem('gn-history-'+currentUid, JSON.stringify(all));
+    window.location.href = 'study.html?deck=' + encodeURIComponent(id);
+  }
+
+  // seed 3 empty rows
+  addRow(); addRow(); addRow();
+
+  // ── Pre-fill from notepad "Send to Flashcards" (runs after all setup) ──
+  (function() {
+    const text = localStorage.getItem('gn-to-flashcards');
+    if (!text) return;
+    localStorage.removeItem('gn-to-flashcards');
+    const ta = document.getElementById('ma-textarea');
+    ta.value = text;
+    document.getElementById('ma-count').textContent = text.length.toLocaleString();
+    document.getElementById('ma-body').classList.add('open');
+  })();
+
+  function loadAllNotes() {
+    const uid = currentUid || findUid();
+    if (!uid) { showMAErr('Sign in to load your saved notes.'); return; }
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem('gn-history-' + uid) || '[]'); } catch {}
+    const notes = history.filter(i => i.type === 'notepad' && i.content && i.content.trim());
+    if (!notes.length) { showMAErr('No saved notes found.'); return; }
+    // Combine all notes with titles as headers
+    const combined = notes.map(n => `=== ${n.title || 'Untitled'} ===\n${n.content.trim()}`).join('\n\n');
+    const ta = document.getElementById('ma-textarea');
+    ta.value = combined.slice(0, 100000);
+    document.getElementById('ma-count').textContent = ta.value.length.toLocaleString();
+    document.getElementById('ma-err').style.display = 'none';
+  }
+
+  // ── VOICE INPUT ──────────────────────────────────────────
+  let _maGoing=false, _maTimer, _maSecs=0, _maCtx, _maAnalyser, _maRaf, _maStream;
+  let _maMr=null, _maMrChunks=[], _maMime='', _maRec=null, _maLiveText='';
+  const _MaSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function el(id){ return document.getElementById(id); }
+
+  async function maTglRec() { _maGoing ? maStopRec() : await maStartRec(); }
+
+  async function maStartRec() {
+    try { _maStream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+    catch { el('ma-hint').textContent='Mic access denied.'; return; }
+    _maMime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+    _maGoing=true; _maLiveText=''; _maMrChunks=[];
+    el('ma-mic-btn').classList.add('on'); el('ma-rec-time').classList.add('on');
+    _maSecs=0;
+    _maTimer = setInterval(()=>{ _maSecs++; const m=Math.floor(_maSecs/60),s=_maSecs%60; el('ma-rec-time').textContent=m+':'+String(s).padStart(2,'0'); },1000);
+    _maCtx = new (window.AudioContext||window.webkitAudioContext)();
+    _maAnalyser = _maCtx.createAnalyser(); _maAnalyser.fftSize=64;
+    _maCtx.createMediaStreamSource(_maStream).connect(_maAnalyser);
+    maDrawWave();
+    try { _maMr = new MediaRecorder(_maStream, _maMime?{mimeType:_maMime}:{}); }
+    catch { _maMr = new MediaRecorder(_maStream); }
+    _maMr.ondataavailable = e=>{ if(e.data.size>0) _maMrChunks.push(e.data); };
+    _maMr.start(500);
+    if (_MaSR) {
+      _maRec = new _MaSR();
+      _maRec.continuous=true; _maRec.interimResults=true; _maRec.lang='en-US';
+      _maRec.onresult = evt => {
+        let interim='';
+        for (let i=evt.resultIndex;i<evt.results.length;i++){
+          if(evt.results[i].isFinal){
+            let seg=evt.results[i][0].transcript.trim();
+            seg=seg.charAt(0).toUpperCase()+seg.slice(1);
+            seg=seg.replace(/\bi\b/g,'I').replace(/\bi'/g,"I'");
+            if(seg&&!/[.!?,;:]$/.test(seg)) seg+='.';
+            _maLiveText+=seg+' ';
+          } else interim=evt.results[i][0].transcript;
+        }
+        const ta=el('ma-textarea');
+        ta.value=(_maLiveText+interim).trimEnd();
+        el('ma-count').textContent=ta.value.length.toLocaleString();
+      };
+      _maRec.onerror=e=>{ if(e.error!=='no-speech'&&e.error!=='aborted') el('ma-hint').textContent='Error: '+e.error; };
+      _maRec.onend=()=>{ if(_maGoing){try{_maRec.start();}catch{}} };
+      try { _maRec.start(); } catch {}
+      el('ma-hint').textContent='Recording… tap to stop';
+    } else { el('ma-hint').textContent='Recording (Chrome/Edge for live text)…'; }
+  }
+
+  function maStopRec() {
+    _maGoing=false; clearInterval(_maTimer); cancelAnimationFrame(_maRaf);
+    if(_maRec){try{_maRec.stop();}catch{} _maRec=null;}
+    _maStream.getTracks().forEach(t=>t.stop());
+    el('ma-mic-btn').classList.remove('on'); el('ma-rec-time').classList.remove('on');
+    el('ma-hint').textContent='Polishing…'; maClearWave();
+    const finalize = async () => {
+      const blob=new Blob(_maMrChunks,{type:_maMr?(_maMr.mimeType||'audio/webm'):'audio/webm'});
+      if(blob.size>500){
+        el('ma-proc-row').style.display='flex';
+        try {
+          const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
+          const res=await fetch('/api/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,mimeType:blob.type})});
+          const d=await res.json();
+          if(d.transcript&&d.transcript.trim()){
+            const ta=el('ma-textarea'); ta.value=d.transcript.trim();
+            el('ma-count').textContent=ta.value.length.toLocaleString();
+          }
+        } catch {}
+        el('ma-proc-row').style.display='none';
+      }
+      el('ma-hint').textContent='Done — tap to record again.'; el('ma-rec-time').textContent='0:00';
+    };
+    if(_maMr&&_maMr.state==='recording'){_maMr.onstop=finalize;_maMr.stop();}else finalize();
+  }
+
+  function maDrawWave(){
+    const cv=el('ma-wv'),cx=cv.getContext('2d'),W=cv.width,H=cv.height;
+    const buf=new Uint8Array(_maAnalyser.frequencyBinCount);
+    function frame(){
+      _maRaf=requestAnimationFrame(frame); _maAnalyser.getByteFrequencyData(buf);
+      const avg=buf.reduce((a,b)=>a+b,0)/buf.length; cx.clearRect(0,0,W,H);
+      if(avg<5)return;
+      const bw=W/buf.length*2.2;
+      buf.forEach((v,i)=>{if(v<5)return;cx.fillStyle=`rgba(139,92,246,${0.2+(v/255)*0.8})`;cx.fillRect(i*bw,H-(v/255)*H,Math.max(1,bw-1),(v/255)*H);});
+    }
+    frame();
+  }
+  function maClearWave(){ const cv=el('ma-wv'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height); }
+</script>
+
+<!-- Firebase loads last -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+  try {
+    firebase.initializeApp({apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",authDomain:"geniusnotes-ai.firebaseapp.com",projectId:"geniusnotes-ai",storageBucket:"geniusnotes-ai.firebasestorage.app",messagingSenderId:"1041746856723",appId:"1:1041746856723:web:fae9072e0292c3946068e6"});
+    firebase.auth().onAuthStateChanged(u => { if (u && u.uid !== currentUid) currentUid = u.uid; });
+  } catch(e) {}
+</script>
+
+<script src="js/recorder.js"></script>
+</body>
+</html>

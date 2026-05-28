@@ -75,19 +75,314 @@ async function fetchVideoContent(videoId, url) {
   throw new Error('Could not extract content from this video. Please try a different video.');
 }
 
-function getPrompt(mode, transcript) {
-  const t = transcript.slice(0, 12000);
+function getNotePrompt(style, t) {
+  const q = '"quote":{"text":"Famous relevant quote about the subject or learning","author":"Person Name"},';
+  if (!style || style === 'auto') {
+    // Detect best style from content and generate notes
+    return `You are a study note expert. First, read the content and choose the single best note-taking style from this list: detailed, outline, cornell, mindmap, summary, problem, exam, comparison, boxing, charting, mapping, qec.
+
+Rules for choosing:
+- outline → structured topics with clear hierarchy
+- cornell → lecture notes, Q&A, keyword-heavy content
+- mindmap → broad concept overviews
+- detailed → comprehensive content needing full explanation
+- summary → short articles or simple content
+- problem → science/math/engineering problems
+- exam → content explicitly for test prep
+- comparison → content comparing multiple things
+- boxing → distinct named sections/categories
+- charting → data, timelines, or tabular info
+- mapping → geography, systems, or spatial concepts
+- qec → arguments, evidence-based topics
+
+Then generate the notes in that chosen style using the exact JSON schema for that style (see below). Return ONLY valid JSON, nothing else.
+
+DETAILED schema: {"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"detailed",${q}"sections":[{"heading":"...","content":"...","bullets":["..."],"keyTerms":[{"term":"...","def":"..."}]}],"images":[{"query":"...","caption":"..."}]}
+OUTLINE schema: {"title":"...","subject":"...","emoji":"...","style":"outline",${q}"items":[{"level":1,"text":"..."},{"level":2,"text":"..."}]}
+CORNELL schema: {"title":"...","subject":"...","emoji":"...","style":"cornell",${q}"rows":[{"cue":"...","notes":"..."}],"summary":"..."}
+MINDMAP schema: {"title":"...","subject":"...","emoji":"...","style":"mindmap",${q}"center":"...","branches":[{"label":"...","connection":"...","children":["..."]}]}
+SUMMARY schema: {"title":"...","subject":"...","emoji":"...","style":"summary",${q}"overview":"...","bullets":["..."],"keyTerms":[{"term":"...","def":"..."}]}
+PROBLEM schema: {"title":"...","subject":"...","emoji":"...","style":"problem",${q}"problems":[{"question":"...","approach":"...","steps":["..."],"answer":"..."}]}
+EXAM schema: {"title":"...","subject":"...","emoji":"...","style":"exam",${q}"mustKnow":["..."],"qa":[{"q":"...","a":"..."}],"tips":["..."]}
+COMPARISON schema: {"title":"...","subject":"...","emoji":"...","style":"comparison",${q}"items":["..."],"criteria":[{"label":"...","values":["..."]}],"verdict":"..."}
+BOXING schema: {"title":"...","subject":"...","emoji":"...","style":"boxing",${q}"boxes":[{"title":"...","content":"...","tag":"..."}]}
+CHARTING schema: {"title":"...","subject":"...","emoji":"...","style":"charting",${q}"overview":"...","headers":["..."],"rows":[["..."]]}
+MAPPING schema: {"title":"...","subject":"...","emoji":"...","style":"mapping",${q}"center":"...","branches":[{"label":"...","connection":"...","children":[{"label":"...","children":["..."]}]}]}
+QEC schema: {"title":"...","subject":"...","emoji":"...","style":"qec",${q}"items":[{"question":"...","evidence":["..."],"conclusion":"..."}]}
+
+Content:\n${t}`;
+  }
+  switch (style) {
+    case 'outline':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"outline",${q}"items":[{"level":1,"text":"..."},{"level":2,"text":"..."},{"level":3,"text":"..."}]}
+Rules: 3-5 level-1 headings, each with 3-5 level-2 sub-points, key ones with level-3 details. Cover all topics. Start with { end with }.
+Content:\n${t}`;
+
+    case 'cornell':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"cornell",${q}"rows":[{"cue":"Short keyword or question (max 6 words)","notes":"Detailed explanation 2-4 sentences"}],"summary":"2-3 sentence overall summary"}
+Rules: 8-12 rows. Cues = keywords/questions. Notes = full explanations. Start with { end with }.
+Content:\n${t}`;
+
+    case 'mindmap':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"mindmap",${q}"mermaid":"mindmap\\n  root((Central Topic))\\n    Branch1\\n      Leaf1\\n      Leaf2\\n    Branch2\\n      Leaf3"}
+Rules: 4-6 main branches, 2-4 sub-items each. Keep node text SHORT (1-5 words). Proper Mermaid mindmap indentation. Start with { end with }.
+Content:\n${t}`;
+
+    case 'summary':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"summary",${q}"overview":"2-3 sentence introduction","keyPoints":["Key point (1-2 sentences)"],"keyTakeaways":["Main lesson 1","Main lesson 2","Main lesson 3"]}
+Rules: 5-8 key points. Be concise. No filler. Start with { end with }.
+Content:\n${t}`;
+
+    case 'problem':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"problem",${q}"intro":"Brief context","problems":[{"question":"Problem statement","steps":["Step 1 with $math$ if needed","Step 2"],"answer":"Final answer","formula":"LaTeX or null"}]}
+Rules: Extract or create 3-5 representative worked problems. Full step-by-step solutions with math where relevant. Start with { end with }.
+Content:\n${t}`;
+
+    case 'exam':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"exam",${q}"mustKnow":["Critical fact 1"],"keyTerms":[{"term":"...","definition":"..."}],"practiceQA":[{"q":"...","a":"..."}],"formulas":[{"label":"...","latex":"..."}],"tips":["Exam tip"]}
+Rules: 5-8 must-know facts, 6-10 key terms, 4-6 Q&A pairs, relevant formulas, 2-3 exam tips. Start with { end with }.
+Content:\n${t}`;
+
+    case 'comparison':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"comparison",${q}"overview":"Brief intro","tables":[{"title":"...","headers":["Feature","Option A","Option B"],"rows":[["feature","val A","val B"]]}]}
+Rules: 2-3 comparison tables covering main contrasts. Start with { end with }.
+Content:\n${t}`;
+
+    case 'boxing':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"boxing",${q}"boxes":[{"title":"Concept name","content":"2-3 sentence explanation","tag":"optional label e.g. Definition|Process|Example|Formula|Warning"}]}
+Rules: 5-8 concept boxes. Each box is a self-contained idea. Start with { end with }.
+Content:\n${t}`;
+
+    case 'charting':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"charting",${q}"overview":"1-2 sentence intro","headers":["Topic","Description","Key Detail","Significance"],"rows":[["Topic name","What it is","Specific detail or example","Why it matters"]]}
+Rules: 6-10 rows covering all main topics. Each cell concise (1 sentence). Start with { end with }.
+Content:\n${t}`;
+
+    case 'mapping':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"mapping",${q}"center":"Central concept (3-5 words)","branches":[{"label":"Branch topic","connection":"relates via","children":["sub-point 1","sub-point 2","sub-point 3"]}]}
+Rules: 4-6 branches, 2-4 children each. Keep all labels SHORT (1-5 words). Start with { end with }.
+Content:\n${t}`;
+
+    case 'qec':
+      return `You are a study note expert. Return ONLY valid JSON — no markdown fences, nothing before { or after }.
+{"title":"...","subject":"biology|chemistry|physics|math|history|economics|literature|cs|other","emoji":"...","style":"qec",${q}"items":[{"question":"A key question from the material","evidence":["Supporting fact or point 1","Supporting fact or point 2","Supporting fact or point 3"],"conclusion":"Direct answer supported by the evidence (1-2 sentences)"}]}
+Rules: 4-6 Q/E/C items covering the main ideas. Questions should be analytical, not trivial. Start with { end with }.
+Content:\n${t}`;
+
+    default: // detailed
+      return `You are an expert study note generator. Convert the content below into visually rich, structured study notes. Respond with ONLY a valid JSON object — no markdown fences, no text before { or after }.
+
+{
+  "title": "Concise topic title",
+  "subject": "biology|chemistry|physics|math|history|economics|literature|cs|other",
+  "emoji": "single relevant emoji",
+  "quote": {"text": "Famous relevant quote about the subject or learning", "author": "Person Name"},
+  "overview": "2-3 sentences introducing the topic",
+  "sections": [
+    {"heading": "Section title", "content": "Detailed explanation using **bold** for key terms. Use - for bullet points. 3-5 sentences or bullets.", "type": "concept"}
+  ],
+  "keyTerms": [
+    {"term": "Term", "definition": "Clear definition", "example": "Optional real example or null"}
+  ],
+  "formulas": [
+    {"label": "Formula name", "latex": "valid LaTeX e.g. F=ma", "note": "What the variables mean"}
+  ],
+  "visuals": [
+    {"query": "specific Wikipedia article title for a helpful diagram", "caption": "What this diagram shows"}
+  ],
+  "processFlow": null,
+  "comparisonTable": null,
+  "graphs": [],
+  "keyTakeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"]
+}
+
+Subject rules:
+- math/physics/chemistry: populate formulas[] with LaTeX notation
+- math: if content contains functions, populate graphs[] with Desmos expressions like "y=x^2+3x-2"
+- biology/chemistry/physics/anatomy: populate visuals[] with 1-3 specific Wikipedia queries
+- any process: set processFlow to {"title":"Name","steps":["Step 1","Step 2","Step 3"]}
+- any comparison: set comparisonTable to {"headers":["Feature","A","B"],"rows":[["feature","val A","val B"]]}
+- Include 3-5 sections, 4-8 keyTerms, 3 keyTakeaways minimum
+- Return ONLY the JSON. Start with { end with }
+
+Content:
+${t}`;
+  }
+}
+
+function getPrompt(mode, transcript, highlightPrompt, noteStyle, count = 8) {
+  const t = transcript.slice(0, mode === 'flashcards' ? 50000 : 12000);
   switch (mode) {
     case 'keypoints':
-      return `Extract the key points from the following YouTube video transcript. Format your response as:\n\nKey Points:\n1. point one\n2. point two\n3. ...\n\n(List at least 5 specific, actionable key points.)\n\nTranscript:\n${t}`;
-    case 'notes':
-      return `Generate structured study notes from the following YouTube video transcript. Format your response as:\n\n# Topic\n\n## Section 1\n- note\n- note\n\n## Section 2\n- note\n- note\n\n(Organize into clear sections with bullet points, suitable for studying.)\n\nTranscript:\n${t}`;
-    case 'quizzes':
-      return `Generate 5 quiz questions with answers from the following YouTube video transcript. Format your response as:\n\nQ1: [question]\nA: [answer]\n\nQ2: [question]\nA: [answer]\n\n...\n\n(Make questions specific and educational, covering the main concepts.)\n\nTranscript:\n${t}`;
-    case 'flashcards':
-      return `Generate exactly 8 flashcard pairs from the following text. Respond with ONLY a valid JSON array — no markdown, no explanation, nothing else:\n[{"front":"term or question","back":"definition or answer"},{"front":"...","back":"..."},...]\n\nText:\n${t}`;
+    case 'summarize':
     default:
-      return `Summarize the following YouTube video transcript. Structure your response as:\n\nOverview: One sentence.\n\nKey Points:\n• point 1\n• point 2\n• ...\n\nTakeaway: One sentence conclusion.\n\nTranscript:\n${t}`;
+      return `You are an expert content summarizer. Produce a rich, well-structured summary of the content below that a student could use to fully understand it without reading the original.
+
+Format your response exactly like this:
+
+**Overview**
+2-3 sentences capturing the core subject, purpose, and scope.
+
+**Key Points**
+• [Specific point with enough detail to stand alone — not vague]
+• [Another key point]
+• [Continue for all major ideas — aim for 5-8 bullets]
+
+**Notable Details & Examples**
+• [Specific example, statistic, analogy, or insight from the content]
+• [Another if present — skip this section only if truly none exist]
+
+**Takeaway**
+One strong sentence summarizing the main lesson or conclusion.
+
+Rules: Be specific and direct. Never write "the video/text discusses..." — just state the content. Avoid padding. If a point has a number, date, or name attached, include it.
+
+Content:
+${t}`;
+
+    case 'notes':
+      return getNotePrompt(noteStyle || 'detailed', t);
+
+    case '_notes_unused':
+      return `You are an expert study note generator. Convert the content below into visually rich, structured study notes. Respond with ONLY a valid JSON object — no markdown fences, no text before { or after }.
+
+{
+  "title": "Concise topic title",
+  "subject": "biology|chemistry|physics|math|history|economics|literature|cs|other",
+  "emoji": "single relevant emoji",
+  "overview": "2-3 sentences introducing the topic and why it matters",
+  "sections": [
+    {"heading": "Section title", "content": "Detailed explanation using **bold** for key terms. Use - for bullet points. 3-5 sentences or bullets.", "type": "concept"}
+  ],
+  "keyTerms": [
+    {"term": "Term", "definition": "Clear 1-2 sentence definition", "example": "Optional real example or null"}
+  ],
+  "formulas": [
+    {"label": "Formula name", "latex": "valid LaTeX e.g. F=ma", "note": "What the variables mean"}
+  ],
+  "visuals": [
+    {"query": "specific Wikipedia article title for a helpful diagram", "caption": "What this diagram shows"}
+  ],
+  "processFlow": null,
+  "comparisonTable": null,
+  "graphs": [],
+  "keyTakeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"]
+}
+
+Subject rules:
+- math/physics/chemistry: populate formulas[] with LaTeX notation
+- math: if content contains functions (e.g. f(x)=x^2, y=sin(x), parabola, linear, quadratic), populate graphs[] with Desmos-compatible expressions like "y=x^2+3x-2" or "y=\\sin(x)"; include every plottable function mentioned
+- biology/chemistry/physics/anatomy: populate visuals[] with 1-3 specific Wikipedia queries
+- any process (cell division, reaction, historical sequence): set processFlow to {"title":"Process Name","steps":["Step 1","Step 2","Step 3"]}
+- any comparison (A vs B, types of X): set comparisonTable to {"headers":["Feature","A","B"],"rows":[["feature","val A","val B"]]}
+- Include 3-5 sections, 4-8 keyTerms, 3 keyTakeaways minimum
+- Return ONLY the JSON. Start with { end with }
+
+Content:
+${t}`;
+
+    case 'quizzes':
+      return `You are an expert educator. Generate 6 quiz questions from the content below. Include a mix of: factual recall (2), conceptual understanding (2), and application or analysis (2).
+
+Format exactly like this:
+
+Q1: [Question]
+A: [Answer — 1 to 3 sentences, precise and complete]
+
+Q2: [Question]
+A: [Answer]
+
+[continue through Q6]
+
+Rules: Make every question specific to the content — no generic questions that could apply to any topic. Avoid yes/no questions. Each answer must be self-contained and correct. Vary difficulty across the 6 questions.
+
+Content:
+${t}`;
+
+    case 'flashcards':
+      return `Generate exactly ${count} high-quality flashcard pairs. Respond with ONLY a valid JSON array, no markdown, no explanation, nothing before or after the array:
+[{"front":"term or question (max 10 words)","back":"clear complete answer (1-2 sentences)"},...]
+
+Rules:
+- Generate exactly ${count} pairs
+- Front: specific term, concept, date, person, or short question
+- Back: accurate and complete explanation
+- Cover different aspects — no repeated ideas
+- Be factually accurate
+
+Content/Topic:
+${t}`;
+
+    case 'highlight':
+      if (highlightPrompt) {
+        return `You are a text highlighting assistant. The user wants to highlight: "${highlightPrompt}"
+
+Your job: search the TEXT BELOW and return a list of short phrases that, when searched for in the document, will highlight exactly what the user asked for.
+
+HOW TO HANDLE EACH TYPE OF REQUEST:
+
+• "questions" / "textbook questions" / "review questions" / "discussion questions"
+  → FIND THE OPENING 8–10 WORDS OF EVERY SINGLE QUESTION IN THE TEXT — do not skip any
+  → Questions include BOTH interrogative style (What, How, Why, When, Where, Which, Do, Should, Is, Are) AND directive style (Discuss, Describe, Compare, Explain, Identify, List, Give, In reviewing, Because, Table)
+  → For EACH numbered or unnumbered question found, return its first 8–10 words as one entry
+  → If the text has 11 questions, return 11 entries — count them and ensure every question has an entry
+  → Example output for 3 questions: ["Give an example of a drug-using friend and", "Discuss and debate whether the often considered benign", "What is the future of prescription drug abuse"]
+
+• "definitions" / "key terms" / "vocabulary"
+  → Find the term names being defined (the word/phrase before "is defined as", "refers to", "means", etc.)
+  → Example output: ["psychoactive drug", "physical dependence", "tolerance"]
+
+• "headings" / "subheadings" / "chapter titles"
+  → Extract the exact heading text from the text
+  → Example output: ["Introduction to Drug Use", "Effects of Stimulants"]
+
+• "main concepts" / "key ideas" / "central themes"
+  → Find topic sentences and concept names from the text
+
+• "examples" / "case studies"
+  → Find "for example", "such as", phrases that introduce examples
+
+• "names" / "people" / "organizations"
+  → Find proper nouns in the text
+
+• "drug types" / "drug names" / "substances"
+  → Find drug names from the text; supplement with your knowledge (cocaine, heroin, etc.)
+  → Use singular form: "inhalant" not "inhalants"
+
+• "dates" / "statistics" / "facts"
+  → Find numbers, years, percentages from the text
+
+CRITICAL RULES:
+- NEVER return the user's prompt text as a term (e.g. never output "highlight textbook questions")
+- Only return things that EXIST IN THE TEXT or are known category terms to search for
+- For questions: entries can be 8–12 words; for terms/names: keep entries short (1–5 words)
+- No duplicates, no explanations, no markdown
+
+Return ONLY a JSON array:
+["term or phrase","another one",...]
+
+Text:
+${t}`;
+      }
+      return `You are a study assistant. Given the text below, do the following internally:
+1. Generate 8–12 test questions covering the key facts, concepts, and ideas.
+2. For each question, find the exact verbatim phrase(s) from the text that contain the answer.
+
+Return ONLY a valid JSON array of those answer phrases — exact copies from the text, 3–10 words each. No duplicates. No questions in output. No explanations. No markdown:
+["exact phrase from text","another exact phrase",...]
+
+Text:
+${t}`;
   }
 }
 
@@ -99,25 +394,51 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { url, text, mode = 'summarize' } = req.body || {};
+    const { url, text, mode = 'summarize', highlightPrompt, noteStyle, count = 8 } = req.body || {};
     if (!url && !text) return res.status(400).json({ error: 'Missing YouTube URL or text content' });
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
-    // Direct text input path (upload panel)
+    // Direct text input path (upload panel / Magic Assist)
     if (text) {
       if (mode === 'transcribe') return res.status(400).json({ error: 'Transcribe mode requires a YouTube URL.' });
-      const prompt = getPrompt(mode, text);
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 1000, temperature: 0.3 })
-      });
-      const data = await groqRes.json();
+      const prompt = getPrompt(mode, text, highlightPrompt, noteStyle, count);
+      const maxTok = mode === 'flashcards' ? 4000 : mode === 'highlight' ? 2000 : mode === 'notes' ? 2000 : 1500;
+      let groqRes, data;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3 })
+        });
+        data = await groqRes.json();
+        if (groqRes.status === 429 && attempt === 0) {
+          const msg = data.error?.message || '';
+          const wait = parseFloat(msg.match(/try again in ([\d.]+)s/i)?.[1] || '6');
+          await new Promise(r => setTimeout(r, Math.ceil(wait * 1000) + 500));
+          continue;
+        }
+        break;
+      }
       if (!groqRes.ok) return res.status(500).json({ error: data.error?.message || 'Groq error' });
       const summary = data.choices?.[0]?.message?.content;
       if (!summary) return res.status(500).json({ error: 'No result returned' });
+
+      // For flashcards mode, parse the JSON array and return it directly
+      if (mode === 'flashcards') {
+        let cards = null;
+        const start = summary.indexOf('[');
+        const end = summary.lastIndexOf(']');
+        if (start !== -1 && end > start) {
+          try { cards = JSON.parse(summary.slice(start, end + 1)); } catch {}
+        }
+        if (!cards) { try { cards = JSON.parse(summary); } catch {} }
+        if (cards) return res.status(200).json({ flashcards: cards });
+        // fallback: return raw so client can try parsing
+        return res.status(200).json({ summary });
+      }
+
       return res.status(200).json({ summary });
     }
 
@@ -137,7 +458,7 @@ module.exports = async function handler(req, res) {
     const transcript = await fetchVideoContent(videoId, url);
     if (!transcript || transcript.length < 50) throw new Error('Could not extract enough content from this video.');
 
-    const prompt = getPrompt(mode, transcript);
+    const prompt = getPrompt(mode, transcript, highlightPrompt, noteStyle);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

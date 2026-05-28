@@ -1,0 +1,986 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History — GeniusNotes AI</title>
+  <style>
+    :root { --bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.07);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7; }
+    :root.light { --bg:#F4F4FC;--surface:#fff;--surface2:#F0F0FA;--border:rgba(0,0,0,0.08);--text:#0A0A1A;--muted:#666677; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;transition:background 0.2s,color 0.2s;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;}
+    :root.light nav{background:rgba(244,244,252,0.92);}
+    
+    param($m)
+    $inner = $m.Groups[2].Value
+    if ($inner -notmatch 'display\s*:') {
+      $m.Groups[1].Value + 'display:flex;align-items:center;gap:8px;' + $inner + $m.Groups[3].Value
+    } else { $m.Value }
+  
+    .nav-logo .ai{color:var(--purple2);}
+    .nav-back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;padding:6px 12px;border-radius:8px;transition:color 0.15s,background 0.15s;}
+    .nav-back:hover{color:var(--text);background:var(--surface);}
+
+    .main{max-width:800px;margin:0 auto;padding:48px 40px;}
+    .page-header{display:flex;align-items:center;gap:16px;margin-bottom:32px;}
+    .page-icon{font-size:2rem;}
+    .page-title{font-size:1.6rem;font-weight:800;}
+    .page-sub{font-size:0.85rem;color:var(--muted);margin-top:2px;}
+    .filter-tabs{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;}
+    .filter-tab{padding:6px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:0.8rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all 0.15s;}
+    .filter-tab.active,.filter-tab:hover{border-color:var(--purple);color:var(--purple2);background:rgba(139,92,246,0.1);}
+
+    .history-list{display:flex;flex-direction:column;gap:14px;}
+    .history-item{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color 0.15s;}
+    .history-item:hover{border-color:rgba(139,92,246,0.3);}
+    .item-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;}
+    .item-type-badge{font-size:0.68rem;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+    .badge-notes{background:rgba(167,139,250,0.15);color:var(--purple2);}
+    .badge-notepad{background:rgba(16,185,129,0.13);color:#10B981;}
+    .nf-group{margin-bottom:10px;}
+    .nfg-hdr{display:flex;align-items:center;gap:8px;padding:11px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;user-select:none;transition:background 0.12s;margin-bottom:4px;}
+    .nfg-hdr:hover{background:var(--surface2);}
+    .nfg-name{font-size:0.88rem;font-weight:700;color:var(--text);flex:1;}
+    .nfg-count{font-size:0.72rem;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:20px;}
+    .nfg-del{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;padding:2px 6px;transition:opacity 0.12s,color 0.12s;}
+    .nfg-hdr:hover .nfg-del{opacity:1;}
+    .nfg-del:hover{color:#ff5555;}
+    .nfg-edit{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.78rem;padding:2px 6px;transition:opacity 0.12s,color 0.12s;}
+    .nfg-hdr:hover .nfg-edit{opacity:1;}
+    .nfg-edit:hover{color:var(--purple2);}
+    .nfg-arrow{font-size:0.62rem;color:var(--muted);transition:transform 0.15s;flex-shrink:0;}
+    .nfg-arrow.open{transform:rotate(90deg);}
+    .nf-sep{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding:14px 4px 6px;opacity:0.6;}
+    .badge-quizzes{background:rgba(245,158,11,0.15);color:#F59E0B;}
+    .badge-flashcards{background:rgba(79,195,247,0.15);color:var(--cyan);}
+    .badge-summarize{background:rgba(52,211,153,0.15);color:#34D399;}
+    .badge-homework{background:rgba(251,146,60,0.15);color:#FB923C;}
+    .badge-lyrics{background:rgba(79,195,247,0.12);color:#4FC3F7;}
+    .badge-citation{background:rgba(139,92,246,0.12);color:#A78BFA;}
+    .badge-writing{background:rgba(236,72,153,0.12);color:#EC4899;}
+    .badge-checker{background:rgba(245,158,11,0.12);color:#F59E0B;}
+    .badge-transcribe{background:rgba(79,195,247,0.12);color:#4FC3F7;}
+    .badge-photo{background:rgba(251,146,60,0.12);color:#FB923C;}
+    .badge-video{background:rgba(52,211,153,0.12);color:#34D399;}
+    .badge-document{background:rgba(139,92,246,0.12);color:#A78BFA;}
+    .item-title{flex:1;font-size:0.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .item-date{font-size:0.75rem;color:var(--muted);white-space:nowrap;}
+    .item-chevron{color:var(--muted);font-size:0.75rem;transition:transform 0.2s;}
+    .item-chevron.open{transform:rotate(180deg);}
+    .item-body{display:none;padding:0 20px 18px;border-top:1px solid var(--border);}
+    .item-body.open{display:block;}
+    .item-content{font-size:0.84rem;line-height:1.7;color:var(--text);white-space:pre-wrap;margin-top:14px;max-height:400px;overflow-y:auto;}
+    .item-actions{display:flex;gap:10px;margin-top:14px;}
+    .action-btn{padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.15s;}
+    .action-btn:hover{color:var(--text);border-color:var(--muted);}
+    .action-btn.delete{color:#F87171;border-color:rgba(248,113,113,0.3);}
+    .action-btn.delete:hover{background:rgba(248,113,113,0.1);border-color:#F87171;}
+    .action-btn.notepad{color:var(--purple2);border-color:rgba(139,92,246,0.3);}
+    .action-btn.notepad:hover{background:rgba(139,92,246,0.1);border-color:var(--purple2);}
+
+    /* flashcard grid in history */
+    .fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px;}
+    .fc-cell{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+    .fc-cell-front{font-size:0.8rem;font-weight:700;color:var(--purple2);margin-bottom:6px;}
+    .fc-cell-back{font-size:0.8rem;color:var(--muted);line-height:1.5;}
+
+    .empty-state{text-align:center;padding:80px 20px;color:var(--muted);}
+    .empty-icon{font-size:3rem;margin-bottom:16px;}
+    .empty-title{font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:8px;}
+    .empty-desc{font-size:0.85rem;line-height:1.6;}
+    .empty-link{display:inline-block;margin-top:20px;padding:10px 24px;background:var(--purple);color:#fff;border-radius:100px;text-decoration:none;font-size:0.85rem;font-weight:700;}
+
+    .clear-all-btn{padding:7px 16px;border-radius:8px;border:1px solid rgba(248,113,113,0.3);background:transparent;color:#F87171;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;margin-left:auto;}
+    .clear-all-btn:hover{background:rgba(248,113,113,0.1);border-color:#F87171;}
+
+    @media(max-width:600px){.main{padding:32px 16px;}nav{padding:0 16px;}.fc-grid{grid-template-columns:1fr;}}
+
+    /* ── AI Recall ── */
+    .recall-panel{background:var(--surface);border:1px solid rgba(139,92,246,0.25);border-radius:16px;margin-bottom:24px;overflow:hidden;transition:border-color 0.2s;}
+    .recall-panel:focus-within{border-color:rgba(139,92,246,0.45);}
+    .recall-header{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;user-select:none;}
+    .recall-header:hover .recall-htitle{color:var(--purple2);}
+    .recall-star{font-size:1rem;color:var(--purple2);line-height:1;}
+    .recall-title-block{flex:1;}
+    .recall-htitle{font-size:0.88rem;font-weight:700;color:var(--text);transition:color 0.15s;}
+    .recall-hsub{font-size:0.75rem;color:var(--muted);display:block;margin-top:1px;}
+    .recall-hchev{color:var(--muted);font-size:0.6rem;transition:transform 0.2s;}
+    .recall-hchev.closed{transform:rotate(180deg);}
+    .recall-body{padding:0 20px 18px;border-top:1px solid var(--border);}
+    .recall-chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 12px;}
+    .recall-chip{padding:5px 14px;border-radius:100px;border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.07);color:var(--purple2);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+    .recall-chip:hover{background:rgba(139,92,246,0.18);border-color:var(--purple2);}
+    .recall-chip-active{background:rgba(139,92,246,0.25)!important;border-color:var(--purple2)!important;color:#fff!important;}
+    .recall-chip.selected{background:rgba(139,92,246,0.3)!important;border-color:var(--purple)!important;color:#fff!important;font-weight:700!important;}
+    .recall-row{display:flex;gap:10px;}
+    .recall-input{flex:1;padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.85rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
+    .recall-input:focus{border-color:rgba(139,92,246,0.5);}
+    .recall-input::placeholder{color:var(--muted);}
+    .recall-send{padding:10px 20px;border-radius:10px;background:var(--purple);color:#fff;border:none;font-size:0.82rem;font-weight:700;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+    .recall-send:hover{background:#7C3AED;}
+    .recall-send:disabled{opacity:0.45;cursor:not-allowed;}
+    .recall-response{margin-top:16px;border-radius:12px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);padding:16px;}
+    .recall-resp-hdr{font-size:0.72rem;font-weight:700;color:var(--purple2);margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+    .recall-answer{font-size:0.85rem;line-height:1.75;color:var(--text);}
+    .recall-answer strong{color:var(--text);font-weight:700;}
+    .recall-srcs{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .recall-srcs-lbl{font-size:0.7rem;color:var(--muted);font-weight:600;}
+    .recall-src-chip{padding:3px 11px;border-radius:100px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);color:var(--purple2);font-size:0.71rem;font-weight:600;cursor:pointer;transition:all 0.15s;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .recall-src-chip:hover{background:rgba(139,92,246,0.22);}
+    .rdot-wrap{display:flex;gap:5px;align-items:center;padding:4px 0;}
+    .rdot{width:7px;height:7px;border-radius:50%;background:var(--purple2);animation:rdot 1.2s ease-in-out infinite;}
+    .rdot:nth-child(2){animation-delay:0.2s;}
+    .rdot:nth-child(3){animation-delay:0.4s;}
+    @keyframes rdot{0%,80%,100%{transform:scale(0.65);opacity:0.35}40%{transform:scale(1);opacity:1}}
+    .note-highlight{border-color:var(--purple2)!important;box-shadow:0 0 0 2px rgba(139,92,246,0.2);}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="dashboard.html" class="nav-back">← Dashboard</a>
+  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
+  <span></span>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-icon" id="page-icon">📋</div>
+    <div>
+      <div class="page-title" id="page-title">History</div>
+      <div class="page-sub" id="page-sub">Your saved results</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+      <a href="notepad.html" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.07);color:var(--purple2);font-size:0.78rem;font-weight:700;text-decoration:none;transition:all 0.15s;" onmouseover="this.style.background='rgba(139,92,246,0.14)'" onmouseout="this.style.background='rgba(139,92,246,0.07)'">📝 Open Notepad</a>
+      <button class="clear-all-btn" id="clear-all-btn" onclick="clearAll()">Clear all</button>
+    </div>
+  </div>
+
+  <!-- ── AI Recall (My Notes only) ── -->
+  <div class="recall-panel" id="recall-panel" style="display:none">
+    <div class="recall-header" onclick="toggleRecall()">
+      <span class="recall-star">✦</span>
+      <div class="recall-title-block">
+        <span class="recall-htitle">AI Recall</span>
+        <span class="recall-hsub">Ask anything about your saved notes — AI will find the answer</span>
+      </div>
+      <span class="recall-hchev" id="recall-hchev">▲</span>
+    </div>
+    <div class="recall-body" id="recall-body">
+      <div class="recall-chips" id="recall-folder-chips" style="flex-wrap:wrap;gap:7px;margin-bottom:10px;"></div>
+      <div class="recall-row">
+        <input class="recall-input" id="recall-input" type="text" placeholder="Ask a question about your notes…" onkeydown="if(event.key==='Enter')sendRecall()">
+        <button class="recall-send" id="recall-send" onclick="sendRecall()">Ask ✦</button>
+      </div>
+      <div id="recall-response" style="display:none">
+        <div class="recall-response">
+          <div class="recall-resp-hdr"><span>✦</span> AI Recall</div>
+          <div class="recall-answer" id="recall-answer"></div>
+          <div class="recall-srcs" id="recall-srcs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Flashcard Note Browser (Flashcards tab only) ── -->
+  <div class="recall-panel" id="fc-nb-panel" style="display:none">
+    <div class="recall-header" style="cursor:default">
+      <span class="recall-star">🃏</span>
+      <div class="recall-title-block">
+        <span class="recall-htitle">Generate Flashcards from a Note</span>
+        <span class="recall-hsub">Pick a folder, then a note — then click Go to Converter</span>
+      </div>
+    </div>
+    <div style="padding:4px 0 12px">
+      <div id="fc-nb-folders" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+      <div id="fc-nb-notes" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+      <button id="fc-goto-btn" onclick="fcNbGo()" style="background:var(--purple);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:0.84rem;font-weight:700;cursor:default;font-family:inherit;opacity:0.35;pointer-events:none;transition:opacity 0.2s;">Go to Converter →</button>
+    </div>
+  </div>
+
+  <div class="filter-tabs" id="filter-tabs">
+    <a class="filter-tab" href="history.html?type=notepad">📝 My Notes</a>
+    <a class="filter-tab" href="history.html?type=flashcards">🃏 Flashcards</a>
+  </div>
+
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="js/cloud-sync.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+    authDomain:"geniusnotes-ai.firebaseapp.com",
+    projectId:"geniusnotes-ai",
+    storageBucket:"geniusnotes-ai.firebasestorage.app",
+    messagingSenderId:"1041746856723",
+    appId:"1:1041746856723:web:fae9072e0292c3946068e6"
+  });
+  let currentUid = null;
+  let _histDb = null;
+
+  firebase.auth().onAuthStateChanged(function(u) {
+    if (!u) { window.location.href = 'signin.html'; return; }
+    currentUid = u.uid;
+    _histDb = firebase.firestore();
+    // Migrate old shared key to per-user key (one-time)
+    const oldKey = 'gn-history', newKey = 'gn-history-' + currentUid;
+    if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, localStorage.getItem(oldKey));
+      localStorage.removeItem(oldKey);
+    }
+    // Real-time sync: pulls from Firestore, re-renders on any remote change
+    GNSync.init(currentUid, _histDb, {
+      onReady: function() { render(); },
+      onNotes: function() { render(); },
+      onFolders: function() { render(); },
+      onHistory: function() { render(); }
+    });
+  });
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  const params = new URLSearchParams(location.search);
+  const filterType = params.get('type') || 'notepad';
+
+  const meta = {
+    all:                { icon:'📋', title:'All History',          sub:'Everything you\'ve generated' },
+    notepad:            { icon:'📝', title:'My Notes',              sub:'Notes you\'ve written and saved in the Notepad' },
+    notes:              { icon:'📝', title:'AI Notes',              sub:'Study notes generated from your content' },
+    'notes-and-youtube':{ icon:'📝', title:'AI Notes & Summaries', sub:'Notes and YouTube converter summaries' },
+    quizzes:            { icon:'❓', title:'Quizzes',               sub:'Quiz questions generated from your content' },
+    flashcards:         { icon:'🃏', title:'Flashcards',            sub:'Flashcard decks you\'ve created' },
+    summarize:          { icon:'✨', title:'Summaries',             sub:'Summaries from YouTube and documents' },
+    homework:           { icon:'📸', title:'Homework',              sub:'Step-by-step homework solutions' },
+    lyrics:             { icon:'🎤', title:'Song Lyrics',           sub:'Lyrics you\'ve extracted' },
+    citation:           { icon:'📚', title:'Citations',             sub:'Citations you\'ve generated' },
+    writing:            { icon:'✍️', title:'Writing',              sub:'Writing tool results' },
+    checker:            { icon:'🔍', title:'AI Checker',            sub:'AI detection and grammar analysis' },
+    photos:             { icon:'📷', title:'Photos',                sub:'Homework and photo uploads' },
+    video:              { icon:'🎬', title:'Video',                 sub:'Video files you\'ve processed' },
+    documents:          { icon:'📄', title:'Documents',             sub:'Uploaded PDF, DOCX, and TXT files' },
+  };
+  const m = meta[filterType] || meta.notepad;
+  document.getElementById('page-icon').textContent = m.icon;
+  document.getElementById('page-title').textContent = m.title;
+  document.getElementById('page-sub').textContent = m.sub;
+  document.title = m.title + ' — GeniusNotes AI';
+
+  // Show correct panel for current tab
+  if (filterType === 'flashcards') {
+    document.getElementById('fc-nb-panel').style.display = '';
+    document.getElementById('recall-panel').style.display = 'none';
+  } else if (filterType === 'notepad' || !filterType) {
+    document.getElementById('recall-panel').style.display = '';
+    document.getElementById('fc-nb-panel').style.display = 'none';
+  }
+
+  // ── Flashcard note browser ──
+  let _fcNbFolder = null;
+  function renderFcNb() {
+    const foldersEl = document.getElementById('fc-nb-folders');
+    const notesEl = document.getElementById('fc-nb-notes');
+    if (!foldersEl || !notesEl) return;
+    const folders = getNotepadFolders();
+    const history = getHistory();
+    if (_fcNbFolder === null) {
+      let html = '';
+      for (const f of folders) {
+        const hasnotes = history.some(i => i.type === 'notepad' && i.folderId === f.id);
+        if (!hasnotes) continue;
+        html += `<button class="recall-chip" onclick="fcNbOpen('${f.id}','${f.name.replace(/'/g,"\\'")}')">📁 ${f.name}</button>`;
+      }
+      const unfiled = history.filter(i => i.type === 'notepad' && !i.folderId);
+      if (unfiled.length) html += `<button class="recall-chip" onclick="fcNbOpen('unfiled','Unfiled')">📄 Unfiled</button>`;
+      if (!html) html = '<span style="font-size:0.82rem;color:var(--muted)">No saved notes yet.</span>';
+      foldersEl.innerHTML = html;
+      notesEl.innerHTML = '';
+    } else {
+      const folderName = _fcNbFolder === 'unfiled' ? 'Unfiled' : _fcNbFolder.name;
+      foldersEl.innerHTML = `<button class="recall-chip" onclick="fcNbBack()" style="opacity:0.7">← Back</button>
+        <span class="recall-chip recall-chip-active">📁 ${folderName}</span>`;
+      let notes = _fcNbFolder === 'unfiled'
+        ? history.filter(i => i.type === 'notepad' && !i.folderId)
+        : history.filter(i => i.type === 'notepad' && i.folderId === _fcNbFolder.id);
+      const seen = new Set();
+      const deduped = [];
+      for (const n of [...notes].reverse()) {
+        const key = n.noteId || n.title || n.id;
+        if (seen.has(key)) continue; seen.add(key); deduped.push(n);
+      }
+      notesEl.innerHTML = deduped.length
+        ? deduped.map(n => `<button class="recall-chip${_fcNbSelected === n.id ? ' selected' : ''}" data-hid="${n.id}" onclick="fcNbSelect('${n.id}')" title="${(n.title||'Untitled').replace(/"/g,'&quot;')}">📝 ${(n.title||'').slice(0,26)||'Untitled'}</button>`).join('')
+        : '<span style="font-size:0.82rem;color:var(--muted)">No notes in this folder.</span>';
+    }
+  }
+  function fcNbOpen(idOrUnfiled, name) {
+    _fcNbFolder = idOrUnfiled === 'unfiled' ? 'unfiled' : { id: idOrUnfiled, name };
+    renderFcNb();
+  }
+  function fcNbBack() {
+    _fcNbFolder = null;
+    _fcNbSelected = null;
+    ['fc-goto-btn', 'fc-goto-btn-empty'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) { btn.style.opacity = '0.35'; btn.style.cursor = 'default'; btn.style.pointerEvents = 'none'; }
+    });
+    renderFcNb();
+  }
+  let _fcNbSelected = null;
+  function fcNbSelect(histId) {
+    _fcNbSelected = histId;
+    document.querySelectorAll('#fc-nb-notes .recall-chip').forEach(b => b.classList.remove('selected'));
+    const chip = document.querySelector(`#fc-nb-notes [data-hid="${histId}"]`);
+    if (chip) chip.classList.add('selected');
+    ['fc-goto-btn', 'fc-goto-btn-empty'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) { btn.style.opacity = ''; btn.style.cursor = 'pointer'; btn.style.pointerEvents = ''; }
+    });
+  }
+  function fcNbGo() {
+    if (!_fcNbSelected) return;
+    const histItem = getHistory().find(i => i.id === _fcNbSelected);
+    if (!histItem) return;
+    let plain = '';
+    try {
+      const allNotes = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
+      const fullNote = (histItem.noteId ? allNotes.find(n => n.id === histItem.noteId) : null)
+                    || (histItem.title ? allNotes.find(n => n.title === histItem.title) : null);
+      if (fullNote && fullNote.content) {
+        const div = document.createElement('div');
+        div.innerHTML = fullNote.content;
+        plain = (div.innerText || div.textContent || '').trim();
+      }
+    } catch {}
+    if (!plain && histItem.content) plain = histItem.content.trim();
+    if (!plain) return;
+    localStorage.setItem('gn-to-flashcards', plain);
+    window.location.href = 'create-deck.html';
+  }
+
+  // Mark active tab
+  document.querySelectorAll('.filter-tab').forEach(t => {
+    const href = t.getAttribute('href');
+    if (href.includes('type=' + filterType)) t.classList.add('active');
+  });
+
+  function getHistory() {
+    if (!currentUid) return [];
+    try { return JSON.parse(localStorage.getItem('gn-history-' + currentUid) || '[]'); } catch { return []; }
+  }
+  function saveHistory(arr) {
+    if (!currentUid) return;
+    localStorage.setItem('gn-history-' + currentUid, JSON.stringify(arr));
+    if (_histDb) {
+      const batch = _histDb.batch();
+      arr.forEach(function(item) {
+        if (item && item.id) batch.set(_histDb.doc('users/' + currentUid + '/history/' + item.id), item, { merge: true });
+      });
+      batch.commit().catch(function() {});
+    }
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) + ' · ' +
+           d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+  }
+
+  function badgeClass(type) {
+    return {
+      notepad:'badge-notepad', notes:'badge-notes', summarize:'badge-summarize',
+      quizzes:'badge-quizzes', flashcards:'badge-flashcards',
+      homework:'badge-homework', lyrics:'badge-lyrics',
+      citation:'badge-citation', writing:'badge-writing', checker:'badge-checker',
+      transcribe:'badge-transcribe', photo:'badge-photo', video:'badge-video', document:'badge-document'
+    }[type] || 'badge-summarize';
+  }
+  function badgeLabel(type, source, folderName) {
+    const labels = {
+      notepad:'My Note', notes:'AI Notes', quizzes:'Quizzes', flashcards:'Flashcards', summarize:'Summary',
+      homework:'Homework', lyrics:'Lyrics', citation:'Citation', writing:'Writing', checker:'AI Checker',
+      transcribe:'Transcription', photo:'Photo', video:'Video', document:'Document'
+    };
+    const src = source && type !== 'notepad' ? ` · ${source}` : '';
+    const folder = (type === 'notepad' && folderName) ? ` · ${folderName}` : '';
+    return (labels[type] || type) + src + folder;
+  }
+
+  function renderContent(item) {
+    if (item.type === 'flashcards') {
+      try {
+        const cards = JSON.parse(item.content);
+        return '<div class="fc-grid">' + cards.map(c =>
+          `<div class="fc-cell"><div class="fc-cell-front">${esc(c.front)}</div><div class="fc-cell-back">${esc(c.back)}</div></div>`
+        ).join('') + '</div>';
+      } catch { return `<div class="item-content">${esc(item.content)}</div>`; }
+    }
+    return `<div class="item-content">${esc(item.content)}</div>`;
+  }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function isYouTubeUrl(s) {
+    return /^https?:\/\/(www\.)?youtube\.com\/watch|youtu\.be\//.test(s);
+  }
+  async function fetchYtTitle(url) {
+    try {
+      const r = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
+      if (r.ok) { const d = await r.json(); return d.title || null; }
+    } catch {}
+    return null;
+  }
+  async function resolveYtTitles() {
+    const items = getHistory();
+    const ytItems = items.filter(i => i.source === 'YouTube' && isYouTubeUrl(i.title));
+    if (!ytItems.length) return;
+    for (const item of ytItems) {
+      const title = await fetchYtTitle(item.title);
+      if (!title) continue;
+      item.title = title;
+      const el = document.getElementById('item-' + item.id);
+      if (el) el.querySelector('.item-title').textContent = title;
+    }
+    saveHistory(items);
+  }
+
+  function deleteItem(id) {
+    const arr = getHistory().filter(i => i.id !== id);
+    saveHistory(arr);
+    GNSync.deleteHistItem(currentUid, _histDb, id);
+    render();
+  }
+
+  function copyItem(id) {
+    const item = getHistory().find(i => i.id === id);
+    if (!item) return;
+    let text = item.content;
+    if (item.type === 'flashcards') {
+      try {
+        const cards = JSON.parse(item.content);
+        text = cards.map((c,i) => `${i+1}. ${c.front}\n   → ${c.back}`).join('\n\n');
+      } catch {}
+    }
+    navigator.clipboard.writeText(text);
+  }
+
+  function openInNotepad(id) {
+    const item = getHistory().find(i => i.id === id);
+    if (!item) return;
+
+    // For notepad-type items that have an original noteId, restore the original note
+    // instead of creating a duplicate with a new ID
+    if (item.type === 'notepad' && item.noteId) {
+      let existing = [];
+      try { existing = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]'); } catch {}
+      const alreadyExists = existing.find(n => n.id === item.noteId);
+      if (alreadyExists) {
+        // Already in notepad — just open it
+        localStorage.setItem('gn-notepad-open', item.noteId);
+        window.location.href = 'notepad.html';
+        return;
+      }
+      // Restore with original noteId so history still links correctly
+      const restored = {
+        id: item.noteId,
+        title: item.title || 'Untitled',
+        content: (item.content || '').split('\n').map(line => `<p>${line || '<br>'}</p>`).join(''),
+        created: new Date(item.date || Date.now()).getTime(),
+        updated: Date.now(),
+        folderId: item.folderId || null
+      };
+      existing.unshift(restored);
+      localStorage.setItem('gn-notepad-notes', JSON.stringify(existing));
+      localStorage.setItem('gn-notepad-open', item.noteId);
+      window.location.href = 'notepad.html';
+      return;
+    }
+
+    // Non-notepad items (AI summaries, YouTube notes, etc.) — create a new note
+    let content = item.content;
+    if (item.type === 'flashcards') {
+      try {
+        const cards = JSON.parse(item.content);
+        content = cards.map((c,i) => `${i+1}. ${c.front}\n   → ${c.back}`).join('\n\n');
+      } catch {}
+    }
+    const htmlContent = content.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
+    const newNote = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      title: item.title || 'Note from History',
+      content: htmlContent,
+      created: Date.now(),
+      updated: Date.now()
+    };
+    let existing = [];
+    try { existing = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]'); } catch {}
+    existing.unshift(newNote);
+    localStorage.setItem('gn-notepad-notes', JSON.stringify(existing));
+    localStorage.setItem('gn-notepad-open', newNote.id);
+    window.location.href = 'notepad.html';
+  }
+
+  function clearAll() {
+    if (!confirm('Clear all history' + (filterType !== 'all' ? ' for this category' : '') + '? This cannot be undone.')) return;
+    if (filterType === 'all') {
+      saveHistory([]);
+    } else if (filterType === 'notepad') {
+      saveHistory(getHistory().filter(i => i.type !== 'notepad'));
+    } else if (filterType === 'notes-and-youtube') {
+      saveHistory(getHistory().filter(i => i.type !== 'notes' && i.type !== 'summarize'));
+    } else if (filterType === 'photos') {
+      saveHistory(getHistory().filter(i => i.source !== 'Photo'));
+    } else if (filterType === 'video') {
+      saveHistory(getHistory().filter(i => i.source !== 'Video'));
+    } else if (filterType === 'documents') {
+      saveHistory(getHistory().filter(i => i.source !== 'PDF' && i.source !== 'DOCX' && i.source !== 'TXT'));
+    } else {
+      saveHistory(getHistory().filter(i => i.type !== filterType));
+    }
+    render();
+  }
+
+  // ── Notepad folder management ──
+  const collapsedNoteFolders = new Set();
+
+  function getNotepadFolders() {
+    try { return JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]'); } catch { return []; }
+  }
+  function saveNotepadFolders(arr) {
+    localStorage.setItem('gn-notepad-folders', JSON.stringify(arr));
+  }
+  function newNotepadFolder() {
+    showHistoryPrompt('New Folder', 'Enter a name for your folder', '', function(name) {
+      if (!name || !name.trim()) return;
+      const folders = getNotepadFolders();
+      const folder = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), name: name.trim() };
+      folders.push(folder);
+      saveNotepadFolders(folders);
+      GNSync.writeFolder(currentUid, _histDb, folder);
+      render();
+    });
+  }
+  function deleteNotepadFolder(e, folderId) {
+    e.stopPropagation();
+    if (!confirm('Delete folder? Notes inside become unfiled.')) return;
+    const folders = getNotepadFolders();
+    saveNotepadFolders(folders.filter(f => f.id !== folderId));
+    GNSync.deleteFolder(currentUid, _histDb, folderId);
+    const hist = getHistory();
+    hist.forEach(h => { if (h.folderId === folderId) { delete h.folderId; delete h.folderName; } });
+    saveHistory(hist);
+    render();
+  }
+  function renameNotepadFolder(e, folderId) {
+    e.stopPropagation();
+    const folders = getNotepadFolders();
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+    showHistoryPrompt('Rename Folder', 'Enter a new name', folder.name, function(name) {
+      if (!name || !name.trim() || name.trim() === folder.name) return;
+      folder.name = name.trim();
+      saveNotepadFolders(folders);
+      GNSync.writeFolder(currentUid, _histDb, folder);
+      const hist = getHistory();
+      hist.forEach(h => { if (h.folderId === folderId) h.folderName = folder.name; });
+      saveHistory(hist);
+      render();
+    });
+  }
+  function toggleNoteFolder(folderId) {
+    if (collapsedNoteFolders.has(folderId)) collapsedNoteFolders.delete(folderId);
+    else collapsedNoteFolders.add(folderId);
+    render();
+  }
+
+  function renderItemHtml(item, dtFn) {
+    const title = dtFn ? dtFn(item) : item.title;
+    // Notepad items open directly in notepad — no expand needed
+    if (item.type === 'notepad') {
+      return `<div class="history-item" id="item-${item.id}" style="cursor:pointer;" onclick="openInNotepad('${item.id}')">
+        <div class="item-header" style="cursor:pointer;">
+          <span class="item-type-badge ${badgeClass(item.type)}">${badgeLabel(item.type, item.source, item.folderName)}</span>
+          <span class="item-title">${esc(title)}</span>
+          <span class="item-date">${formatDate(item.date)}</span>
+          <span style="font-size:0.75rem;color:var(--purple2);font-weight:600;flex-shrink:0;">Open →</span>
+        </div>
+      </div>`;
+    }
+    return `<div class="history-item" id="item-${item.id}">
+      <div class="item-header" onclick="toggleItem('${item.id}')">
+        <span class="item-type-badge ${badgeClass(item.type)}">${badgeLabel(item.type, item.source, item.folderName)}</span>
+        <span class="item-title">${esc(title)}</span>
+        <span class="item-date">${formatDate(item.date)}</span>
+        <button onclick="event.stopPropagation();openInNotepad('${item.id}')" style="font-size:0.72rem;color:var(--purple2);background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;">📝 Add to Notepad</button>
+        <span class="item-chevron" id="chev-${item.id}">▼</span>
+      </div>
+      <div class="item-body" id="body-${item.id}">
+        ${renderContent(item)}
+        <div class="item-actions">
+          <button class="action-btn" onclick="copyItem('${item.id}')">Copy</button>
+          <button class="action-btn notepad" onclick="openInNotepad('${item.id}')">Open in Notepad</button>
+          <button class="action-btn delete" onclick="deleteItem('${item.id}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function render() {
+    buildRecallChips();
+    renderFcNb();
+    const all = getHistory();
+    const vrSorted = all.filter(i => i.title && i.title.trim() === 'Voice Recording')
+                        .slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+    const vrNumMap = {};
+    vrSorted.forEach((item, idx) => { vrNumMap[item.id] = idx + 1; });
+    const displayTitle = item =>
+      (item.title && item.title.trim() === 'Voice Recording' && vrNumMap[item.id])
+        ? `Voice Recording #${vrNumMap[item.id]}` : item.title;
+
+    const filterFn = filterType === 'all' ? () => true
+      : filterType === 'notes-and-youtube' ? i => i.type === 'notes' || i.type === 'summarize'
+      : filterType === 'photos' ? i => i.source === 'Photo'
+      : filterType === 'video' ? i => i.source === 'Video'
+      : filterType === 'documents' ? i => i.source === 'PDF' || i.source === 'DOCX' || i.source === 'TXT'
+      : i => i.type === filterType;
+
+    const items = all.filter(filterFn).slice().reverse();
+    const list = document.getElementById('history-list');
+
+    // ── Notepad: folder-grouped view ──
+    if (filterType === 'notepad') {
+      const folders = getNotepadFolders();
+      document.getElementById('clear-all-btn').style.display = items.length ? '' : 'none';
+
+      let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+        <button onclick="newNotepadFolder()" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#10B981;border-radius:8px;padding:7px 16px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:1rem;">📁</span> New Folder
+        </button>
+      </div>`;
+
+      if (items.length === 0 && folders.length === 0) {
+        html += `<div class="empty-state">
+          <div class="empty-icon">📝</div>
+          <div class="empty-title">Nothing here yet</div>
+          <div class="empty-desc">Open the Notepad, write a note, and click Save — choose a folder or save without one.</div>
+          <button onclick="newNotepadFolder()" class="empty-link" style="background:var(--purple);color:#fff;border:none;cursor:pointer;font-family:inherit;padding:10px 22px;border-radius:10px;font-weight:700;">📁 Create Folder</button>
+        </div>`;
+        list.innerHTML = html;
+        return;
+      }
+
+      // Render folders with their notes
+      folders.forEach(folder => {
+        const folderItems = items.filter(i => i.folderId === folder.id);
+        const isOpen = !collapsedNoteFolders.has(folder.id);
+        html += `<div class="nf-group">
+          <div class="nfg-hdr" onclick="toggleNoteFolder('${folder.id}')">
+            <span style="font-size:1rem;">📁</span>
+            <span class="nfg-name">${esc(folder.name)}</span>
+            <button onclick="renameNotepadFolder(event,'${folder.id}')" class="nfg-edit" title="Rename folder">✏️</button>
+            <span class="nfg-count">${folderItems.length}</span>
+            <button onclick="deleteNotepadFolder(event,'${folder.id}')" class="nfg-del" title="Delete folder">✕</button>
+            <span class="nfg-arrow${isOpen?' open':''}">▶</span>
+          </div>
+          ${isOpen ? (folderItems.length
+            ? folderItems.map(i => renderItemHtml(i, displayTitle)).join('')
+            : `<div style="padding:12px 20px;font-size:0.8rem;color:var(--muted);">No notes saved here yet. Open Notepad → Save → pick "${esc(folder.name)}"</div>`)
+          : ''}
+        </div>`;
+      });
+
+      // Unfiled notes
+      const unfiled = items.filter(i => !i.folderId);
+      if (unfiled.length) {
+        if (folders.length) html += `<div class="nf-sep">Unfiled</div>`;
+        html += unfiled.map(i => renderItemHtml(i, displayTitle)).join('');
+      } else if (folders.length === 0 && items.length > 0) {
+        html += items.map(i => renderItemHtml(i, displayTitle)).join('');
+      }
+
+      list.innerHTML = html;
+      resolveYtTitles();
+      return;
+    }
+
+    // ── Standard view ──
+    if (items.length === 0) {
+      document.getElementById('clear-all-btn').style.display = 'none';
+      list.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">${m.icon}</div>
+        <div class="empty-title">Nothing here yet</div>
+        <div class="empty-desc">Use the converter on the homepage to generate ${m.title.toLowerCase()} — they'll appear here.</div>
+        <button id="fc-goto-btn-empty" onclick="fcNbGo()" class="empty-link" style="background:var(--purple);color:#fff;border:none;cursor:default;font-family:inherit;opacity:0.35;pointer-events:none;">Go to Converter →</button>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(item => renderItemHtml(item, displayTitle)).join('');
+    resolveYtTitles();
+  }
+
+  // ── AI Recall ──
+  function toggleRecall() {
+    const body = document.getElementById('recall-body');
+    const chev = document.getElementById('recall-hchev');
+    const hidden = body.style.display === 'none';
+    body.style.display = hidden ? '' : 'none';
+    chev.classList.toggle('closed', !hidden);
+  }
+
+  // Recall filter state: level 0 = folder view, level 1 = note view
+  let _recallLevel = 0;
+  let _recallFolder = null;  // { id, name } or 'unfiled' or null
+  let _recallNote = null;    // history item id or null
+
+  function buildRecallChips() {
+    const container = document.getElementById('recall-folder-chips');
+    if (!container) return;
+    const folders = getNotepadFolders();
+    const history = getHistory();
+    let html = '';
+
+    if (_recallLevel === 0) {
+      // Level 0: show folder chips
+      const active0 = _recallFolder === null ? ' recall-chip-active' : '';
+      html += `<button class="recall-chip${active0}" onclick="setRecallLevel0(null)">📋 All Notes</button>`;
+      for (const f of folders) {
+        const notesInFolder = history.filter(i => i.folderId === f.id);
+        if (!notesInFolder.length) continue;
+        html += `<button class="recall-chip" onclick="setRecallLevel1('folder','${f.id}','${f.name.replace(/'/g,"\\'")}')">📁 ${f.name}</button>`;
+      }
+      const unfiledNotes = history.filter(i => i.type === 'notepad' && !i.folderId);
+      if (unfiledNotes.length) {
+        html += `<button class="recall-chip" onclick="setRecallLevel1('unfiled',null,'Unfiled')">📄 Unfiled</button>`;
+      }
+    } else {
+      // Level 1: show notes within the selected folder
+      const folderLabel = _recallFolder === 'unfiled' ? 'Unfiled' : (_recallFolder ? _recallFolder.name : 'All');
+      html += `<button class="recall-chip" onclick="setRecallLevel0(_recallFolder)" style="opacity:0.7">← Back</button>`;
+      const activeAll = _recallNote === null ? ' recall-chip-active' : '';
+      html += `<button class="recall-chip${activeAll}" onclick="setRecallNote(null)">📋 All ${folderLabel}</button>`;
+      // Get notes in this folder
+      let folderNotes;
+      if (_recallFolder === 'unfiled') {
+        folderNotes = history.filter(i => i.type === 'notepad' && !i.folderId);
+      } else if (_recallFolder) {
+        folderNotes = history.filter(i => i.folderId === _recallFolder.id);
+      } else {
+        folderNotes = history.filter(i => i.type === 'notepad');
+      }
+      // De-dup by title, most recent first
+      const seen = new Set();
+      for (const item of [...folderNotes].reverse()) {
+        const key = (item.title || 'Untitled').trim();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const active = _recallNote === item.id ? ' recall-chip-active' : '';
+        const label = (item.title || 'Untitled').slice(0, 22);
+        html += `<button class="recall-chip${active}" onclick="setRecallNote('${item.id}')">📝 ${label}</button>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  function setRecallLevel0(folder) {
+    _recallLevel = 0;
+    _recallFolder = null;
+    _recallNote = null;
+    buildRecallChips();
+  }
+
+  function setRecallLevel1(type, folderId, folderName) {
+    _recallLevel = 1;
+    _recallNote = null;
+    if (type === 'unfiled') _recallFolder = 'unfiled';
+    else _recallFolder = { id: folderId, name: folderName };
+    buildRecallChips();
+  }
+
+  function setRecallNote(noteId) {
+    _recallNote = noteId;
+    buildRecallChips();
+    document.getElementById('recall-input').focus();
+  }
+
+  function buildNotesContext(question) {
+    const allHistory = getHistory();
+    if (!allHistory.length) return '';
+
+    // Apply filter
+    let history = allHistory;
+    if (_recallNote) {
+      // Single specific note — include full content
+      const note = allHistory.find(i => i.id === _recallNote);
+      if (note) {
+        let content = note.content || '';
+        if (note.type === 'flashcards') {
+          try { const c = JSON.parse(content); content = c.map(x => `Q: ${x.front}\nA: ${x.back}`).join('\n'); } catch {}
+        }
+        return `MY SAVED NOTES:\n\n[${(note.type||'note').toUpperCase()}] ${note.title || 'Untitled'}\n${content}\n\n`;
+      }
+    } else if (_recallFolder === 'unfiled') {
+      history = allHistory.filter(i => !i.folderId);
+    } else if (_recallFolder) {
+      history = allHistory.filter(i => i.folderId === _recallFolder.id);
+      if (!history.length) history = allHistory;
+    }
+
+    // Find notes whose title/source is mentioned in the question
+    const qLower = (question || '').toLowerCase();
+    const priority = [];
+    const rest = [];
+    for (const item of [...history].reverse()) {
+      const title = (item.title || '').toLowerCase();
+      const source = (item.source || '').toLowerCase();
+      const mentioned = qLower && (qLower.includes(title) || title.split(/\s+/).filter(w=>w.length>3).some(w=>qLower.includes(w)) || (source && qLower.includes(source)));
+      (mentioned ? priority : rest).push(item);
+    }
+
+    let ctx = 'MY SAVED NOTES:\n\n';
+    let chars = 0;
+
+    function addItem(item, maxChars) {
+      let content = item.content || '';
+      if (item.type === 'flashcards') {
+        try { const c = JSON.parse(content); content = c.map(x => `Q: ${x.front}\nA: ${x.back}`).join('\n'); } catch {}
+      }
+      const snippet = content.slice(0, maxChars) + (content.length > maxChars ? '…' : '');
+      const label = (item.type || 'note').toUpperCase() + (item.source ? ' · ' + item.source : '');
+      const entry = `[${label}] ${item.title || 'Untitled'}\n${snippet}\n\n`;
+      ctx += entry;
+      chars += entry.length;
+    }
+
+    for (const item of priority) { if (chars >= 10000) break; addItem(item, 3000); }
+    for (const item of rest) { if (chars >= 10000) break; addItem(item, 600); }
+    return ctx;
+  }
+
+  async function sendRecall() {
+    const input = document.getElementById('recall-input');
+    const question = input.value.trim();
+    if (!question) return;
+
+    const btn = document.getElementById('recall-send');
+    const respWrap = document.getElementById('recall-response');
+    const answerEl = document.getElementById('recall-answer');
+    const srcsEl = document.getElementById('recall-srcs');
+
+    btn.disabled = true;
+    btn.textContent = '…';
+    respWrap.style.display = '';
+    answerEl.innerHTML = '<div class="rdot-wrap"><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div></div>';
+    srcsEl.innerHTML = '';
+
+    const ctx = buildNotesContext(question);
+    const prompt = ctx
+      ? ctx + '---\n\nAnswer this question concisely (2-4 sentences max): ' + question + '\n\nRules:\n- Silently resolve pronouns in the notes (e.g. "He" after "Nephi" = Nephi).\n- ALWAYS include a short direct quote from the notes that is relevant to the answer — wrap it in quotes.\n- After the notes quote, state the complete answer. If the notes lack a specific detail, fill it in from your own knowledge and mark it "(📚 AI)".\n- Output ONLY the answer. No preamble, no reasoning steps, no "I will now...", no restating the question.'
+      : question;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })
+      });
+      const data = await res.json();
+      const reply = data.reply || data.error || 'No response — please try again.';
+
+      answerEl.innerHTML = reply
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\n/g,'<br>');
+
+      // Find matching source notes by keyword
+      const qWords = question.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const relevant = getHistory().filter(item => {
+        const title = (item.title || '').toLowerCase();
+        const content = (item.content || '').toLowerCase().slice(0, 200);
+        return qWords.some(w => title.includes(w) || content.includes(w));
+      }).slice(0, 4);
+
+      if (relevant.length) {
+        srcsEl.innerHTML = '<span class="recall-srcs-lbl">Sources:</span>' +
+          relevant.map(item =>
+            `<button class="recall-src-chip" onclick="jumpToNote('${item.id}')" title="${esc(item.title || '')}">${esc((item.title || 'Untitled').slice(0,38))}</button>`
+          ).join('');
+      }
+    } catch {
+      answerEl.innerHTML = '<span style="color:#F87171">Connection error — please try again.</span>';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Ask ✦';
+  }
+
+  function jumpToNote(id) {
+    const el = document.getElementById('item-' + id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const body = document.getElementById('body-' + id);
+    if (body && !body.classList.contains('open')) toggleItem(id);
+    el.classList.add('note-highlight');
+    setTimeout(() => el.classList.remove('note-highlight'), 2500);
+  }
+
+  function toggleItem(id) {
+    const body = document.getElementById('body-' + id);
+    const chev = document.getElementById('chev-' + id);
+    body.classList.toggle('open');
+    chev.classList.toggle('open');
+  }
+
+</script>
+
+<script src="js/recorder.js"></script>
+
+<style>
+  #hist-prompt-modal { display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.65); flex-direction:column; align-items:center; justify-content:center; }
+  #hist-prompt-modal.open { display:flex; }
+  .hpm-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:28px 24px; max-width:320px; width:90%; }
+  .hpm-title { font-size:1rem; font-weight:800; margin-bottom:4px; color:var(--text); }
+  .hpm-sub { font-size:0.78rem; color:var(--muted); margin-bottom:16px; }
+  .hpm-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:0.9rem; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
+  .hpm-input:focus { border-color:rgba(139,92,246,0.5); }
+  .hpm-row { display:flex; gap:8px; margin-top:16px; }
+  .hpm-btn { flex:1; padding:10px; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; font-family:inherit; border:none; }
+  .hpm-cancel { background:none; border:1px solid var(--border); color:var(--muted); }
+  .hpm-ok { background:var(--purple); color:#fff; }
+</style>
+<div id="hist-prompt-modal" onclick="if(event.target.id==='hist-prompt-modal')_hpmCancel()">
+  <div class="hpm-card">
+    <div class="hpm-title" id="hpm-title">Folder name</div>
+    <div class="hpm-sub" id="hpm-sub"></div>
+    <input class="hpm-input" id="hpm-input" type="text" placeholder="Enter name…" onkeydown="if(event.key==='Enter')_hpmOk();if(event.key==='Escape')_hpmCancel()">
+    <div class="hpm-row">
+      <button class="hpm-btn hpm-cancel" onclick="_hpmCancel()">Cancel</button>
+      <button class="hpm-btn hpm-ok" onclick="_hpmOk()">OK</button>
+    </div>
+  </div>
+</div>
+<script>
+let _hpmCb = null;
+function showHistoryPrompt(title, sub, def, cb) {
+  _hpmCb = cb;
+  document.getElementById('hpm-title').textContent = title;
+  document.getElementById('hpm-sub').textContent = sub || '';
+  const inp = document.getElementById('hpm-input');
+  inp.value = def || '';
+  document.getElementById('hist-prompt-modal').classList.add('open');
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+function _hpmOk() {
+  const val = document.getElementById('hpm-input').value.trim();
+  document.getElementById('hist-prompt-modal').classList.remove('open');
+  if (_hpmCb) { _hpmCb(val || null); _hpmCb = null; }
+}
+function _hpmCancel() {
+  document.getElementById('hist-prompt-modal').classList.remove('open');
+  if (_hpmCb) { _hpmCb(null); _hpmCb = null; }
+}
+</script>
+</body>
+</html>

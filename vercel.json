@@ -1,12 +1,16 @@
 {
   "functions": {
-    "api/summarize.js": {
-      "memory": 256,
-      "maxDuration": 60
-    },
-    "api/extract.js": {
-      "memory": 256,
-      "maxDuration": 60
-    }
+    "api/summarize.js": { "memory": 256, "maxDuration": 60 },
+    "api/extract.js":   { "memory": 256, "maxDuration": 60 },
+    "api/checkout.js":  { "memory": 256, "maxDuration": 10 },
+    "api/webhook.js":   { "memory": 256, "maxDuration": 10 },
+    "api/subscription.js": { "memory": 256, "maxDuration": 10 },
+    "api/checker.js":      { "memory": 256, "maxDuration": 60 },
+    "api/transcribe.js":   { "memory": 256, "maxDuration": 60 },
+    "api/homework.js":     { "memory": 256, "maxDuration": 30 },
+    "api/lyrics.js":      { "memory": 256, "maxDuration": 20 },
+    "api/translate.js":   { "memory": 256, "maxDuration": 20 },
+    "api/writing.js":     { "memory": 256, "maxDuration": 60 },
+    "api/interpret.js":  { "memory": 256, "maxDuration": 25 }
   }
 }

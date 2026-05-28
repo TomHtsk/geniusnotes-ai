@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password — GeniusNotes AI</title>
+  <style>
+    :root {
+      --bg: #06060F; --surface: #12121E; --border: rgba(255,255,255,0.07);
+      --text: #F0F0FF; --muted: #8888AA; --purple: #8B5CF6; --purple2: #A78BFA; --cyan: #4FC3F7;
+    }
+    :root.light {
+      --bg: #F4F4FC; --surface: #fff; --border: rgba(0,0,0,0.08);
+      --text: #0A0A1A; --muted: #666677;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; transition: background 0.2s, color 0.2s; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 60px; border-bottom: 1px solid var(--border); background: rgba(6,6,15,0.92); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    :root.light nav { background: rgba(244,244,252,0.92); }
+    
+    param($m)
+    $inner = $m.Groups[2].Value
+    if ($inner -notmatch 'display\s*:') {
+      $m.Groups[1].Value + 'display:flex;align-items:center;gap:8px;' + $inner + $m.Groups[3].Value
+    } else { $m.Value }
+  
+    .nav-logo .ai { color: var(--purple2); }
+
+    .wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px; }
+    h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+    .sub { font-size: 0.85rem; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+
+    label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; }
+    input[type=email] { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.15s; margin-bottom: 20px; }
+    input[type=email]:focus { border-color: var(--purple); }
+    :root.light input[type=email] { background: #F4F4FC; }
+
+    .btn { width: 100%; padding: 12px; border-radius: 100px; background: var(--purple); border: none; color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+
+    .error { color: #FF5555; font-size: 0.82rem; margin-bottom: 14px; display: none; }
+    .success-box { display: none; text-align: center; padding: 20px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); border-radius: 12px; margin-top: 4px; }
+    .success-box .check { font-size: 2rem; margin-bottom: 8px; }
+    .success-box p { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+    .success-box strong { color: var(--text); }
+
+    .back { display: block; text-align: center; margin-top: 20px; font-size: 0.83rem; color: var(--muted); text-decoration: none; }
+    .back:hover { color: var(--purple2); }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
+</nav>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Reset your password</h1>
+    <p class="sub">Enter your email address and we'll send you a link to reset your password.</p>
+
+    <div id="form-area">
+      <label for="email">Email address</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+      <div class="error" id="err-msg"></div>
+      <button class="btn" id="reset-btn" onclick="sendReset()">Send reset link</button>
+    </div>
+
+    <div class="success-box" id="success-box">
+      <div class="check">✉️</div>
+      <p>Reset link sent to<br><strong id="sent-email"></strong></p>
+      <p style="margin-top:8px;">Check your inbox (and spam folder). The link expires in 1 hour.</p>
+    </div>
+
+    <a href="signin.html" class="back">← Back to Sign In</a>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script>
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+    authDomain: "geniusnotes-ai.firebaseapp.com",
+    projectId: "geniusnotes-ai",
+    storageBucket: "geniusnotes-ai.firebasestorage.app",
+    messagingSenderId: "1041746856723",
+    appId: "1:1041746856723:web:fae9072e0292c3946068e6"
+  });
+
+  const auth = firebase.auth();
+
+  async function sendReset() {
+    const email = document.getElementById('email').value.trim();
+    const errEl = document.getElementById('err-msg');
+    errEl.style.display = 'none';
+    if (!email) { errEl.textContent = 'Please enter your email address.'; errEl.style.display = 'block'; return; }
+
+    const btn = document.getElementById('reset-btn');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+
+    try {
+      await auth.sendPasswordResetEmail(email);
+      document.getElementById('form-area').style.display = 'none';
+      document.getElementById('sent-email').textContent = email;
+      document.getElementById('success-box').style.display = 'block';
+    } catch (err) {
+      const msgs = {
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+      };
+      errEl.textContent = msgs[err.code] || 'Something went wrong. Please try again.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Send reset link';
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('email').addEventListener('keydown', e => { if (e.key === 'Enter') sendReset(); });
+</script>
+</body>
+</html>

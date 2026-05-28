@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meetings/Lectures — GeniusNotes AI</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root{--bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.07);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7;--red:#F87171;--green:#34D399;}
+    :root.light{--bg:#F5F5FA;--surface:#FFFFFF;--surface2:#EEEEF6;--border:rgba(0,0,0,0.08);--text:#111120;--muted:#666688;--purple:#7C3AED;--purple2:#6D28D9;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+
+    /* Nav */
+    nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;}
+    :root.light nav{background:rgba(245,245,250,0.92);}
+    
+    .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;font-size:0.92rem;font-weight:700;color:var(--text);}
+    .nav-logo .ai{color:var(--purple2);}
+    .nav-left{display:flex;align-items:center;gap:12px;}
+    .hamburger{background:none;border:none;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px;border-radius:6px;}
+    .hamburger:hover{background:rgba(139,92,246,0.12);}
+    .hamburger span{display:block;width:20px;height:2px;background:var(--text);border-radius:2px;}
+    .nav-right{display:flex;align-items:center;gap:10px;}
+    .theme-btn{background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;}
+    .btn-nav{padding:7px 18px;border-radius:8px;background:var(--purple);color:#fff;font-size:0.82rem;font-weight:700;text-decoration:none;}
+
+    /* Sidebar */
+    .sb-overlay{display:none;position:fixed;inset:0;z-index:200;}
+    .sb-overlay.open{display:block;}
+    .sidebar{position:fixed;left:0;top:60px;height:calc(100vh - 60px);width:230px;background:var(--surface);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.25s;z-index:250;overflow-y:auto;padding:24px 12px;}
+    .sidebar.open{transform:translateX(0);}
+    .sb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:0 8px;}
+    .sb-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+    .sb-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--text);font-size:0.88rem;font-weight:500;margin-bottom:2px;transition:background 0.15s;}
+    .sb-link:hover{background:rgba(139,92,246,0.1);color:var(--purple2);}
+    .sb-link.active{background:rgba(139,92,246,0.15);color:var(--purple2);}
+    .sb-icon{display:flex;align-items:center;width:20px;min-width:20px;}
+
+
+    /* Workspace */
+    .ws-wrap{max-width:940px;margin:0 auto;padding:0 40px 100px;}
+    .ws-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
+
+    /* Stage bar */
+    .stage-bar{display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--border);overflow-x:auto;gap:0;}
+    .stab{display:flex;align-items:center;gap:6px;padding:14px 16px;font-size:0.82rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;transition:color 0.15s;}
+    .stab:hover{color:var(--text);}
+    .stab.on{color:var(--purple2);border-bottom-color:var(--purple2);}
+    .stab.done{color:var(--green);}
+    .stab-n{width:18px;height:18px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:800;flex-shrink:0;}
+    .stab.on .stab-n{background:var(--purple);color:#fff;}
+    .stab.done .stab-n{background:var(--green);color:#06060F;}
+    .stab-sep{color:var(--border);font-size:0.8rem;padding:0 2px;pointer-events:none;user-select:none;}
+
+    /* Transcript context pill */
+    .tx-pill{display:flex;align-items:center;gap:10px;padding:10px 24px;background:rgba(139,92,246,0.06);border-bottom:1px solid var(--border);font-size:0.8rem;color:var(--muted);}
+    .tx-pill strong{color:var(--purple2);}
+    .tx-pill button{background:none;border:1px solid var(--border);border-radius:6px;padding:2px 10px;font-size:0.75rem;color:var(--muted);cursor:pointer;font-family:inherit;}
+    .tx-pill button:hover{color:var(--text);}
+
+    /* Stage panels */
+    .sp{display:none;padding:28px 32px;}
+    .sp.on{display:block;}
+
+    /* ── Capture method landing ── */
+    .cap-landing{padding-bottom:22px;border-bottom:1px solid var(--border);margin-bottom:22px;}
+    .cap-landing-title{font-size:1rem;font-weight:800;margin-bottom:5px;}
+    .cap-landing-sub{font-size:0.8rem;color:var(--muted);margin-bottom:20px;}
+    .cap-methods{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+    .cap-method{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;}
+    .cap-method-icon{width:100%;aspect-ratio:1.25;border-radius:14px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);background:var(--surface2);overflow:hidden;transition:border-color 0.15s;position:relative;}
+    .cap-method:hover .cap-method-icon{border-color:rgba(139,92,246,0.45);}
+    .cap-method.selected .cap-method-icon{border-color:var(--purple);box-shadow:0 0 0 2px rgba(139,92,246,0.2);}
+    .cap-method-btn{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 4px;font-size:0.75rem;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:all 0.15s;text-align:center;}
+    .cap-method:hover .cap-method-btn,.cap-method.selected .cap-method-btn{border-color:var(--purple2);color:var(--purple2);}
+    /* icon visuals */
+    .icon-notes{background:linear-gradient(135deg,#1e1b3a,#2d1f5e);}
+    .icon-url{background:linear-gradient(135deg,#0f1f2e,#0a2a3a);}
+    .icon-record{background:linear-gradient(135deg,#2a1020,#3d1535);}
+    .icon-import{background:linear-gradient(135deg,#0e1f1a,#0a2a22);}
+    .cap-back{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.79rem;font-weight:600;padding:0;font-family:inherit;margin-bottom:14px;display:flex;align-items:center;gap:5px;}
+    .cap-back:hover{color:var(--text);}
+
+    /* Sub-tabs (Capture) */
+    .sub-tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+    .sub-tab{background:none;border:none;cursor:pointer;font-size:0.83rem;font-weight:600;color:var(--muted);padding:9px 18px;border-bottom:2px solid transparent;font-family:inherit;transition:color 0.15s;}
+    .sub-tab:hover{color:var(--text);}
+    .sub-tab.on{color:var(--purple2);border-bottom-color:var(--purple2);}
+
+    /* Shared inputs */
+    .cap-ta{width:100%;min-height:150px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 56px 14px 16px;font-size:0.87rem;line-height:1.7;color:var(--text);font-family:inherit;resize:vertical;}
+    .cap-ta:focus{outline:none;border-color:rgba(139,92,246,0.4);}
+    .ta-wrap{position:relative;}
+    .ta-clear{position:absolute;top:9px;right:9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);font-size:0.72rem;font-weight:600;padding:3px 9px;font-family:inherit;}
+    .ta-clear:hover{color:var(--text);}
+
+    /* Buttons */
+    .btn{padding:9px 22px;border-radius:9px;font-size:0.83rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:opacity 0.15s;}
+    .btn.solid{background:var(--purple);color:#fff;}
+    .btn.line{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+    .btn.green{background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3);}
+    .btn:hover{opacity:0.83;}
+    .btn:disabled{opacity:0.35;cursor:not-allowed;}
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+
+    /* Recording */
+    .rec-center{display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:22px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+    .rec-btn{width:72px;height:72px;border-radius:50%;border:2px solid rgba(139,92,246,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(139,92,246,0.1);transition:all 0.2s;}
+    .rec-btn:hover{background:rgba(139,92,246,0.2);}
+    .rec-btn.on{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.1);animation:rp 1.4s ease-in-out infinite;}
+    .rec-btn svg{width:28px;height:28px;stroke:var(--purple2);}
+    .rec-btn.on svg{stroke:var(--red);}
+    @keyframes rp{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.2);}50%{box-shadow:0 0 0 12px rgba(239,68,68,0);}}
+    .rec-time{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);}
+    .rec-time.on{color:var(--text);}
+    .rec-hint{font-size:0.79rem;color:var(--muted);}
+    .wv{width:100%;max-width:360px;height:40px;border-radius:8px;background:var(--surface2);}
+    /* Big centered recording UI */
+    .rec-hero{display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 0 22px;}
+    #rec-viz{display:block;}
+    .rec-big-btn{width:80px;height:80px;border-radius:50%;border:2.5px solid rgba(139,92,246,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(139,92,246,0.12);transition:all 0.2s;flex-shrink:0;}
+    .rec-big-btn:hover{background:rgba(139,92,246,0.22);}
+    .rec-big-btn.on{border-color:rgba(239,68,68,0.6);background:rgba(239,68,68,0.12);animation:rp 1.4s ease-in-out infinite;}
+    .rec-big-btn svg{width:34px;height:34px;stroke:var(--purple2);}
+    .rec-big-btn.on svg{stroke:var(--red);}
+    .rec-big-time{font-size:2.2rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);letter-spacing:0.04em;}
+    .rec-big-time.on{color:var(--text);}
+    .rec-big-hint{font-size:0.82rem;color:var(--muted);}
+
+    /* File upload */
+    .dz{border:2px dashed var(--border);border-radius:14px;padding:40px 24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
+    .dz:hover,.dz.over{border-color:rgba(139,92,246,0.4);background:rgba(139,92,246,0.04);}
+    .dz svg{width:36px;height:36px;stroke:var(--muted);margin:0 auto 12px;display:block;}
+    .dz p{color:var(--muted);font-size:0.86rem;line-height:1.6;}
+    .dz strong{color:var(--text);}
+    .f-chip{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:0.81rem;font-weight:600;margin-bottom:12px;}
+    .f-chip button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;}
+    .dl-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .dl-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:0.79rem;font-weight:700;cursor:pointer;color:var(--text);font-family:inherit;transition:border-color 0.15s;}
+    .dl-btn:hover{border-color:var(--purple2);}
+
+    /* Notes */
+    .notes-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;min-height:320px;}
+    .notes-list-col{border-right:1px solid var(--border);padding-right:16px;overflow-y:auto;max-height:420px;}
+    .ni{padding:10px 12px;border-radius:10px;cursor:pointer;transition:background 0.15s;margin-bottom:4px;}
+    .ni:hover{background:rgba(139,92,246,0.08);}
+    .ni.on{background:rgba(139,92,246,0.12);color:var(--purple2);}
+    .ni-title{font-size:0.83rem;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ni-date{font-size:0.72rem;color:var(--muted);}
+    .ni-row{display:flex;align-items:center;justify-content:space-between;}
+    .ni-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.8rem;padding:2px 5px;border-radius:4px;}
+    .ni-del:hover{color:var(--red);}
+    .notes-editor-col{display:flex;flex-direction:column;gap:10px;}
+    .cap-in{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:0.88rem;color:var(--text);font-family:inherit;width:100%;}
+    .cap-in:focus{outline:none;border-color:rgba(139,92,246,0.4);}
+    .no-notes{color:var(--muted);font-size:0.84rem;padding:16px 0;}
+
+    /* Stage next button */
+    .stage-next{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+    .stage-next p{font-size:0.8rem;color:var(--muted);}
+
+    /* AI output */
+    .ai-output{background:var(--surface2);border-radius:14px;padding:20px 24px;min-height:80px;font-size:0.87rem;line-height:1.75;color:var(--text);}
+    .ai-output .ai-h{font-size:0.9rem;font-weight:800;color:var(--purple2);margin:14px 0 6px;}
+    .ai-output .ai-h:first-child{margin-top:0;}
+    .ai-output .ai-li{padding:3px 0 3px 16px;position:relative;}
+    .ai-output .ai-li::before{content:'•';position:absolute;left:0;color:var(--purple2);}
+    .ai-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+    .ai-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+    .ai-card-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple2);margin-bottom:10px;}
+
+    /* Recall chat */
+    .chat-log{background:var(--surface2);border-radius:12px;padding:16px;min-height:200px;max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin-bottom:12px;}
+    .chat-msg{display:flex;gap:10px;align-items:flex-start;}
+    .chat-msg.user{flex-direction:row-reverse;}
+    .chat-bubble{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:0.85rem;line-height:1.65;max-width:80%;}
+    .chat-msg.user .chat-bubble{background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.3);color:var(--text);}
+    .chat-avatar{width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;border:1px solid var(--border);}
+    .chat-input-row{display:flex;gap:8px;}
+    .chat-in{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:0.86rem;color:var(--text);font-family:inherit;}
+    .chat-in:focus{outline:none;border-color:rgba(139,92,246,0.4);}
+
+    /* Flashcards */
+    .fc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+    .fc-card{height:160px;perspective:800px;cursor:pointer;}
+    .fc-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 0.5s;}
+    .fc-card.flipped .fc-inner{transform:rotateY(180deg);}
+    .fc-face{position:absolute;inset:0;border-radius:12px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;padding:14px;text-align:center;font-size:0.84rem;backface-visibility:hidden;}
+    .fc-back{background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.2);transform:rotateY(180deg);font-size:0.8rem;color:var(--muted);}
+    .fc-label{position:absolute;top:8px;left:10px;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple2);opacity:0.6;}
+
+    /* Team */
+    .team-section{margin-bottom:20px;}
+    .team-section-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:10px;}
+    .action-table{width:100%;border-collapse:collapse;}
+    .action-table th{text-align:left;font-size:0.73rem;font-weight:700;color:var(--muted);text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);}
+    .action-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:0.83rem;vertical-align:top;}
+    .action-table td input{background:none;border:none;color:var(--text);font-family:inherit;font-size:0.83rem;width:100%;cursor:text;}
+    .action-table td input:focus{outline:none;background:rgba(139,92,246,0.06);border-radius:4px;}
+
+    /* Magic Highlight */
+    .btn-magic{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:9px;background:linear-gradient(135deg,rgba(139,92,246,0.18),rgba(167,139,250,0.12));border:1px solid rgba(139,92,246,0.35);color:var(--purple2);font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s;}
+    .btn-magic:hover{background:linear-gradient(135deg,rgba(139,92,246,0.28),rgba(167,139,250,0.2));}
+    .btn-magic:disabled{opacity:0.4;cursor:not-allowed;}
+    .hl-out{background:var(--surface2);border:1px solid rgba(139,92,246,0.2);border-radius:14px;padding:18px 20px;margin-top:12px;font-size:0.87rem;line-height:1.85;display:none;}
+    .hl-out mark{background:rgba(245,200,66,0.3);color:inherit;border-radius:3px;padding:1px 3px;font-weight:600;}
+    .hl-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--purple2);margin-bottom:10px;}
+
+    /* Compact record bar */
+    .rec-bar{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface2);border-radius:14px;margin-bottom:14px;border:1px solid var(--border);}
+    .rec-btn-sm{width:40px;height:40px;border-radius:50%;border:2px solid rgba(139,92,246,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(139,92,246,0.1);transition:all 0.2s;flex-shrink:0;}
+    .rec-btn-sm:hover{background:rgba(139,92,246,0.2);}
+    .rec-btn-sm.on{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.1);animation:rp 1.4s ease-in-out infinite;}
+    .rec-btn-sm svg{width:17px;height:17px;stroke:var(--purple2);}
+    .rec-btn-sm.on svg{stroke:var(--red);}
+    .rec-bar-info{min-width:0;}
+    .rec-bar-time{font-size:0.95rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);line-height:1;}
+    .rec-bar-time.on{color:var(--text);}
+    .rec-bar-hint{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+    .wv-sm{height:30px;flex:1;border-radius:6px;background:var(--surface);}
+
+    /* Split view (notes + transcript) */
+    .split-wrap{display:grid;grid-template-columns:1fr 1px 1fr;gap:16px;min-height:340px;}
+    .split-divider{background:var(--border);width:1px;}
+    .split-pane{display:flex;flex-direction:column;gap:10px;}
+    .split-pane-hd{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border);}
+    .notes-transcript{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:0.84rem;color:var(--muted);line-height:1.7;min-height:200px;overflow-y:auto;white-space:pre-wrap;font-family:inherit;}
+    .notes-list-sm{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;margin-bottom:4px;}
+    .ni-sm{padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--muted);transition:background 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ni-sm:hover{background:rgba(139,92,246,0.1);color:var(--text);}
+    .ni-sm.on{background:rgba(139,92,246,0.15);color:var(--purple2);}
+
+    /* Spinner */
+    .spin{width:20px;height:20px;border:2px solid rgba(139,92,246,0.15);border-top-color:var(--purple2);border-radius:50%;animation:sp 0.7s linear infinite;flex-shrink:0;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+    .proc-row{display:flex;align-items:center;gap:12px;padding:16px 0;color:var(--muted);font-size:0.83rem;}
+
+    /* Lbl */
+    .lbl{font-size:0.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+
+    @media(max-width:900px){nav{padding:0 16px;}.page{padding:40px 20px 32px;}.ws-wrap{padding:0 16px 80px;}.feat-grid{grid-template-columns:repeat(3,1fr);}.ai-cards{grid-template-columns:1fr;}.fc-grid{grid-template-columns:1fr 1fr;}.notes-layout{grid-template-columns:1fr;}.notes-list-col{border-right:none;border-bottom:1px solid var(--border);padding-bottom:12px;max-height:180px;}.sp{padding:20px;}.cap-methods{grid-template-columns:repeat(3,1fr);}}
+    @media(max-width:600px){.feat-grid{grid-template-columns:repeat(2,1fr);}.fc-grid{grid-template-columns:1fr;}.stage-bar{padding:0 12px;}.stab{padding:12px 10px;font-size:0.76rem;}.cap-methods{grid-template-columns:repeat(2,1fr);}}
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <button class="hamburger" onclick="toggleSB()" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
+  </div>
+  <div class="nav-right">
+    <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    <a href="study.html" class="btn-nav">Open Tools</a>
+  </div>
+</nav>
+
+<div class="sb-overlay" id="sb-overlay" onclick="closeSB()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-header"><span class="sb-title">Menu</span><button class="sb-close" onclick="closeSB()">✕</button></div>
+  <a href="index.html" class="sb-link"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Homepage</a>
+  <a href="history.html?type=notes-and-youtube" class="sb-link"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> My Notes</a>
+  <a href="notepad.html" class="sb-link"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Notepad</a>
+  <a href="flashcards.html" class="sb-link"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span> Flashcards</a>
+  <a href="meetings.html" class="sb-link active"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Meetings/Lectures</a>
+  <a href="study.html" class="sb-link"><span class="sb-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Study tools</a>
+  <a href="passwords.html" class="sb-link"><span class="sb-icon">🔑</span> Passwords</a>
+  <a href="vault.html" class="sb-link"><span class="sb-icon">🔒</span> Vault</a>
+</aside>
+
+
+<!-- ── WORKSPACE ── -->
+<div class="ws-wrap" id="ws-wrap">
+  <div class="ws-box">
+
+
+    <!-- Transcript context (stages 1–5) -->
+    <div class="tx-pill" id="tx-pill" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="tx-info">Transcript loaded</span>
+      <button onclick="goStage(0)">Edit ↗</button>
+    </div>
+
+    <!-- ── STAGE 0: CAPTURE ── -->
+    <div id="sp-0" class="sp on">
+
+      <!-- Method landing -->
+      <div id="cap-landing" class="cap-landing">
+        <div class="cap-landing-title">Capture conversations your way</div>
+        <div class="cap-landing-sub">Choose from a variety of ways to record your meetings or lectures.</div>
+        <div class="cap-methods">
+
+          <!-- Take Notes -->
+          <div class="cap-method" id="cm-notes" onclick="window.location.href='notepad.html?from=meetings'">
+            <div class="cap-method-icon icon-notes">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(139,92,246,0.9)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn">Take Notes</button>
+          </div>
+
+          <!-- Upload URL -->
+          <div class="cap-method" id="cm-url" onclick="selectCapMethod('url')">
+            <div class="cap-method-icon icon-url">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="rgba(139,92,246,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="rgba(139,92,246,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn">Upload URL</button>
+          </div>
+
+          <!-- Record -->
+          <div class="cap-method" id="cm-live" onclick="launchFloatingRecorder()">
+            <div class="cap-method-icon icon-record">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(248,113,113,0.9)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn" onclick="event.stopPropagation();launchFloatingRecorder()">Record Meeting/Lecture</button>
+          </div>
+
+          <!-- Import -->
+          <div class="cap-method" id="cm-file" onclick="selectCapMethod('file')">
+            <div class="cap-method-icon icon-import">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(52,211,153,0.9)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn">Import Video Recording</button>
+          </div>
+
+          <!-- Magic Highlight -->
+          <div class="cap-method" id="cm-highlight" onclick="selectCapMethod('highlight')">
+            <div class="cap-method-icon" style="background:linear-gradient(135deg,#1e1030,#2a1a4e);">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.9)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn">✦ Magic Highlight</button>
+          </div>
+
+          <!-- Upload Docs / Photo OCR -->
+          <div class="cap-method" id="cm-upload" onclick="selectCapMethod('upload')">
+            <div class="cap-method-icon" style="background:linear-gradient(135deg,#061828,#0d2a40);">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(56,189,248,0.9)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
+            <button class="cap-method-btn">📄 Upload / Scan</button>
+          </div>
+
+        </div>
+
+        <!-- YouTube URL Quick Transcribe -->
+        <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:18px;">
+          <div class="lbl" style="margin-bottom:10px;">▶ YouTube URL — paste a link to transcribe</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="cap-in" id="lnd-yt-url" type="url" placeholder="https://youtube.com/watch?v=…" style="flex:1;font-size:0.85rem;">
+            <button class="btn solid" style="padding:9px 16px;font-size:0.82rem;white-space:nowrap;" onclick="lndYtGo()">▶ Transcribe</button>
+          </div>
+          <div class="proc-row" id="lnd-yt-proc" style="display:none;"><div class="spin"></div><span id="lnd-yt-proc-txt">Fetching transcript…</span></div>
+        </div>
+
+        <!-- Quick Upload Zone -->
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:18px;">
+          <div class="lbl" style="margin-bottom:10px;">⚡ Quick File Upload — drop a file to transcribe instantly</div>
+          <div class="dz" id="lnd-dz" onclick="g('lnd-file-input').click()" ondragover="lndDzEv(event,true)" ondragleave="lndDzEv(event,false)" ondrop="lndDzDrop(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p><strong>Drop audio or video file</strong> or click to browse</p>
+            <p style="margin-top:5px;font-size:0.76rem;">MP3, MP4, M4A, WAV, OGG, WEBM, FLAC, MKV, MOV — transcribed with Whisper AI</p>
+          </div>
+          <input type="file" id="lnd-file-input" style="display:none" accept=".mp3,.mp4,.m4a,.wav,.ogg,.webm,.flac,.mkv,.mov" onchange="lndFileGo(this.files[0])">
+          <div class="proc-row" id="lnd-proc" style="display:none;"><div class="spin"></div><span id="lnd-proc-txt">Transcribing…</span></div>
+          <div id="lnd-result" style="display:none;margin-top:14px;">
+            <div class="ta-wrap">
+              <textarea id="lnd-box" class="cap-ta" spellcheck="false" placeholder="Transcript appears here…"></textarea>
+              <button class="ta-clear" onclick="g('lnd-box').value='';g('lnd-result').style.display='none';g('lnd-dz').style.display='block';">Clear</button>
+            </div>
+            <div class="btn-row">
+              <button class="btn-magic" onclick="runMagicHL(g('lnd-box').value,'hl-lnd','hl-lnd-btn')" id="hl-lnd-btn">✦ Magic Notes</button>
+              <button class="btn line" onclick="cpEl('lnd-box')">Copy</button>
+              <button class="btn solid" onclick="useTranscript(g('lnd-box').value)" style="padding:8px 16px;font-size:0.8rem;">Use for AI →</button>
+              <button class="dl-btn" onclick="dlTxt(g('lnd-box').value,'transcript')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+              <button class="dl-btn" onclick="dlRtf(g('lnd-box').value,'transcript')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+            </div>
+            <div class="hl-out" id="hl-lnd"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sub-tabs (shown after method selection) -->
+      <div id="cap-area" style="display:none;">
+        <button class="cap-back" onclick="backToCapLanding()">← Change method</button>
+      <div class="sub-tabs">
+        <button class="sub-tab on" id="ctab-live" onclick="setCTab('live')">🎙️ Live</button>
+        <button class="sub-tab" id="ctab-notes" onclick="setCTab('notes')">📝 Notes</button>
+        <button class="sub-tab" id="ctab-url" onclick="setCTab('url')">🔗 Paste URL</button>
+        <button class="sub-tab" id="ctab-file" onclick="setCTab('file')">📁 File</button>
+        <button class="sub-tab" id="ctab-highlight" onclick="setCTab('highlight')">✦ Highlight</button>
+        <button class="sub-tab" id="ctab-upload" onclick="setCTab('upload')">📷 Scan</button>
+      </div>
+
+      <!-- Live -->
+      <div id="cp-live">
+        <!-- Big centered recording UI -->
+        <div class="rec-hero">
+          <canvas id="rec-viz" width="280" height="280"></canvas>
+          <button class="rec-big-btn" id="rec-btn" onclick="toggleRec()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <div class="rec-big-time" id="rec-time">0:00</div>
+          <div class="rec-big-hint" id="rec-hint">Tap to start recording</div>
+        </div>
+        <!-- Hidden canvas kept for compat -->
+        <canvas id="wv" width="1" height="1" style="display:none;"></canvas>
+        <div class="proc-row" id="live-proc" style="display:none;"><div class="spin"></div><span>Polishing with Whisper…</span></div>
+        <div class="ta-wrap">
+          <textarea id="live-box" class="cap-ta" placeholder="Transcript appears here as you speak. You can also type or paste content…" spellcheck="false"></textarea>
+          <button class="ta-clear" id="clear-live" onclick="clearUndo('live-box','clear-live')">Clear</button>
+        </div>
+        <div class="btn-row" id="live-acts" style="display:none;">
+          <button class="btn-magic" onclick="runMagicHL(g('live-box').value,'hl-live','hl-live-btn')" id="hl-live-btn">✦ Magic Notes</button>
+          <button class="btn line" onclick="cpEl('live-box')">Copy</button>
+          <button class="btn line" onclick="saveCurrentAsNote()">Save as Note</button>
+          <button class="dl-btn" onclick="dlTxt(g('live-box').value,'live-transcript')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT
+          </button>
+          <button class="dl-btn" onclick="dlRtf(g('live-box').value,'live-transcript')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word
+          </button>
+          <button class="dl-btn" onclick="dlPdf(g('live-box').value,'live-transcript')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
+          </button>
+        </div>
+        <div class="hl-out" id="hl-live"></div>
+
+        <!-- Live chat -->
+        <div id="live-chat" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+          <div class="lbl" style="margin-bottom:10px;">💬 Ask AI about your recording</div>
+          <div class="chat-log" id="live-chat-log" style="min-height:120px;max-height:260px;">
+            <div class="chat-msg">
+              <div class="chat-avatar">AI</div>
+              <div class="chat-bubble">Record or paste your transcript above, then ask me anything — summaries, action items, key points, follow-ups, or anything else.</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-in" id="live-chat-in" placeholder="Ask about the recording…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendLiveChat();}">
+            <button class="btn solid" style="padding:8px 16px;font-size:0.84rem;" onclick="sendLiveChat()">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- File -->
+      <div id="cp-file" style="display:none;">
+        <div id="f-dz-wrap">
+          <div class="dz" id="f-dz" onclick="g('f-input').click()" ondragover="dzEv(event,true)" ondragleave="dzEv(event,false)" ondrop="dzDrop(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p><strong>Drop audio or video file</strong> or click to browse</p>
+            <p style="margin-top:5px;font-size:0.76rem;">MP3, MP4, M4A, WAV, OGG, WEBM, FLAC, MKV, MOV</p>
+          </div>
+          <input type="file" id="f-input" style="display:none" accept=".mp3,.mp4,.m4a,.wav,.ogg,.webm,.flac,.mkv,.mov" onchange="selFile(this.files[0])">
+        </div>
+        <div id="f-sel" style="display:none;">
+          <div class="f-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg><span id="f-name">file.mp3</span><button onclick="clearFile()">✕</button></div>
+          <button class="btn solid" onclick="transcribeFile()">Transcribe →</button>
+        </div>
+        <div class="proc-row" id="f-proc" style="display:none;"><div class="spin"></div><span id="f-proc-txt">Transcribing…</span></div>
+        <div id="f-result" style="display:none;margin-top:16px;">
+          <div class="lbl">Transcript</div>
+          <div class="ta-wrap">
+            <textarea id="f-box" class="cap-ta" spellcheck="false"></textarea>
+            <button class="ta-clear" id="clear-fbox" onclick="clearUndo('f-box','clear-fbox')">Clear</button>
+          </div>
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn-magic" onclick="runMagicHL(g('f-box').value,'hl-file','hl-file-btn')" id="hl-file-btn">✦ Magic Notes</button>
+          </div>
+          <div class="dl-row">
+            <button class="dl-btn" onclick="cpEl('f-box')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy
+            </button>
+            <button class="dl-btn" onclick="dlTxt(g('f-box').value,'transcript')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT
+            </button>
+            <button class="dl-btn" onclick="dlRtf(g('f-box').value,'transcript')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word
+            </button>
+            <button class="dl-btn" onclick="dlPdf(g('f-box').value,'transcript')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
+            </button>
+          </div>
+          <div class="hl-out" id="hl-file"></div>
+        </div>
+      </div>
+
+      <!-- Magic Highlight -->
+      <div id="cp-highlight" style="display:none;">
+        <div class="lbl" style="margin-bottom:10px;">Paste text or upload a document to highlight key phrases with AI</div>
+        <div class="ta-wrap" style="margin-bottom:12px;">
+          <textarea id="hl-input-text" class="cap-ta" placeholder="Paste your notes, lecture transcript, or any text here…" spellcheck="false"></textarea>
+          <button class="ta-clear" onclick="g('hl-input-text').value=''">Clear</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <span style="font-size:0.78rem;color:var(--muted);">— or upload a document —</span>
+          <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:0.77rem;font-weight:600;cursor:pointer;color:var(--text);transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--purple2)'" onmouseout="this.style.borderColor='var(--border)'">
+            📄 Upload PDF / DOCX / TXT
+            <input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="hlLoadFile(this)">
+          </label>
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn-magic" id="hl-run-btn" onclick="runHlPanel()">✦ AI Highlight</button>
+          <button class="btn line" onclick="cpEl('hl-input-text')">Copy Text</button>
+        </div>
+        <div class="proc-row" id="hl-panel-proc" style="display:none;"><div class="spin"></div><span>Analyzing and highlighting key phrases…</span></div>
+        <div class="hl-out" id="hl-panel-out" style="display:none;"></div>
+        <div id="hl-panel-dl" style="display:none;margin-top:10px;">
+          <div class="dl-row">
+            <button class="dl-btn" onclick="navigator.clipboard.writeText(g('hl-panel-out').innerText)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+            <button class="dl-btn" onclick="dlTxt(g('hl-panel-out').innerText,'highlighted-notes')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload / Scan Docs -->
+      <div id="cp-upload" style="display:none;">
+        <div class="lbl" style="margin-bottom:4px;">📷 Take a photo of any page or upload a document — text is extracted verbatim into your Notes.</div>
+        <div style="font-size:0.76rem;color:var(--muted);margin-bottom:14px;">Supports: JPG · PNG · WEBP (photos) · PDF · DOCX · TXT</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+          <label style="flex:1;min-width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px;background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(56,189,248,0.04));border:1.5px dashed rgba(56,189,248,0.4);border-radius:14px;cursor:pointer;text-align:center;font-family:inherit;transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(56,189,248,0.7)'" onmouseout="this.style.borderColor='rgba(56,189,248,0.4)'">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(56,189,248,0.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span style="font-size:0.82rem;font-weight:700;color:rgba(56,189,248,0.9);">📷 Take / Upload Photo</span>
+            <span style="font-size:0.71rem;color:var(--muted);">JPG, PNG, WEBP</span>
+            <input type="file" id="up-img-input" accept="image/*" capture="environment" style="display:none" onchange="upLoadFile(this.files[0])">
+          </label>
+          <label style="flex:1;min-width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:14px;cursor:pointer;text-align:center;font-family:inherit;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--purple2)'" onmouseout="this.style.borderColor='var(--border)'">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span style="font-size:0.82rem;font-weight:700;color:var(--purple2);">📄 Upload Document</span>
+            <span style="font-size:0.71rem;color:var(--muted);">PDF, DOCX, TXT</span>
+            <input type="file" id="up-doc-input" accept=".pdf,.docx,.txt" style="display:none" onchange="upLoadFile(this.files[0])">
+          </label>
+        </div>
+        <div class="proc-row" id="up-proc" style="display:none;"><div class="spin"></div><span id="up-proc-txt">Reading with AI…</span></div>
+        <div id="up-result" style="display:none;margin-top:4px;">
+          <div class="ta-wrap">
+            <textarea id="up-box" class="cap-ta" spellcheck="false" style="min-height:200px;" placeholder="Extracted text appears here…"></textarea>
+            <button class="ta-clear" onclick="g('up-box').value='';g('up-result').style.display='none'">Clear</button>
+          </div>
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn solid" onclick="upSaveToNotepad()" style="padding:9px 20px;font-size:0.84rem;">💾 Save to Notepad →</button>
+            <button class="btn line" onclick="cpEl('up-box')">Copy</button>
+            <button class="dl-btn" onclick="dlTxt(g('up-box').value,'extracted-text')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload URL -->
+      <div id="cp-url" style="display:none;">
+        <div class="lbl" style="margin-bottom:10px;">Paste a URL</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input class="cap-in" type="text" id="url-input" placeholder="https://youtube.com/watch?v=..." style="flex:1;" onkeydown="if(event.key==='Enter')runUrlTranscribe()">
+          <button class="btn solid" id="url-btn" onclick="runUrlTranscribe()">Go →</button>
+        </div>
+        <!-- Mode chips -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="sub-tab on" id="url-chip-transcribe" onclick="setUrlMode('transcribe')" style="padding:5px 14px;font-size:0.76rem;">📄 Transcribe</button>
+          <button class="sub-tab" id="url-chip-summarize" onclick="setUrlMode('summarize')" style="padding:5px 14px;font-size:0.76rem;">✨ Summarize</button>
+          <button class="sub-tab" id="url-chip-notes" onclick="setUrlMode('notes')" style="padding:5px 14px;font-size:0.76rem;">📝 Notes</button>
+        </div>
+        <div class="proc-row" id="url-proc" style="display:none;"><div class="spin"></div><span id="url-proc-txt">Fetching transcript…</span></div>
+        <div id="url-result" style="display:none;">
+          <div class="ta-wrap">
+            <textarea id="url-box" class="cap-ta" spellcheck="false"></textarea>
+            <button class="ta-clear" id="clear-url" onclick="clearUndo('url-box','clear-url')">Clear</button>
+          </div>
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn-magic" onclick="runMagicHL(g('url-box').value,'hl-url','hl-url-btn')" id="hl-url-btn">✦ Magic Notes</button>
+            <button class="btn line" onclick="cpEl('url-box')">Copy</button>
+            <button class="dl-btn" onclick="dlTxt(g('url-box').value,'url-transcript')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+            <button class="dl-btn" onclick="dlRtf(g('url-box').value,'url-transcript')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+          </div>
+          <div class="hl-out" id="hl-url"></div>
+        </div>
+      </div>
+
+      <!-- Notes + Live Transcript (split view) -->
+      <div id="cp-notes" style="display:none;">
+        <!-- Compact record bar (right side of split) -->
+        <div class="split-wrap">
+          <!-- LEFT: Notes editor -->
+          <div class="split-pane">
+            <div class="split-pane-hd">📝 Notes</div>
+            <div class="notes-list-sm" id="n-list-sm"><div style="color:var(--muted);font-size:0.78rem;">No notes yet.</div></div>
+            <input class="cap-in" type="text" id="n-title" placeholder="Note title…" style="font-size:0.83rem;">
+            <textarea class="cap-ta" id="n-body" style="min-height:180px;flex:1;" placeholder="Write your notes here…"></textarea>
+            <div class="btn-row" style="margin-top:0;gap:6px;">
+              <button class="btn solid" style="padding:7px 14px;font-size:0.78rem;" onclick="newNote()">+ New</button>
+              <button class="btn solid" style="padding:7px 14px;font-size:0.78rem;" onclick="saveNote()">💾 Save</button>
+              <button class="btn line" style="padding:7px 14px;font-size:0.78rem;" onclick="saveAsNote()">Save As…</button>
+              <button class="btn line" style="padding:7px 14px;font-size:0.78rem;" onclick="deleteCurrentNote()">Delete</button>
+            </div>
+            <!-- Save As / Create Folder bar -->
+            <div id="save-as-bar" style="display:none;margin-top:10px;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);">
+              <div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin-bottom:8px;">Save to Notepad</div>
+              <input class="cap-in" id="save-as-title" type="text" placeholder="Note title…" style="margin-bottom:8px;font-size:0.83rem;">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+                <select id="save-as-folder" class="cap-in" style="flex:1;font-size:0.81rem;padding:7px 10px;cursor:pointer;background:var(--surface2);color:var(--text);">
+                  <option value="">📝 No folder</option>
+                </select>
+                <button class="btn line" style="padding:7px 12px;font-size:0.77rem;white-space:nowrap;" onclick="saveasCreateFolder()">📁+ New Folder</button>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn solid" style="flex:1;padding:8px 14px;font-size:0.8rem;" onclick="confirmSaveAs()">Open in Notepad →</button>
+                <button class="btn line" style="padding:8px 14px;font-size:0.8rem;" onclick="g('save-as-bar').style.display='none'">Cancel</button>
+              </div>
+            </div>
+          </div>
+          <div class="split-divider"></div>
+          <!-- RIGHT: Live transcript -->
+          <div class="split-pane">
+            <div class="split-pane-hd">🎙️ Live Transcript</div>
+            <div class="rec-bar" style="margin-bottom:10px;">
+              <button class="rec-btn-sm" id="notes-rec-btn" onclick="toggleNotesRec()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <div class="rec-bar-info">
+                <div class="rec-bar-time" id="notes-rec-time">0:00</div>
+                <div class="rec-bar-hint" id="notes-rec-hint">Tap to record alongside notes</div>
+              </div>
+              <canvas class="wv-sm" id="wv-notes" width="200" height="30"></canvas>
+            </div>
+            <div class="notes-transcript" id="notes-live-display">Transcript will appear here as you speak…</div>
+            <div class="btn-row" style="margin-top:8px;gap:6px;">
+              <button class="btn line" style="padding:6px 12px;font-size:0.76rem;" onclick="appendTranscriptToNote()">← Add to Note</button>
+              <button class="btn line" style="padding:6px 12px;font-size:0.76rem;" onclick="g('notes-live-display').textContent=''">Clear</button>
+            </div>
+          </div>
+        </div>
+        <!-- Hidden full notes list for old render fallback -->
+        <div id="n-list" style="display:none;"></div>
+      </div>
+
+      <div class="stage-next">
+        <p>Record, upload, or type your content, then continue.</p>
+        <button class="btn solid" onclick="continueToOrganize()">Organize → </button>
+      </div>
+    </div>
+
+    <!-- ── STAGE 1: ORGANIZE ── -->
+    <div id="sp-1" class="sp">
+      <div class="lbl">Working Transcript</div>
+      <div class="ta-wrap" style="margin-bottom:18px;">
+        <textarea id="org-tx" class="cap-ta" style="min-height:100px;" spellcheck="false"></textarea>
+        <button class="ta-clear" id="clear-org" onclick="clearUndo('org-tx','clear-org',_transcript)">Reset</button>
+      </div>
+      <button class="btn solid" onclick="runOrganize()" id="org-btn">✦ Organize Topics</button>
+      <div class="proc-row" id="org-proc" style="display:none;"><div class="spin"></div><span>Organizing your content…</span></div>
+      <div id="org-result" style="display:none;margin-top:18px;">
+        <div class="lbl">Organized Topics</div>
+        <div class="ai-output" id="org-out"></div>
+        <div class="btn-row" style="margin-bottom:8px;">
+          <button class="btn-magic" onclick="runMagicHL(g('org-out').innerText,'hl-org','hl-org-btn')" id="hl-org-btn">✦ Magic Notes</button>
+        </div>
+        <div class="dl-row" style="margin-top:12px;">
+          <button class="dl-btn" onclick="dlTxt(g('org-out').innerText,'organized-notes')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+          <button class="dl-btn" onclick="dlRtf(g('org-out').innerText,'organized-notes')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+          <button class="dl-btn" onclick="dlPdf(g('org-out').innerText,'organized-notes')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+        </div>
+        <div class="hl-out" id="hl-org"></div>
+      </div>
+      <div class="stage-next">
+        <p>AI has organized your content into topics.</p>
+        <button class="btn solid" onclick="goStage(2)">Understand →</button>
+      </div>
+    </div>
+
+    <!-- ── STAGE 2: UNDERSTAND ── -->
+    <div id="sp-2" class="sp">
+      <button class="btn solid" onclick="runUnderstand()" id="und-btn">✦ Analyze Meeting</button>
+      <div class="proc-row" id="und-proc" style="display:none;"><div class="spin"></div><span>Analyzing your transcript…</span></div>
+      <div id="und-result" style="display:none;margin-top:18px;">
+        <div class="btn-row" style="margin-bottom:8px;">
+          <button class="btn-magic" onclick="runMagicHL(undText(),'hl-und','hl-und-btn')" id="hl-und-btn">✦ Magic Notes</button>
+        </div>
+        <div class="dl-row" style="margin-bottom:14px;">
+          <button class="dl-btn" onclick="dlTxt(undText(),'meeting-analysis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+          <button class="dl-btn" onclick="dlRtf(undText(),'meeting-analysis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+          <button class="dl-btn" onclick="dlPdf(undText(),'meeting-analysis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+        </div>
+        <div class="hl-out" id="hl-und"></div>
+        <div class="ai-cards">
+          <div class="ai-card">
+            <div class="ai-card-title">📋 Summary</div>
+            <div class="ai-output" id="und-summary" style="padding:0;background:none;min-height:auto;font-size:0.84rem;"></div>
+          </div>
+          <div class="ai-card">
+            <div class="ai-card-title">✅ Action Items</div>
+            <div class="ai-output" id="und-actions" style="padding:0;background:none;min-height:auto;font-size:0.84rem;"></div>
+          </div>
+          <div class="ai-card">
+            <div class="ai-card-title">🎯 Key Decisions</div>
+            <div class="ai-output" id="und-decisions" style="padding:0;background:none;min-height:auto;font-size:0.84rem;"></div>
+          </div>
+          <div class="ai-card">
+            <div class="ai-card-title">💡 Highlights</div>
+            <div class="ai-output" id="und-highlights" style="padding:0;background:none;min-height:auto;font-size:0.84rem;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="stage-next">
+        <p>AI has broken down your meeting into key insights.</p>
+        <button class="btn solid" onclick="goStage(3)">Recall →</button>
+      </div>
+
+    </div>
+
+    <!-- ── STAGE 3: RECALL ── -->
+    <div id="sp-3" class="sp">
+      <p style="font-size:0.83rem;color:var(--muted);margin-bottom:16px;">Ask anything about your transcript — the AI answers from your content only.</p>
+      <div class="chat-log" id="recall-log">
+        <div class="chat-msg">
+          <div class="chat-avatar">AI</div>
+          <div class="chat-bubble">Hi! I've read your transcript. Ask me anything — key points, who said what, decisions made, follow-ups, or anything else.</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-in" id="recall-in" type="text" placeholder="Ask about your transcript…" onkeydown="if(event.key==='Enter')sendRecall()">
+        <button class="btn solid" onclick="sendRecall()">Send</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <button class="btn-magic" onclick="runMagicHL(recallText(),'hl-recall','hl-recall-btn')" id="hl-recall-btn">✦ Magic Notes</button>
+      </div>
+      <div class="dl-row" style="margin-top:10px;">
+        <button class="dl-btn" onclick="dlTxt(recallText(),'recall-chat')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+        <button class="dl-btn" onclick="dlRtf(recallText(),'recall-chat')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+        <button class="dl-btn" onclick="dlPdf(recallText(),'recall-chat')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+      </div>
+      <div class="hl-out" id="hl-recall"></div>
+      <div class="stage-next">
+        <p>Use Recall to find anything from your transcript.</p>
+        <button class="btn solid" onclick="goStage(4)">Create →</button>
+      </div>
+    </div>
+
+    <!-- ── STAGE 4: CREATE ── -->
+    <div id="sp-4" class="sp">
+      <div class="sub-tabs">
+        <button class="sub-tab on" id="crtab-flash" onclick="setCrTab('flash')">🃏 Flashcards</button>
+        <button class="sub-tab" id="crtab-outline" onclick="setCrTab('outline')">📋 Outline</button>
+      </div>
+      <div id="cr-flash">
+        <button class="btn solid" onclick="runFlashcards()" id="flash-btn">✦ Generate Flashcards</button>
+        <div class="proc-row" id="flash-proc" style="display:none;"><div class="spin"></div><span>Creating flashcards…</span></div>
+        <div id="flash-result" style="display:none;margin-top:18px;">
+          <div class="lbl" style="margin-bottom:12px;">Click a card to flip</div>
+          <div class="fc-grid" id="fc-grid"></div>
+          <div class="btn-row" style="margin-bottom:6px;margin-top:14px;">
+            <button class="btn-magic" onclick="runMagicHL(flashText(),'hl-flash','hl-flash-btn')" id="hl-flash-btn">✦ Magic Notes</button>
+          </div>
+          <div class="dl-row">
+            <button class="dl-btn" onclick="dlTxt(flashText(),'flashcards')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+            <button class="dl-btn" onclick="dlRtf(flashText(),'flashcards')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+            <button class="dl-btn" onclick="dlPdf(flashText(),'flashcards')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+          </div>
+          <div class="hl-out" id="hl-flash"></div>
+        </div>
+      </div>
+      <div id="cr-outline" style="display:none;">
+        <button class="btn solid" onclick="runOutline()" id="outline-btn">✦ Generate Outline</button>
+        <div class="proc-row" id="outline-proc" style="display:none;"><div class="spin"></div><span>Building outline…</span></div>
+        <div id="outline-result" style="display:none;margin-top:18px;">
+          <div class="ai-output" id="outline-out"></div>
+          <div class="btn-row" style="margin-bottom:6px;margin-top:12px;">
+            <button class="btn-magic" onclick="runMagicHL(g('outline-out').innerText,'hl-outline','hl-outline-btn')" id="hl-outline-btn">✦ Magic Notes</button>
+          </div>
+          <div class="dl-row">
+            <button class="dl-btn" onclick="dlTxt(g('outline-out').innerText,'outline')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+            <button class="dl-btn" onclick="dlRtf(g('outline-out').innerText,'outline')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+            <button class="dl-btn" onclick="dlPdf(g('outline-out').innerText,'outline')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+          </div>
+          <div class="hl-out" id="hl-outline"></div>
+        </div>
+      </div>
+      <div class="stage-next">
+        <p>Study materials generated from your transcript.</p>
+        <button class="btn solid" onclick="goStage(5)">Team →</button>
+      </div>
+    </div>
+
+    <!-- ── STAGE 5: TEAM ── -->
+    <div id="sp-5" class="sp">
+      <button class="btn solid" onclick="runTeam()" id="team-btn">✦ Generate Team Brief</button>
+      <div class="proc-row" id="team-proc" style="display:none;"><div class="spin"></div><span>Building team brief…</span></div>
+      <div id="team-result" style="display:none;margin-top:20px;">
+        <div class="team-section">
+          <div class="team-section-title">Meeting Brief</div>
+          <div class="ai-output" id="team-brief"></div>
+        </div>
+        <div class="team-section">
+          <div class="team-section-title">Action Items</div>
+          <table class="action-table">
+            <thead><tr><th>Task</th><th style="width:140px;">Owner</th><th style="width:120px;">Deadline</th></tr></thead>
+            <tbody id="team-actions"></tbody>
+          </table>
+        </div>
+        <div class="team-section">
+          <div class="team-section-title">Follow-ups</div>
+          <div class="ai-output" id="team-followups"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-magic" onclick="runMagicHL(fullTeamText(),'hl-team','hl-team-btn')" id="hl-team-btn">✦ Magic Notes</button>
+          <button class="btn line" onclick="copyTeamBrief()">Copy Brief</button>
+          <button class="dl-btn" onclick="dlTxt(fullTeamText(),'meeting-brief')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>TXT</button>
+          <button class="dl-btn" onclick="dlRtf(fullTeamText(),'meeting-brief')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Word</button>
+          <button class="dl-btn" onclick="dlPdf(fullTeamText(),'meeting-brief')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+          <button class="btn green" onclick="saveTeamAsNote()">Save to Notes</button>
+          <div class="hl-out" id="hl-team" style="margin-top:14px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /ws-box -->
+</div><!-- /ws-wrap -->
+
+
+<script>
+  // Stub: loads recorder.js on first click, then calls the real launchFloatingRecorder
+  if (!window.launchFloatingRecorder) {
+    window.launchFloatingRecorder = function _frStub() {
+      if (document.querySelector('script[src="js/recorder.js"]')) {
+        // Already injected — real function should be defined by now
+        if (typeof window.launchFloatingRecorder === 'function' && window.launchFloatingRecorder !== _frStub) {
+          window.launchFloatingRecorder();
+        }
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = 'js/recorder.js';
+      s.onload = function() {
+        if (typeof window.launchFloatingRecorder === 'function') window.launchFloatingRecorder();
+      };
+      document.head.appendChild(s);
+    };
+  }
+
+  // ── Theme & Sidebar ──────────────────────────────────────
+  if (localStorage.getItem('gn-theme') === 'light') { document.documentElement.classList.add('light'); document.getElementById('themeToggle').textContent = '☀️'; }
+  function toggleTheme() { const l = document.documentElement.classList.toggle('light'); localStorage.setItem('gn-theme', l?'light':'dark'); g('themeToggle').textContent = l?'☀️':'🌙'; }
+  function toggleSB() { g('sidebar').classList.toggle('open'); g('sb-overlay').classList.toggle('open'); }
+  function closeSB() { g('sidebar').classList.remove('open'); g('sb-overlay').classList.remove('open'); }
+
+  // ── Global state ─────────────────────────────────────────
+  let _transcript = '';
+  let _currentStage = 0;
+  let _recallHistory = [];
+  let _doneMask = 0; // bitmask of completed stages
+  let _currentNoteId = null;
+
+  // ── Stage navigation ─────────────────────────────────────
+  function goStage(n) {
+    if (n !== 0 && _going) stopRec();
+    if (n !== 0 && _notesGoing) stopNotesRec();
+    for (let i = 0; i < 6; i++) {
+      g('sp-' + i).classList.toggle('on', i === n);
+      g('stab-' + i).classList.toggle('on', i === n);
+    }
+    _currentStage = n;
+    const pill = g('tx-pill');
+    if (n > 0 && _transcript) {
+      const wc = _transcript.trim().split(/\s+/).length;
+      g('tx-info').textContent = `Transcript · ${wc} words`;
+      pill.style.display = 'flex';
+    } else {
+      pill.style.display = 'none';
+    }
+    g('ws-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function markDone(n) {
+    _doneMask |= (1 << n);
+    g('stab-' + n).classList.add('done');
+  }
+
+  // ── Capture method landing ────────────────────────────────
+  function selectCapMethod(method) {
+    g('cap-landing').style.display = 'none';
+    g('cap-area').style.display = '';
+    ['notes','url','live','file','highlight','upload'].forEach(m => { const el = g('cm-'+m); if (el) el.classList.toggle('selected', m === method); });
+    setCTab(method);
+  }
+  function backToCapLanding() {
+    g('cap-area').style.display = 'none';
+    g('cap-landing').style.display = '';
+  }
+
+  // ── Paste URL transcription ───────────────────────────────
+  let _urlMode = 'transcribe';
+  function setUrlMode(m) {
+    _urlMode = m;
+    ['transcribe','summarize','notes'].forEach(x => {
+      const el = g('url-chip-' + x);
+      if (el) el.classList.toggle('on', x === m);
+    });
+  }
+  async function runUrlTranscribe() {
+    const url = g('url-input').value.trim(); if (!url) return;
+    const labels = { transcribe: 'Fetching transcript…', summarize: 'Summarizing…', notes: 'Generating notes…' };
+    g('url-proc-txt').textContent = labels[_urlMode] || 'Processing…';
+    g('url-btn').disabled = true; g('url-proc').style.display = 'flex'; g('url-result').style.display = 'none';
+    try {
+      const res = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ url, mode: _urlMode }) });
+      const d = await res.json();
+      g('url-box').value = d.transcript || d.summary || d.notes || 'No result found for this URL.';
+      g('url-result').style.display = '';
+    } catch(e) { g('url-box').value = 'Error: ' + e.message; g('url-result').style.display = ''; }
+    g('url-btn').disabled = false; g('url-proc').style.display = 'none';
+  }
+
+  // ── Capture sub-tabs ─────────────────────────────────────
+  const CTABS = ['live','notes','url','file','highlight','upload'];
+  function setCTab(t) {
+    CTABS.forEach(x => {
+      const el = g('cp-'+x); if (el) el.style.display = x === t ? '' : 'none';
+      const btn = g('ctab-'+x); if (btn) btn.classList.toggle('on', x === t);
+    });
+    if (t === 'notes') renderNotesList();
+  }
+
+  // ── LIVE RECORDING ───────────────────────────────────────
+  let _timer, _secs = 0, _ctx, _analyser, _raf, _stream, _going = false;
+  let _mr = null, _mrChunks = [], _mime = '';
+  let _recognition = null, _liveText = '';
+  let _diarizeTimer = null, _lastDiarizedLen = 0;
+  const _SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  async function toggleRec() {
+    _going ? stopRec() : await startRec();
+  }
+
+  async function startRec() {
+    try { _stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { g('rec-hint').textContent = 'Microphone access denied.'; return; }
+
+    _mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    _going = true; _liveText = ''; _mrChunks = [];
+    g('live-box').value = ''; g('live-acts').style.display = 'none';
+    g('rec-btn').classList.add('on'); g('rec-time').classList.add('on'); g('rec-hint').textContent = 'Recording… tap to stop';
+
+    _secs = 0;
+    _timer = setInterval(() => { _secs++; const m=Math.floor(_secs/60),s=_secs%60; g('rec-time').textContent=m+':'+String(s).padStart(2,'0'); }, 1000);
+
+    _ctx = new (window.AudioContext||window.webkitAudioContext)();
+    _analyser = _ctx.createAnalyser(); _analyser.fftSize = 256;
+    _ctx.createMediaStreamSource(_stream).connect(_analyser);
+    drawWave();
+
+    try { _mr = new MediaRecorder(_stream, _mime ? {mimeType:_mime, audioBitsPerSecond:16000} : {audioBitsPerSecond:16000}); }
+    catch { _mr = new MediaRecorder(_stream); }
+    _mr.ondataavailable = e => { if (e.data.size > 0) _mrChunks.push(e.data); };
+    _mr.start(500);
+
+    // Every 25s, apply speaker labels to accumulated live text
+    _lastDiarizedLen = 0;
+    _diarizeTimer = setInterval(async () => {
+      const text = _liveText.trim();
+      if (text.length - _lastDiarizedLen < 80) return;
+      _lastDiarizedLen = text.length;
+      try {
+        const r = await fetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ text, diarize: true }) });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.transcript && _going) {
+            g('live-box').value = d.transcript;
+            g('live-box').scrollTop = g('live-box').scrollHeight;
+            g('live-acts').style.display = 'flex';
+          }
+        }
+      } catch {}
+    }, 25000);
+
+    if (_SR) {
+      _recognition = new _SR();
+      _recognition.continuous = true; _recognition.interimResults = true; _recognition.lang = 'en-US';
+      _recognition.onresult = evt => {
+        let interim = '';
+        for (let i = evt.resultIndex; i < evt.results.length; i++) {
+          if (evt.results[i].isFinal) {
+            let seg = evt.results[i][0].transcript.trim();
+            // Capitalize first letter of each utterance
+            seg = seg.charAt(0).toUpperCase() + seg.slice(1);
+            // Fix standalone 'i' -> 'I'
+            seg = seg.replace(/\bi\b/g, 'I').replace(/\bi'/g, "I'");
+            // Add terminal punctuation if missing
+            if (seg && !/[.!?,;:]$/.test(seg)) seg += '.';
+            _liveText += seg + ' ';
+          } else {
+            interim = evt.results[i][0].transcript;
+          }
+        }
+        const ta = g('live-box');
+        ta.value = (_liveText + interim).trimEnd();
+        ta.scrollTop = ta.scrollHeight;
+        if (ta.value) g('live-acts').style.display = 'flex';
+      };
+      _recognition.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') g('rec-hint').textContent = 'Speech error: '+e.error; };
+      _recognition.onend = () => { if (_going) { try { _recognition.start(); } catch {} } };
+      try { _recognition.start(); } catch {}
+      g('rec-hint').textContent = 'Recording… tap to stop';
+    } else {
+      g('rec-hint').textContent = 'Recording (Chrome/Edge for live text)…';
+    }
+  }
+
+  function stopRec() {
+    _going = false;
+    clearInterval(_timer);
+    clearInterval(_diarizeTimer); _diarizeTimer = null;
+    cancelAnimationFrame(_raf);
+    if (_recognition) { try { _recognition.stop(); } catch {} _recognition = null; }
+    _stream.getTracks().forEach(t => t.stop());
+    g('rec-btn').classList.remove('on'); g('rec-time').classList.remove('on');
+    clearWave();
+
+    const finalize = async () => {
+      const liveText = _liveText.trim();
+
+      // ── INSTANT PATH: Web Speech captured something — show it immediately ──
+      if (liveText.length > 0) {
+        g('live-box').value = liveText;
+        g('live-box').scrollTop = g('live-box').scrollHeight;
+        g('live-acts').style.display = 'flex';
+        g('rec-hint').textContent = 'Done — tap to record again.';
+
+        // For longer conversations, add speaker labels asynchronously (no blocking spinner)
+        if (liveText.length > 120) {
+          g('rec-hint').textContent = 'Adding speaker labels…';
+          fetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ text: liveText, diarize: true }) })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+              if (d && d.transcript && d.transcript.trim()) {
+                g('live-box').value = d.transcript.trim();
+                g('live-box').scrollTop = g('live-box').scrollHeight;
+              }
+            })
+            .catch(() => {})
+            .finally(() => { g('rec-hint').textContent = 'Done — tap to record again.'; });
+        }
+        return;
+      }
+
+      // ── FALLBACK: no live text (non-Chrome) — use Whisper ──
+      const mimeType = (_mr && _mr.mimeType) ? _mr.mimeType : (_mime || 'audio/webm');
+      const blob = new Blob(_mrChunks, { type: mimeType });
+      if (blob.size > 200) {
+        g('rec-hint').textContent = 'Transcribing…';
+        g('live-proc').style.display = 'flex';
+        try {
+          const b64 = await withTimeout(toB64(blob), 10000);
+          const res = await withTimeout(
+            fetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ audio: b64, mimeType: mimeType || 'audio/webm', diarize: true }) }),
+            55000
+          );
+          if (res.ok) {
+            const d = await withTimeout(res.json(), 10000);
+            if (d && d.transcript && d.transcript.trim()) {
+              g('live-box').value = d.transcript.trim();
+              g('live-box').scrollTop = g('live-box').scrollHeight;
+              g('live-acts').style.display = 'flex';
+            }
+          }
+        } catch(err) {
+          g('rec-hint').textContent = err.message === 'timeout'
+            ? 'Whisper timed out — your live text is above.'
+            : 'Transcription failed — try again.';
+        } finally {
+          g('live-proc').style.display = 'none';
+          g('rec-hint').textContent = 'Done — tap to record again.';
+        }
+      } else {
+        g('rec-hint').textContent = 'Done — tap to record again.';
+      }
+    };
+    if (_mr && _mr.state === 'recording') { _mr.onstop = finalize; _mr.stop(); } else finalize();
+  }
+
+  function drawWave() {
+    const canvas = g('rec-viz'); if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const CX = W/2, CY = H/2, INNER = 68, MAX_BAR = 68;
+    const N = _analyser.frequencyBinCount;
+    const buf = new Uint8Array(N);
+    const smooth = new Float32Array(N);
+    function frame() {
+      _raf = requestAnimationFrame(frame);
+      if (!_analyser) return;
+      _analyser.getByteFrequencyData(buf);
+      for (let i = 0; i < N; i++) smooth[i] = smooth[i]*0.78 + (buf[i]/255)*0.22;
+      const avgVol = smooth.reduce((a,b)=>a+b,0)/N;
+      ctx.clearRect(0,0,W,H);
+      // Center glow
+      if (avgVol > 0.02) {
+        const grd = ctx.createRadialGradient(CX,CY,0,CX,CY,INNER+avgVol*MAX_BAR);
+        grd.addColorStop(0,`rgba(139,92,246,${(avgVol*0.55).toFixed(2)})`);
+        grd.addColorStop(0.6,`rgba(167,139,250,${(avgVol*0.18).toFixed(2)})`);
+        grd.addColorStop(1,'rgba(139,92,246,0)');
+        ctx.beginPath(); ctx.arc(CX,CY,INNER+avgVol*MAX_BAR,0,Math.PI*2);
+        ctx.fillStyle=grd; ctx.fill();
+      }
+      // Inner ring
+      ctx.beginPath(); ctx.arc(CX,CY,INNER,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(167,139,250,${(0.18+avgVol*0.5).toFixed(2)})`;
+      ctx.lineWidth=2; ctx.stroke();
+      // Bars
+      const barW = Math.max(2,(Math.PI*2*INNER/N)*0.6);
+      for (let i=0;i<N;i++) {
+        const angle=(i/N)*Math.PI*2-Math.PI/2;
+        const v=smooth[i], barH=v*MAX_BAR;
+        if(barH<0.5) continue;
+        const x1=CX+Math.cos(angle)*INNER, y1=CY+Math.sin(angle)*INNER;
+        const x2=CX+Math.cos(angle)*(INNER+barH), y2=CY+Math.sin(angle)*(INNER+barH);
+        const r=Math.round(167+v*88), gr=Math.round(139-v*80), b=Math.round(250-v*55);
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.strokeStyle=`rgba(${r},${gr},${b},${(0.55+v*0.45).toFixed(2)})`;
+        ctx.lineWidth=barW; ctx.lineCap='round'; ctx.stroke();
+      }
+      // Center dot
+      ctx.beginPath(); ctx.arc(CX,CY,5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(167,139,250,${(0.35+avgVol*0.65).toFixed(2)})`; ctx.fill();
+    }
+    frame();
+  }
+  function clearWave() {
+    const canvas=g('rec-viz');
+    if(canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  // ── NOTES SPLIT RECORDING ────────────────────────────────
+  let _notesTimer, _notesSecs = 0, _notesCtx, _notesAnalyser, _notesRaf, _notesStream, _notesGoing = false;
+  let _notesMr = null, _notesMrChunks = [], _notesMime = '';
+  let _notesRecognition = null, _notesLiveText = '';
+
+  async function toggleNotesRec() { _notesGoing ? stopNotesRec() : await startNotesRec(); }
+
+  async function startNotesRec() {
+    try { _notesStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { g('notes-rec-hint').textContent = 'Microphone access denied.'; return; }
+
+    _notesMime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    _notesGoing = true; _notesLiveText = ''; _notesMrChunks = [];
+    g('notes-live-display').textContent = '';
+    g('notes-rec-btn').classList.add('on'); g('notes-rec-time').classList.add('on');
+
+    _notesSecs = 0;
+    _notesTimer = setInterval(() => { _notesSecs++; const m=Math.floor(_notesSecs/60),s=_notesSecs%60; g('notes-rec-time').textContent=m+':'+String(s).padStart(2,'0'); }, 1000);
+
+    _notesCtx = new (window.AudioContext||window.webkitAudioContext)();
+    _notesAnalyser = _notesCtx.createAnalyser(); _notesAnalyser.fftSize = 64;
+    _notesCtx.createMediaStreamSource(_notesStream).connect(_notesAnalyser);
+    drawNotesWave();
+
+    try { _notesMr = new MediaRecorder(_notesStream, _notesMime ? {mimeType:_notesMime} : {}); }
+    catch { _notesMr = new MediaRecorder(_notesStream); }
+    _notesMr.ondataavailable = e => { if (e.data.size > 0) _notesMrChunks.push(e.data); };
+    _notesMr.start(500);
+
+    if (_SR) {
+      _notesRecognition = new _SR();
+      _notesRecognition.continuous = true; _notesRecognition.interimResults = true; _notesRecognition.lang = 'en-US';
+      _notesRecognition.onresult = evt => {
+        let interim = '';
+        for (let i = evt.resultIndex; i < evt.results.length; i++) {
+          if (evt.results[i].isFinal) {
+            let seg = evt.results[i][0].transcript.trim();
+            seg = seg.charAt(0).toUpperCase() + seg.slice(1);
+            seg = seg.replace(/\bi\b/g, 'I').replace(/\bi'/g, "I'");
+            if (seg && !/[.!?,;:]$/.test(seg)) seg += '.';
+            _notesLiveText += seg + ' ';
+          } else { interim = evt.results[i][0].transcript; }
+        }
+        const disp = g('notes-live-display');
+        disp.textContent = (_notesLiveText + interim).trimEnd();
+        disp.scrollTop = disp.scrollHeight;
+      };
+      _notesRecognition.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') g('notes-rec-hint').textContent = 'Speech error: '+e.error; };
+      _notesRecognition.onend = () => { if (_notesGoing) { try { _notesRecognition.start(); } catch {} } };
+      try { _notesRecognition.start(); } catch {}
+      g('notes-rec-hint').textContent = 'Recording… tap to stop';
+    } else {
+      g('notes-rec-hint').textContent = 'Recording (Chrome/Edge for live text)…';
+    }
+  }
+
+  function stopNotesRec() {
+    _notesGoing = false;
+    clearInterval(_notesTimer);
+    cancelAnimationFrame(_notesRaf);
+    if (_notesRecognition) { try { _notesRecognition.stop(); } catch {} _notesRecognition = null; }
+    _notesStream.getTracks().forEach(t => t.stop());
+    g('notes-rec-btn').classList.remove('on'); g('notes-rec-time').classList.remove('on');
+    g('notes-rec-hint').textContent = 'Done — tap to record again.';
+    clearNotesWave();
+  }
+
+  function drawNotesWave() {
+    const cv = g('wv-notes'), cx = cv.getContext('2d'), W = cv.width, H = cv.height;
+    const buf = new Uint8Array(_notesAnalyser.frequencyBinCount);
+    function frame() {
+      _notesRaf = requestAnimationFrame(frame);
+      _notesAnalyser.getByteFrequencyData(buf);
+      const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+      cx.clearRect(0,0,W,H);
+      if (avg < 5) return;
+      const bw = W/buf.length*2.2;
+      buf.forEach((v,i) => { if(v<5)return; cx.fillStyle=`rgba(139,92,246,${0.2+(v/255)*0.8})`; cx.fillRect(i*bw,H-(v/255)*H,Math.max(1,bw-1),(v/255)*H); });
+    }
+    frame();
+  }
+  function clearNotesWave() { const cv=g('wv-notes'); if(cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height); }
+
+  function appendTranscriptToNote() {
+    const tx = g('notes-live-display').textContent.trim();
+    if (!tx) return;
+    const body = g('n-body');
+    body.value = (body.value ? body.value + '\n\n' : '') + tx;
+    g('notes-live-display').textContent = '';
+    _notesLiveText = '';
+  }
+
+  // ── FILE TAB ─────────────────────────────────────────────
+  let _file = null;
+  function dzEv(e,add) { e.preventDefault(); g('f-dz').classList.toggle('over',add); }
+  function dzDrop(e) { e.preventDefault(); g('f-dz').classList.remove('over'); selFile(e.dataTransfer.files[0]); }
+  function selFile(file) {
+    if (!file) return; _file = file;
+    g('f-dz-wrap').style.display = 'none'; g('f-sel').style.display = '';
+    g('f-name').textContent = file.name; g('f-result').style.display = 'none';
+  }
+  function clearFile() { _file=null; g('f-input').value=''; g('f-dz-wrap').style.display=''; g('f-sel').style.display='none'; g('f-result').style.display='none'; }
+  async function transcribeFile() {
+    if (!_file) return;
+    g('f-sel').style.display='none'; g('f-proc').style.display='flex'; g('f-result').style.display='none';
+    g('f-proc-txt').textContent = 'Transcribing audio…';
+    try {
+      const b64 = await withTimeout(toB64(_file), 10000);
+      const res = await withTimeout(
+        fetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({audio:b64, mimeType:_file.type||'audio/webm'}) }),
+        55000
+      );
+      const d = await withTimeout(res.json(), 10000);
+      g('f-box').value = d.transcript || 'No speech detected.';
+      g('f-result').style.display = '';
+    } catch(e) {
+      g('f-box').value = e.message === 'timeout' ? 'Timed out — try a shorter clip.' : 'Error: ' + e.message;
+      g('f-result').style.display = '';
+    } finally {
+      g('f-proc').style.display='none'; g('f-sel').style.display='';
+    }
+  }
+
+  // ── Upload / Scan Docs ──────────────────────────────────────
+  let _upFileName = 'Scanned Note';
+
+  async function upLoadFile(file) {
+    if (!file) return;
+    _upFileName = file.name.replace(/\.[^/.]+$/, '') || 'Scanned Note';
+    g('up-proc').style.display = '';
+    g('up-result').style.display = 'none';
+    g('up-proc-txt').textContent = 'Reading with AI…';
+    const ext = file.name.split('.').pop().toLowerCase();
+    try {
+      let text = '';
+      if (ext === 'txt') {
+        text = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsText(file); });
+      } else if (['jpg','jpeg','png','webp'].includes(ext) || file.type.startsWith('image/')) {
+        g('up-proc-txt').textContent = 'Scanning page with AI vision…';
+        const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+        const resp = await fetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ocrImages: [dataUrl] }) });
+        const d = await resp.json();
+        text = d.text || '';
+      } else if (ext === 'pdf') {
+        g('up-proc-txt').textContent = 'Reading PDF…';
+        text = await upExtractPdf(file);
+      } else if (ext === 'docx') {
+        g('up-proc-txt').textContent = 'Extracting document…';
+        const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+        const resp = await fetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: b64 }) });
+        const d = await resp.json();
+        text = d.text || '';
+      }
+      if (text.trim()) {
+        g('up-box').value = text.trim();
+        g('up-result').style.display = '';
+      } else {
+        alert('No text could be extracted. Try a clearer photo or different file.');
+      }
+    } catch (e) {
+      alert('Error: ' + (e.message || 'Could not extract text.'));
+    } finally {
+      g('up-proc').style.display = 'none';
+    }
+    // Reset file input so same file can be reloaded
+    g('up-img-input').value = ''; g('up-doc-input').value = '';
+  }
+
+  async function upExtractPdf(file) {
+    if (!window.pdfjsLib) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = res; s.onerror = rej; document.head.appendChild(s);
+      });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+    let t = '';
+    for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
+      const pg = await pdf.getPage(i);
+      const content = await pg.getTextContent();
+      t += content.items.map(x => x.str).join(' ') + '\n';
+    }
+    return t;
+  }
+
+  function upSaveToNotepad() {
+    const text = g('up-box').value.trim();
+    if (!text) return;
+    localStorage.setItem('gn-notepad-pending', text);
+    localStorage.setItem('gn-notepad-pending-title', _upFileName);
+    window.location.href = 'notepad.html';
+  }
+
+  // Download helpers
+  function dlTxt(text, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+    a.download = (name||'transcript')+'.txt'; a.click();
+  }
+  function dlRtf(text, name) {
+    const safe = text.replace(/\\/g,'\\\\').replace(/\{/g,'\\{').replace(/\}/g,'\\}').replace(/\n/g,'\\par\n');
+    const rtf = `{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Arial;}}\\f0\\fs24 ${safe}}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([rtf],{type:'application/rtf'}));
+    a.download = (name||'transcript')+'.rtf'; a.click();
+  }
+  async function dlPdf(text, name) {
+    if (!window.jspdf) await loadSrc('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const {jsPDF} = window.jspdf; const doc = new jsPDF(); doc.setFontSize(11);
+    const lines = doc.splitTextToSize(text, 180); let y = 20;
+    lines.forEach(l => { if(y>280){doc.addPage();y=20;} doc.text(l,15,y); y+=6; });
+    doc.save((name||'transcript')+'.pdf');
+  }
+
+    // ── NOTES TAB ────────────────────────────────────────────
+  function getNotes() { try { return JSON.parse(localStorage.getItem('gn-meetings')||'[]'); } catch { return []; } }
+  function putNotes(arr) { localStorage.setItem('gn-meetings',JSON.stringify(arr)); }
+
+  function newNote() { _currentNoteId=null; g('n-title').value=''; g('n-body').value=''; renderNotesList(); }
+  function _syncToHistory(note) {
+    try {
+      let uid = null;
+      for (let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('gn-history-')&&k!=='gn-history-'){uid=k.replace('gn-history-','');break;}}
+      if(!uid) return;
+      const hist = JSON.parse(localStorage.getItem('gn-history-'+uid)||'[]');
+      const existing = hist.findIndex(h=>h.id==='mn-'+note.id);
+      const entry = {id:'mn-'+note.id,type:'meeting-note',source:'Meeting Notes',title:note.title,content:note.content,date:note.date};
+      if(existing>=0) hist[existing]=entry; else hist.unshift(entry);
+      localStorage.setItem('gn-history-'+uid, JSON.stringify(hist));
+    } catch {}
+  }
+  function _removeFromHistory(id) {
+    try {
+      let uid=null;
+      for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('gn-history-')&&k!=='gn-history-'){uid=k.replace('gn-history-','');break;}}
+      if(!uid) return;
+      const hist=JSON.parse(localStorage.getItem('gn-history-'+uid)||'[]').filter(h=>h.id!=='mn-'+id);
+      localStorage.setItem('gn-history-'+uid,JSON.stringify(hist));
+    } catch {}
+  }
+
+  function saveNote() {
+    const title = g('n-title').value.trim() || ('Note — '+fmtDate());
+    const body = g('n-body').value.trim(); if(!body) return;
+    localStorage.setItem('gn-notepad-pending', body);
+    localStorage.setItem('gn-notepad-pending-title', title);
+    window.location.href = 'notepad.html';
+  }
+  function saveAsNote() {
+    const body = g('n-body').value.trim(); if(!body) { alert('Write some notes first.'); return; }
+    const bar = g('save-as-bar');
+    if (!bar) return;
+    g('save-as-title').value = g('n-title').value.trim() || ('Note — '+fmtDate());
+    // Populate folder dropdown
+    const sel = g('save-as-folder');
+    if (sel) {
+      sel.innerHTML = '<option value="">📝 No folder</option>';
+      try {
+        const flds = JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]');
+        flds.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f.id; opt.textContent = '📁 ' + f.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+    bar.style.display = 'block';
+    g('save-as-title').focus();
+  }
+  function confirmSaveAs() {
+    const body = g('n-body').value.trim(); if(!body) return;
+    const title = g('save-as-title').value.trim() || ('Note — '+fmtDate());
+    const folderId = g('save-as-folder')?.value || '';
+    localStorage.setItem('gn-notepad-pending', body);
+    localStorage.setItem('gn-notepad-pending-title', title);
+    if (folderId) localStorage.setItem('gn-notepad-pending-folder', folderId);
+    else localStorage.removeItem('gn-notepad-pending-folder');
+    window.location.href = 'notepad.html';
+  }
+  function saveasCreateFolder() {
+    showCustomPrompt('New Folder', 'Enter a name for your folder', '', function(name) {
+      if (!name || !name.trim()) return;
+      const newFolder = { id: Date.now().toString(36)+Math.random().toString(36).slice(2), name: name.trim() };
+      try {
+        const flds = JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]');
+        flds.push(newFolder);
+        localStorage.setItem('gn-notepad-folders', JSON.stringify(flds));
+      } catch {}
+      g('save-as-bar').style.display = 'none';
+      saveAsNote();
+    });
+  }
+  function deleteCurrentNote() {
+    if (!_currentNoteId) return;
+    _removeFromHistory(_currentNoteId);
+    putNotes(getNotes().filter(n=>n.id!==_currentNoteId));
+    _currentNoteId=null; g('n-title').value=''; g('n-body').value=''; renderNotesList();
+  }
+  function loadNote(id) {
+    const n = getNotes().find(x=>x.id===id); if(!n) return;
+    _currentNoteId=n.id; g('n-title').value=n.title; g('n-body').value=n.content; renderNotesList();
+  }
+  function renderNotesList() {
+    const arr = getNotes();
+    const list = g('n-list');
+    if (list) {
+      list.innerHTML = arr.length ? arr.map(n=>`<div class="ni${n.id===_currentNoteId?' on':''}" onclick="loadNote(${n.id})">
+        <div class="ni-row"><div class="ni-title">${esc(n.title)}</div><button class="ni-del" onclick="event.stopPropagation();delNote(${n.id})">✕</button></div>
+        <div class="ni-date">${new Date(n.date).toLocaleDateString()}</div>
+      </div>`).join('') : '<div class="no-notes">No notes yet.</div>';
+    }
+    const sm = g('n-list-sm');
+    if (sm) {
+      sm.innerHTML = arr.length ? arr.map(n=>`<div class="ni-sm${n.id===_currentNoteId?' on':''}" onclick="loadNote(${n.id})">${esc(n.title)}</div>`).join('')
+        : '<div style="color:var(--muted);font-size:0.78rem;">No notes yet.</div>';
+    }
+  }
+  function delNote(id) { _removeFromHistory(id); putNotes(getNotes().filter(n=>n.id!==id)); if(_currentNoteId===id){_currentNoteId=null;g('n-title').value='';g('n-body').value='';} renderNotesList(); }
+
+  function saveCurrentAsNote() {
+    const content = g('live-box').value.trim(); if(!content) return;
+    const arr = getNotes();
+    arr.unshift({id:Date.now(),title:'Recording — '+fmtDate(),content,date:new Date().toISOString(),updated:Date.now()});
+    putNotes(arr);
+  }
+
+  // ── CONTINUE TO ORGANIZE ─────────────────────────────────
+  function continueToOrganize() {
+    const tx = g('live-box').value.trim() || g('url-box').value.trim() || g('f-box').value.trim() || g('n-body').value.trim();
+    if (!tx) { alert('Please capture some content first.'); return; }
+    _transcript = tx;
+    markDone(0);
+    g('org-tx').value = tx;
+    g('org-result').style.display = 'none';
+    goStage(1);
+  }
+
+  // ── ORGANIZE ─────────────────────────────────────────────
+  async function runOrganize() {
+    const tx = g('org-tx').value.trim(); if (!tx) return;
+    _transcript = tx;
+    g('org-btn').disabled = true; g('org-proc').style.display='flex'; g('org-result').style.display='none';
+    try {
+      const res = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text: 'Organize this meeting/lecture transcript into clear topic sections with key points listed under each topic. Use headers for each topic.\n\n'+tx, mode:'notes' }) });
+      const d = await res.json();
+      const out = d.summary || d.notes || '';
+      g('org-out').innerHTML = mdHtml(out);
+      g('org-result').style.display = ''; markDone(1);
+    } catch(e) { g('org-out').textContent = 'Error: '+e.message; g('org-result').style.display=''; }
+    g('org-btn').disabled=false; g('org-proc').style.display='none';
+  }
+
+  // ── UNDERSTAND ───────────────────────────────────────────
+  async function runUnderstand() {
+    if (!_transcript) { alert('Go back to Capture first.'); return; }
+    g('und-btn').disabled=true; g('und-proc').style.display='flex'; g('und-result').style.display='none';
+    const base = _transcript;
+    try {
+      const [sumRes, breakRes] = await Promise.all([
+        fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:base, mode:'summarize'}) }),
+        fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:'From this meeting/lecture transcript, provide:\n1. ACTION ITEMS: bullet list of tasks to be done\n2. KEY DECISIONS: bullet list of decisions made\n3. HIGHLIGHTS: bullet list of the most important points\n\nTranscript:\n'+base, mode:'notes'}) })
+      ]);
+      const sumD = await sumRes.json();
+      const breakD = await breakRes.json();
+      g('und-summary').innerHTML = mdHtml(sumD.summary || sumD.notes || '');
+      const breakdown = breakD.summary || breakD.notes || '';
+      const sections = splitSections(breakdown);
+      g('und-actions').innerHTML = mdHtml(sections.actions || '');
+      g('und-decisions').innerHTML = mdHtml(sections.decisions || '');
+      g('und-highlights').innerHTML = mdHtml(sections.highlights || '');
+      g('und-result').style.display=''; markDone(2);
+    } catch(e) { g('und-summary').textContent='Error: '+e.message; g('und-result').style.display=''; }
+    g('und-btn').disabled=false; g('und-proc').style.display='none';
+  }
+
+  function splitSections(text) {
+    const result = { actions:'', decisions:'', highlights:'' };
+    const lines = text.split('\n');
+    let current = null;
+    lines.forEach(line => {
+      const l = line.toLowerCase();
+      if (l.includes('action')) { current='actions'; return; }
+      if (l.includes('decision')) { current='decisions'; return; }
+      if (l.includes('highlight') || l.includes('important') || l.includes('key point')) { current='highlights'; return; }
+      if (current && line.trim()) result[current] += line + '\n';
+    });
+    // If splitting failed, distribute evenly
+    if (!result.actions && !result.decisions) {
+      const third = Math.floor(lines.length/3);
+      result.actions = lines.slice(0,third).join('\n');
+      result.decisions = lines.slice(third,third*2).join('\n');
+      result.highlights = lines.slice(third*2).join('\n');
+    }
+    return result;
+  }
+
+  // ── RECALL ───────────────────────────────────────────────
+  async function sendRecall() {
+    const input = g('recall-in'); const q = input.value.trim(); if (!q) return;
+    input.value = '';
+    if (!_transcript) { addRecallMsg('Please go back to Capture and load your transcript first.','ai'); return; }
+
+    addRecallMsg(q,'user');
+    _recallHistory.push({role:'user', content:q});
+
+    const systemCtx = {role:'system', content:'You are a meeting/lecture assistant. Answer questions using ONLY the provided transcript. Be specific and quote directly when useful. Transcript:\n\n'+_transcript.slice(0,8000)};
+    try {
+      const res = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ messages: [systemCtx, ..._recallHistory.slice(-12)] }) });
+      const d = await res.json();
+      const reply = d.content || d.message || d.reply || 'No response.';
+      _recallHistory.push({role:'assistant', content:reply});
+      addRecallMsg(reply,'ai');
+      markDone(3);
+    } catch(e) { addRecallMsg('Error: '+e.message,'ai'); }
+  }
+
+  function addRecallMsg(text, who) {
+    const log = g('recall-log');
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (who==='user'?' user':'');
+    div.innerHTML = `<div class="chat-avatar">${who==='user'?'You':'AI'}</div><div class="chat-bubble">${esc(text).replace(/\n/g,'<br>')}</div>`;
+    log.appendChild(div); log.scrollTop = log.scrollHeight;
+  }
+
+  // ── CREATE ───────────────────────────────────────────────
+  const CRTABS = ['flash','outline'];
+  function setCrTab(t) { CRTABS.forEach(x=>{g('cr-'+x).style.display=x===t?'':'none';g('crtab-'+x).classList.toggle('on',x===t);}); }
+
+  async function runFlashcards() {
+    if (!_transcript) { alert('Go back to Capture first.'); return; }
+    g('flash-btn').disabled=true; g('flash-proc').style.display='flex'; g('flash-result').style.display='none';
+    try {
+      const res = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text:_transcript, mode:'flashcards'}) });
+      const d = await res.json();
+      const cards = d.flashcards || [];
+      const grid = g('fc-grid');
+      grid.innerHTML = cards.map((c,i)=>`
+        <div class="fc-card" onclick="this.classList.toggle('flipped')" id="fc${i}">
+          <div class="fc-inner">
+            <div class="fc-face"><div class="fc-label">Q</div>${esc(c.front)}</div>
+            <div class="fc-face fc-back"><div class="fc-label">A</div>${esc(c.back)}</div>
+          </div>
+        </div>`).join('');
+      g('flash-result').style.display=''; markDone(4);
+    } catch(e) { g('fc-grid').textContent='Error: '+e.message; g('flash-result').style.display=''; }
+    g('flash-btn').disabled=false; g('flash-proc').style.display='none';
+  }
+
+  async function runOutline() {
+    if (!_transcript) { alert('Go back to Capture first.'); return; }
+    g('outline-btn').disabled=true; g('outline-proc').style.display='flex'; g('outline-result').style.display='none';
+    try {
+      const res = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text:'Create a detailed hierarchical outline with main topics and sub-points from this transcript:\n\n'+_transcript, mode:'notes'}) });
+      const d = await res.json();
+      g('outline-out').innerHTML = mdHtml(d.summary||d.notes||'');
+      g('outline-result').style.display=''; markDone(4);
+    } catch(e) { g('outline-out').textContent='Error: '+e.message; g('outline-result').style.display=''; }
+    g('outline-btn').disabled=false; g('outline-proc').style.display='none';
+  }
+
+  // ── TEAM ─────────────────────────────────────────────────
+  async function runTeam() {
+    if (!_transcript) { alert('Go back to Capture first.'); return; }
+    g('team-btn').disabled=true; g('team-proc').style.display='flex'; g('team-result').style.display='none';
+    try {
+      const [briefRes, actionRes, followRes] = await Promise.all([
+        fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:'Write a professional one-paragraph meeting brief for sharing with a team. Include: what was discussed, main outcome, and next step. Transcript:\n\n'+_transcript, mode:'summarize'}) }),
+        fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:'List ONLY specific action items from this transcript as a numbered list. Format each as: "Task | Owner (if mentioned) | Deadline (if mentioned)". If not mentioned, write TBD.\n\nTranscript:\n'+_transcript, mode:'notes'}) }),
+        fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:'List follow-up questions, unresolved items, and things that need to be addressed after this meeting/lecture:\n\n'+_transcript, mode:'notes'}) })
+      ]);
+      const bd = await briefRes.json(); const ad = await actionRes.json(); const fd = await followRes.json();
+      g('team-brief').innerHTML = mdHtml(bd.summary||bd.notes||'');
+
+      const actionsText = ad.summary || ad.notes || '';
+      const actionLines = actionsText.split('\n').filter(l=>l.trim() && (l.match(/^\d+\./) || l.match(/^[-•]/)));
+      const tbody = g('team-actions');
+      tbody.innerHTML = (actionLines.length ? actionLines : ['1. Review transcript']).map(line=>{
+        const clean = line.replace(/^\d+\.\s*/,'').replace(/^[-•]\s*/,'');
+        const parts = clean.split('|');
+        const task = parts[0]?.trim()||clean; const owner = parts[1]?.trim()||''; const deadline = parts[2]?.trim()||'';
+        return `<tr><td>${esc(task)}</td><td><input type="text" value="${esc(owner)}" placeholder="TBD"></td><td><input type="text" value="${esc(deadline)}" placeholder="TBD"></td></tr>`;
+      }).join('');
+
+      g('team-followups').innerHTML = mdHtml(fd.summary||fd.notes||'');
+      g('team-result').style.display=''; markDone(5);
+    } catch(e) { g('team-brief').textContent='Error: '+e.message; g('team-result').style.display=''; }
+    g('team-btn').disabled=false; g('team-proc').style.display='none';
+  }
+
+  function undText() {
+    return 'SUMMARY\n'+('─'.repeat(30))+'\n'+(g('und-summary').innerText||'')+
+           '\n\nACTION ITEMS\n'+('─'.repeat(30))+'\n'+(g('und-actions').innerText||'')+
+           '\n\nKEY DECISIONS\n'+('─'.repeat(30))+'\n'+(g('und-decisions').innerText||'')+
+           '\n\nHIGHLIGHTS\n'+('─'.repeat(30))+'\n'+(g('und-highlights').innerText||'');
+  }
+  function recallText() {
+    return [...g('recall-log').querySelectorAll('.chat-msg')].map(m=>{
+      const who = m.classList.contains('user') ? 'You' : 'AI';
+      return who+': '+(m.querySelector('.chat-bubble').innerText||'');
+    }).join('\n\n');
+  }
+  // ── Live recording chat ───────────────────────────────────
+  let _liveChatHistory = [];
+  function addLiveChatMsg(who, text) {
+    const log = g('live-chat-log');
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (who === 'user' ? ' user' : '');
+    div.innerHTML = `<div class="chat-avatar">${who === 'user' ? 'You' : 'AI'}</div><div class="chat-bubble">${esc(text).replace(/\n/g,'<br>')}</div>`;
+    log.appendChild(div); log.scrollTop = log.scrollHeight;
+  }
+  async function sendLiveChat() {
+    const inp = g('live-chat-in');
+    const q = inp.value.trim(); if (!q) return;
+    inp.value = ''; addLiveChatMsg('user', q);
+    const transcript = g('live-box') ? g('live-box').value.trim() : '';
+    const systemPrompt = transcript
+      ? `You are an AI assistant helping the user understand their meeting or lecture recording. Here is the transcript so far:\n\n${transcript}\n\nAnswer questions based on this content. Be concise and helpful.`
+      : 'You are an AI assistant helping the user with their meeting or lecture. Answer questions about recordings, summaries, and action items. Be concise and helpful.';
+    _liveChatHistory.push({ role: 'user', content: q });
+    if (_liveChatHistory.length > 20) _liveChatHistory = _liveChatHistory.slice(-20);
+    addLiveChatMsg('ai', '…');
+    try {
+      const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, ..._liveChatHistory] }) });
+      const d = await r.json();
+      const reply = d.reply || d.content || 'Sorry, I couldn\'t get a response.';
+      g('live-chat-log').lastElementChild.remove();
+      addLiveChatMsg('ai', reply);
+      _liveChatHistory.push({ role: 'assistant', content: reply });
+    } catch(e) {
+      g('live-chat-log').lastElementChild.remove();
+      addLiveChatMsg('ai', 'Error: ' + e.message);
+    }
+  }
+
+  function flashText() {
+    return [...g('fc-grid').querySelectorAll('.fc-card')].map((c,i)=>{
+      const faces = c.querySelectorAll('.fc-face');
+      const q = faces[0]?.innerText.replace(/^Q\s*/,'').trim()||'';
+      const a = faces[1]?.innerText.replace(/^A\s*/,'').trim()||'';
+      return `Q${i+1}: ${q}\nA${i+1}: ${a}`;
+    }).join('\n\n');
+  }
+  function copyTeamBrief() { navigator.clipboard.writeText(fullTeamText()).catch(()=>{}); }
+  function fullTeamText() {
+    const brief = g('team-brief').innerText || '';
+    const rows = [...g('team-actions').querySelectorAll('tr')].map(tr=>{
+      const cells = tr.querySelectorAll('td,input');
+      return Array.from(tr.querySelectorAll('td')).map((td,i)=>{
+        const inp = td.querySelector('input'); return inp ? inp.value : td.textContent;
+      }).join(' | ');
+    }).join('\n');
+    const followups = g('team-followups').innerText || '';
+    return `MEETING BRIEF\n${'─'.repeat(40)}\n${brief}\n\nACTION ITEMS\n${'─'.repeat(40)}\n${rows}\n\nFOLLOW-UPS\n${'─'.repeat(40)}\n${followups}`;
+  }
+  function saveTeamAsNote() {
+    const text = fullTeamText(); if(!text.trim()) return;
+    const arr = getNotes();
+    arr.unshift({id:Date.now(),title:'Meeting Brief — '+fmtDate(),content:text,date:new Date().toISOString(),updated:Date.now()});
+    putNotes(arr);
+    setCTab('notes'); goStage(0); renderNotesList();
+  }
+
+  // ── CLEAR / UNDO ─────────────────────────────────────────
+  const _undoStore = {};
+  function clearUndo(taId, btnId, fallback) {
+    const btn = g(btnId); const ta = g(taId);
+    if (btn.textContent === 'Undo') {
+      ta.value = _undoStore[taId] || fallback || '';
+      btn.textContent = btnId.startsWith('clear-org') ? 'Reset' : 'Clear';
+    } else {
+      _undoStore[taId] = ta.value;
+      ta.value = '';
+      btn.textContent = 'Undo';
+    }
+  }
+
+  // ── MAGIC HIGHLIGHT ──────────────────────────────────────
+  async function runMagicHL(text, outId, btnId) {
+    if (!text.trim()) { alert('No text to highlight.'); return; }
+    const btn = g(btnId); const out = g(outId);
+    btn.disabled = true; btn.textContent = 'Analyzing…';
+    out.style.display = 'block';
+    out.innerHTML = '<div class="proc-row"><div class="spin"></div><span>Finding key phrases…</span></div>';
+    try {
+      const res = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text, mode: 'highlight' }) });
+      const d = await res.json();
+      let phrases = d.highlights || d.flashcards || [];
+      if (typeof phrases === 'string') { try { phrases = JSON.parse(phrases); } catch { phrases = []; } }
+      // Build highlighted text
+      let html = esc(text);
+      phrases.forEach(p => {
+        const phrase = typeof p === 'string' ? p : (p.front || p.phrase || '');
+        if (!phrase) return;
+        const re = new RegExp('(' + phrase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+        html = html.replace(re, '<mark class="hl">$1</mark>');
+      });
+      out.innerHTML = `<div class="hl-title">✦ Magic Notes — Key Phrases</div><div style="line-height:1.85;white-space:pre-wrap;">${html}</div>`;
+    } catch(e) { out.innerHTML = 'Error: '+e.message; }
+    btn.disabled = false; btn.innerHTML = '✦ Magic Notes';
+  }
+
+  // ── UTILS ─────────────────────────────────────────────────
+  function mdHtml(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^#{1,3} (.+)$/gm,'<div class="ai-h">$1</div>')
+      .replace(/^[-•*]\s+(.+)$/gm,'<div class="ai-li">$1</div>')
+      .replace(/^\d+\.\s+(.+)$/gm,'<div class="ai-li">$1</div>')
+      .replace(/\n{2,}/g,'<br><br>')
+      .replace(/\n/g,'<br>');
+  }
+
+  function toB64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => { try { resolve(r.result.split(',')[1]); } catch(e) { reject(e); } };
+      r.onerror = () => reject(new Error('FileReader error'));
+      r.readAsDataURL(blob);
+    });
+  }
+  function withTimeout(promise, ms) {
+    return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  }
+  function cpEl(id) { const el=g(id); navigator.clipboard.writeText(el.value!==undefined?el.value:el.textContent).catch(()=>{}); }
+  function loadSrc(src) { return new Promise(r=>{ const s=document.createElement('script'); s.src=src; s.onload=r; document.head.appendChild(s); }); }
+  const g = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fmtDate = () => new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+
+  // ── LANDING YOUTUBE URL ──────────────────────────────────
+  async function lndYtGo() {
+    const url = (g('lnd-yt-url')?.value || '').trim();
+    if (!url) { alert('Paste a YouTube URL first.'); return; }
+    const proc = g('lnd-yt-proc'); if (proc) proc.style.display = 'flex';
+    try {
+      const r = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ url, mode: 'transcribe' }) });
+      const d = await r.json();
+      if (proc) proc.style.display = 'none';
+      const transcript = d.summary || d.transcript || d.text || '';
+      if (!transcript) { alert('Could not get transcript for that video. Make sure it has captions enabled.'); return; }
+      const result = g('lnd-result'); if (result) result.style.display = 'block';
+      const box = g('lnd-box'); if (box) box.value = transcript;
+      const dz = g('lnd-dz'); if (dz) dz.style.display = 'none';
+      g('lnd-yt-url').value = '';
+      result?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    } catch(err) {
+      if (proc) proc.style.display = 'none';
+      alert('Failed: ' + (err.message || 'unknown error'));
+    }
+  }
+
+  // ── LANDING QUICK UPLOAD ─────────────────────────────────
+  function lndDzEv(e, over) { e.preventDefault(); const dz = g('lnd-dz'); if (dz) dz.classList.toggle('over', over); }
+  function lndDzDrop(e) { e.preventDefault(); lndDzEv(e, false); const f = e.dataTransfer.files[0]; if (f) lndFileGo(f); }
+  async function lndFileGo(file) {
+    if (!file) return;
+    const dz = g('lnd-dz'); if (dz) dz.style.display = 'none';
+    const proc = g('lnd-proc'); if (proc) proc.style.display = 'flex';
+    const procTxt = g('lnd-proc-txt'); if (procTxt) procTxt.textContent = 'Transcribing ' + file.name + '…';
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(',')[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const r = await fetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ audio: b64, mimeType: file.type || 'audio/webm' }) });
+      const d = await r.json();
+      if (proc) proc.style.display = 'none';
+      const result = g('lnd-result'); if (result) result.style.display = 'block';
+      const box = g('lnd-box'); if (box && d.transcript) box.value = d.transcript;
+    } catch(err) {
+      if (proc) proc.style.display = 'none';
+      const dz2 = g('lnd-dz'); if (dz2) dz2.style.display = 'block';
+      alert('Upload failed: ' + (err.message || 'unknown error'));
+    }
+  }
+
+  function useTranscript(text) {
+    if (!text || !text.trim()) return;
+    _transcript = text.trim();
+    g('org-tx').value = _transcript;
+    goStage(1);
+  }
+
+  // ── MAGIC HIGHLIGHT PANEL ────────────────────────────────
+  async function hlLoadFile(input) {
+    const file = input.files[0]; if (!file) return;
+    let text = '';
+    if (file.name.endsWith('.txt')) { text = await file.text(); }
+    else if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) {
+      const fd = new FormData(); fd.append('file', file);
+      try {
+        const r = await fetch('/api/extract', { method:'POST', body:fd });
+        const d = await r.json();
+        text = d.text || d.content || '';
+      } catch { alert('Could not extract text from this file.'); return; }
+    }
+    const ta = g('hl-input-text'); if (ta) ta.value = text;
+  }
+
+  async function runHlPanel() {
+    const text = (g('hl-input-text')?.value || '').trim();
+    if (!text) { alert('Paste or upload some text first.'); return; }
+    const btn = g('hl-run-btn'); if (btn) btn.disabled = true;
+    const proc = g('hl-panel-proc'); if (proc) proc.style.display = 'flex';
+    const out = g('hl-panel-out'); if (out) { out.style.display = 'none'; out.innerHTML = ''; }
+    const dl = g('hl-panel-dl'); if (dl) dl.style.display = 'none';
+    try {
+      const r = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text: text.slice(0,12000), mode:'highlight' }) });
+      const d = await r.json();
+      if (proc) proc.style.display = 'none';
+      if (btn) btn.disabled = false;
+      let phrases = [];
+      const raw = d.highlights || d.summary;
+      if (Array.isArray(raw)) phrases = raw;
+      else if (typeof raw === 'string') {
+        try { phrases = JSON.parse(raw); } catch {
+          const m = raw.match(/\[[\s\S]*?\]/); if (m) try { phrases = JSON.parse(m[0]); } catch {}
+        }
+      }
+      if (out) {
+        if (phrases.length) {
+          let marked = esc(text);
+          phrases.forEach(p => {
+            const phrase = typeof p === 'string' ? p : (p.front || p.phrase || '');
+            if (!phrase) return;
+            const escapedPhrase = esc(phrase);
+            const re = new RegExp('(' + escapedPhrase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+            marked = marked.replace(re, '<mark>$1</mark>');
+          });
+          out.innerHTML = '<div class="hl-title">✦ AI-Highlighted Key Phrases</div><div style="line-height:1.85;white-space:pre-wrap;">' + marked + '</div>';
+        } else {
+          out.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No key phrases detected. Try with more text.</div>';
+        }
+        out.style.display = 'block';
+      }
+      if (dl) dl.style.display = 'block';
+    } catch(err) {
+      if (proc) proc.style.display = 'none';
+      if (btn) btn.disabled = false;
+      alert('Highlight failed: ' + (err.message || 'unknown'));
+    }
+  }
+
+</script>
+<script src="js/recorder.js"></script>
+
+<!-- Notepad Popup -->
+<style>
+.np-dd-wrap{position:relative;display:inline-block;}
+.np-dd-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;white-space:nowrap;}
+.np-dd-btn:hover,.np-dd-btn.open{border-color:rgba(139,92,246,0.5);color:var(--purple2);}
+.np-dd-btn:disabled{opacity:0.4;cursor:default;}
+.np-dd-btn .caret{font-size:0.6rem;opacity:0.6;transition:transform 0.15s;}
+.np-dd-btn.open .caret{transform:rotate(180deg);}
+.np-dropdown{display:none;position:absolute;bottom:calc(100% + 6px);left:0;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 8px 28px rgba(0,0,0,0.4);z-index:10;overflow:hidden;}
+.np-dropdown.open{display:block;}
+.np-dd-item{display:flex;align-items:center;gap:9px;padding:9px 14px;font-size:0.82rem;color:var(--text);cursor:pointer;transition:background 0.1s;border:none;background:none;width:100%;font-family:inherit;text-align:left;}
+.np-dd-item:hover{background:rgba(139,92,246,0.1);color:var(--purple2);}
+.np-dd-sep{height:1px;background:var(--border);margin:3px 0;}
+.np-ai-result{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:0.85rem;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;}
+.np-apply-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;border:1px solid rgba(139,92,246,0.4);background:rgba(139,92,246,0.1);color:var(--purple2);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.np-discard-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:inherit;}
+</style>
+
+<div id="notepad-popup" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:0;width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span>🗒️</span>
+        <input id="np-popup-title" type="text" placeholder="Note title…" style="background:transparent;border:none;outline:none;font-size:0.95rem;font-weight:600;color:var(--text);font-family:inherit;width:260px;" />
+      </div>
+      <button onclick="npClose()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.3rem;padding:2px 6px;border-radius:6px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+    </div>
+
+    <!-- Textarea -->
+    <textarea id="np-popup-body" placeholder="Start typing your notes…" style="flex:1;background:transparent;border:none;outline:none;resize:none;padding:20px 28px;font-size:0.95rem;color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.8;"></textarea>
+
+    <!-- AI Result area -->
+    <div id="np-ai-area" style="display:none;padding:0 20px 12px;flex-shrink:0;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px;" id="np-ai-label">Result</div>
+      <div id="np-ai-result" class="np-ai-result"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="np-tool-btn" onclick="npApplyResult()" style="border-color:rgba(139,92,246,0.4);color:var(--purple2);">✓ Replace my text</button>
+        <button class="np-tool-btn" onclick="npDismissResult()">✕ Discard</button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div style="border-top:1px solid var(--border);padding:11px 20px;flex-shrink:0;min-height:52px;display:flex;align-items:center;">
+
+      <!-- View: main -->
+      <div id="np-view-main" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;">
+        <button class="np-dd-btn" onclick="npShowView('save')">💾 Save</button>
+        <button class="np-dd-btn" onclick="npShowView('ai')">✨ AI Writing</button>
+        <button class="np-dd-btn" onclick="npShowView('style')">📋 Note Style</button>
+        <span id="np-status" style="font-size:0.75rem;color:var(--muted);margin-left:4px;"></span>
+      </div>
+
+      <!-- View: save -->
+      <div id="np-view-save" style="display:none;gap:7px;flex-wrap:wrap;align-items:center;width:100%;">
+        <button class="np-dd-btn" onclick="npShowView('main')" style="color:var(--muted);padding:6px 10px;">← Back</button>
+        <button class="np-dd-btn" onclick="npSaveToNotes()">💾 Save to Notes</button>
+        <button class="np-dd-btn" onclick="npSaveWord()">📝 Word (.doc)</button>
+        <button class="np-dd-btn" onclick="npSavePDF()">📄 PDF</button>
+        <button class="np-dd-btn" onclick="npSaveTxt()">📃 Text (.txt)</button>
+        <button class="np-dd-btn" onclick="npSaveMarkdown()">🔖 Markdown</button>
+      </div>
+
+      <!-- View: ai -->
+      <div id="np-view-ai" style="display:none;gap:7px;flex-wrap:wrap;align-items:center;width:100%;">
+        <button class="np-dd-btn" onclick="npShowView('main')" style="color:var(--muted);padding:6px 10px;">← Back</button>
+        <button class="np-dd-btn" id="np-btn-grammar" onclick="npRunAI('grammar')">🔧 Grammar</button>
+        <button class="np-dd-btn" id="np-btn-rewrite" onclick="npRunAI('rewrite')">✨ Rewrite</button>
+        <button class="np-dd-btn" id="np-btn-shorten" onclick="npRunAI('shorten')">✂️ Shorten</button>
+        <button class="np-dd-btn" id="np-btn-expand" onclick="npRunAI('expand')">📖 Expand</button>
+        <button class="np-dd-btn" id="np-btn-paraphrase" onclick="npRunAI('paraphrase')">🔄 Paraphrase</button>
+      </div>
+
+      <!-- View: style -->
+      <div id="np-view-style" style="display:none;gap:7px;flex-wrap:wrap;align-items:center;width:100%;">
+        <button class="np-dd-btn" onclick="npShowView('main')" style="color:var(--muted);padding:6px 10px;">← Back</button>
+        <button class="np-dd-btn" id="np-btn-detailed" onclick="npRunStyle('detailed')">📋 Detailed</button>
+        <button class="np-dd-btn" id="np-btn-outline" onclick="npRunStyle('outline')">📑 Outline</button>
+        <button class="np-dd-btn" id="np-btn-cornell" onclick="npRunStyle('cornell')">🗂️ Cornell</button>
+        <button class="np-dd-btn" id="np-btn-mindmap" onclick="npRunStyle('mindmap')">🧠 Mind Map</button>
+        <button class="np-dd-btn" id="np-btn-summary" onclick="npRunStyle('summary')">📄 Summary</button>
+        <button class="np-dd-btn" id="np-btn-exam" onclick="npRunStyle('exam')">📝 Exam Review</button>
+        <button class="np-dd-btn" id="np-btn-boxing" onclick="npRunStyle('boxing')">📦 Boxing</button>
+        <button class="np-dd-btn" id="np-btn-charting" onclick="npRunStyle('charting')">📈 Charting</button>
+        <button class="np-dd-btn" id="np-btn-qec" onclick="npRunStyle('qec')">❓ Q/E/C</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let _npAiRaw = '';
+
+function openNotepadPopup() {
+  document.getElementById('notepad-popup').style.display = 'flex';
+  document.getElementById('np-popup-title').value = '';
+  document.getElementById('np-popup-body').value = '';
+  document.getElementById('np-ai-area').style.display = 'none';
+  npShowView('main');
+  setTimeout(() => document.getElementById('np-popup-body').focus(), 50);
+}
+
+function npClose() { document.getElementById('notepad-popup').style.display = 'none'; }
+
+function npShowView(v) {
+  ['main','save','ai','style'].forEach(n => {
+    const el = document.getElementById('np-view-'+n);
+    if (el) el.style.display = n === v ? 'flex' : 'none';
+  });
+  npStatus('');
+}
+
+function npSaveToNotes() {
+  const title = document.getElementById('np-popup-title').value.trim();
+  const body = document.getElementById('np-popup-body').value.trim();
+  if (!body) { npStatus('Nothing to save'); return; }
+  try {
+    const notes = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
+    notes.unshift({ id: Date.now(), title: title || 'Meeting Note', content: body, createdAt: new Date().toISOString() });
+    localStorage.setItem('gn-notepad-notes', JSON.stringify(notes));
+    npStatus('✓ Saved to Notes');
+  } catch { npStatus('Save failed'); }
+}
+
+function npSaveWord() {
+  const title = document.getElementById('np-popup-title').value.trim() || 'Meeting Note';
+  const body = document.getElementById('np-popup-body').value;
+  const html = '<html><head><meta charset="utf-8"><title>'+title+'</title></head><body><h1>'+title+'</h1><pre style="font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;white-space:pre-wrap;">'+body+'</pre></body></html>';
+  const blob = new Blob([html], { type:'application/msword' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title+'.doc'; a.click();
+}
+
+function npSavePDF() {
+  const title = document.getElementById('np-popup-title').value.trim() || 'Meeting Note';
+  const body = document.getElementById('np-popup-body').value;
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><title>'+title+'</title><style>body{font-family:Arial,sans-serif;padding:48px;line-height:1.7;font-size:12pt;}h1{font-size:18pt;margin-bottom:24px;}pre{white-space:pre-wrap;font-family:Arial,sans-serif;}</style></head><body><h1>'+title+'</h1><pre>'+body+'</pre></body></html>');
+  w.document.close(); w.focus(); w.print();
+}
+
+function npSaveTxt() {
+  const title = document.getElementById('np-popup-title').value.trim() || 'Meeting Note';
+  const body = document.getElementById('np-popup-body').value;
+  const blob = new Blob([title+'\n\n'+body], { type:'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title+'.txt'; a.click();
+}
+
+function npSaveMarkdown() {
+  const title = document.getElementById('np-popup-title').value.trim() || 'Meeting Note';
+  const body = document.getElementById('np-popup-body').value;
+  const blob = new Blob(['# '+title+'\n\n'+body], { type:'text/markdown' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title+'.md'; a.click();
+}
+
+async function npRunAI(mode) {
+  const text = document.getElementById('np-popup-body').value.trim();
+  if (!text) { npStatus('Type something first'); return; }
+  const labels = { grammar:'Grammar', rewrite:'Rewrite', shorten:'Shorten', expand:'Expand', paraphrase:'Paraphrase' };
+  const apiMode = mode === 'grammar' ? 'grammar' : mode === 'rewrite' ? 'improve' : mode;
+  npSetBtnsDisabled('ai', true);
+  npStatus('⏳ '+labels[mode]+'…');
+  document.getElementById('np-ai-area').style.display = 'none';
+  try {
+    const r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode: apiMode }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error');
+    _npAiRaw = d.result || '';
+    document.getElementById('np-ai-label').textContent = labels[mode]+' Result';
+    document.getElementById('np-ai-result').textContent = _npAiRaw;
+    document.getElementById('np-ai-area').style.display = '';
+    npStatus('');
+  } catch(e) { npStatus('Error: '+e.message); }
+  finally { npSetBtnsDisabled('ai', false); }
+}
+
+async function npRunStyle(style) {
+  const text = document.getElementById('np-popup-body').value.trim();
+  if (!text) { npStatus('Type something first'); return; }
+  npSetBtnsDisabled('style', true);
+  npStatus('⏳ Converting…');
+  document.getElementById('np-ai-area').style.display = 'none';
+  try {
+    const r = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode:'notes', noteStyle: style }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error');
+    _npAiRaw = d.summary || d.notes || '';
+    document.getElementById('np-ai-label').textContent = style.charAt(0).toUpperCase()+style.slice(1)+' Notes';
+    document.getElementById('np-ai-result').textContent = _npAiRaw;
+    document.getElementById('np-ai-area').style.display = '';
+    npStatus('');
+  } catch(e) { npStatus('Error: '+e.message); }
+  finally { npSetBtnsDisabled('style', false); }
+}
+
+function npSetBtnsDisabled(view, disabled) {
+  const el = document.getElementById('np-view-'+view);
+  if (el) el.querySelectorAll('button').forEach(b => b.disabled = disabled);
+}
+
+function npApplyResult() {
+  document.getElementById('np-popup-body').value = _npAiRaw;
+  document.getElementById('np-ai-area').style.display = 'none';
+  npStatus('✓ Applied');
+}
+
+function npDismissResult() { document.getElementById('np-ai-area').style.display = 'none'; }
+
+function npStatus(msg) {
+  const el = document.getElementById('np-status');
+  if (el) el.textContent = msg;
+}
+
+document.getElementById('notepad-popup').addEventListener('click', function(e) {
+  if (e.target === this) npClose();
+});
+
+// ── CUSTOM PROMPT (replaces browser prompt) ──
+let _cpCallback = null;
+function showCustomPrompt(title, sub, defaultVal, cb) {
+  _cpCallback = cb;
+  document.getElementById('cp-title-m').textContent = title;
+  document.getElementById('cp-sub-m').textContent = sub || '';
+  const inp = document.getElementById('cp-input-m');
+  inp.value = defaultVal || '';
+  document.getElementById('cp-modal-m').classList.add('open');
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+function _cpOkM() {
+  const val = document.getElementById('cp-input-m').value.trim();
+  document.getElementById('cp-modal-m').classList.remove('open');
+  if (_cpCallback) { _cpCallback(val || null); _cpCallback = null; }
+}
+function _cpCancelM() {
+  document.getElementById('cp-modal-m').classList.remove('open');
+  if (_cpCallback) { _cpCallback(null); _cpCallback = null; }
+}
+</script>
+
+<!-- Custom Prompt Modal -->
+<style>
+  #cp-modal-m { display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.65); flex-direction:column; align-items:center; justify-content:center; }
+  #cp-modal-m.open { display:flex; }
+  .cpm-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:28px 24px; max-width:320px; width:90%; }
+  .cpm-title { font-size:1rem; font-weight:800; margin-bottom:4px; color:var(--text); }
+  .cpm-sub { font-size:0.78rem; color:var(--muted); margin-bottom:16px; }
+  .cpm-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:0.9rem; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
+  .cpm-input:focus { border-color:rgba(139,92,246,0.5); }
+  .cpm-row { display:flex; gap:8px; margin-top:16px; }
+  .cpm-btn { flex:1; padding:10px; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; font-family:inherit; border:none; }
+  .cpm-cancel { background:none; border:1px solid var(--border); color:var(--muted); }
+  .cpm-ok { background:var(--purple); color:#fff; }
+</style>
+<div id="cp-modal-m" onclick="if(event.target.id==='cp-modal-m')_cpCancelM()">
+  <div class="cpm-card">
+    <div class="cpm-title" id="cp-title-m">Folder name</div>
+    <div class="cpm-sub" id="cp-sub-m"></div>
+    <input class="cpm-input" id="cp-input-m" type="text" placeholder="Enter name…" onkeydown="if(event.key==='Enter')_cpOkM();if(event.key==='Escape')_cpCancelM()">
+    <div class="cpm-row">
+      <button class="cpm-btn cpm-cancel" onclick="_cpCancelM()">Cancel</button>
+      <button class="cpm-btn cpm-ok" onclick="_cpOkM()">OK</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

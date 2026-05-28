@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>My Notes — GeniusNotes AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#eeeef6;color:#111120;font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+
+    /* NAV */
+    nav{display:flex;align-items:center;padding:0 20px;height:56px;background:#fff;border-bottom:1px solid rgba(0,0,0,0.07);position:sticky;top:0;z-index:100;}
+    .nav-back{color:#666688;text-decoration:none;font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:4px;}
+    .nav-back:hover{color:#8B5CF6;}
+    .nav-center{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;text-decoration:none;color:#111120;}
+    .nav-center img{width:28px;height:28px;border-radius:50%;object-fit:cover;}
+    .nav-center-text{font-size:0.95rem;font-weight:700;}
+    .nav-center-text .ai{color:#8B5CF6;}
+
+    /* PAGE */
+    .page{max-width:800px;margin:0 auto;padding:28px 16px 80px;}
+
+    /* HEADER */
+    .page-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px;}
+    .hd-left{display:flex;align-items:center;gap:14px;}
+    .hd-icon{font-size:2rem;}
+    .hd-title{font-size:1.5rem;font-weight:900;color:#111120;}
+    .hd-sub{font-size:0.8rem;color:#888;margin-top:2px;}
+    .hd-actions{display:flex;gap:8px;flex-shrink:0;padding-top:4px;}
+    .btn-outline{background:none;border:1.5px solid rgba(139,92,246,0.5);border-radius:8px;color:#8B5CF6;font-size:0.78rem;font-weight:700;padding:7px 14px;cursor:pointer;font-family:inherit;text-decoration:none;display:flex;align-items:center;gap:5px;transition:background 0.15s;}
+    .btn-outline:hover{background:rgba(139,92,246,0.08);}
+    .btn-danger-outline{background:none;border:1.5px solid rgba(244,63,94,0.4);border-radius:8px;color:#F43F5E;font-size:0.78rem;font-weight:700;padding:7px 14px;cursor:pointer;font-family:inherit;}
+    .btn-danger-outline:hover{background:rgba(244,63,94,0.06);}
+
+    /* AI RECALL */
+    .recall-card{background:#fff;border-radius:14px;padding:16px 18px;margin-bottom:18px;border:1px solid rgba(139,92,246,0.15);box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+    .recall-hd{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+    .recall-hd-left{display:flex;align-items:center;gap:8px;}
+    .recall-star{color:#8B5CF6;font-size:1rem;}
+    .recall-title{font-weight:700;font-size:0.92rem;color:#111120;}
+    .recall-sub{font-size:0.75rem;color:#888;margin-top:1px;}
+    .recall-toggle{color:#888;font-size:0.8rem;font-weight:700;background:none;border:none;cursor:pointer;}
+    .recall-body{margin-top:14px;}
+    .recall-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+    .rc-chip{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s;background:#f5f5fc;color:#555577;}
+    .rc-chip:hover{border-color:#8B5CF6;color:#8B5CF6;}
+    .rc-chip.active{background:rgba(139,92,246,0.12);border-color:#8B5CF6;color:#8B5CF6;}
+    .recall-input-row{display:flex;gap:8px;}
+    .recall-input{flex:1;background:#f5f5fc;border:1.5px solid rgba(139,92,246,0.15);border-radius:10px;padding:10px 14px;font-size:0.84rem;color:#111120;font-family:inherit;outline:none;}
+    .recall-input:focus{border-color:#8B5CF6;}
+    .recall-input::placeholder{color:#aaa;}
+    .recall-ask{background:#8B5CF6;border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px 18px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+    .recall-ask:hover{background:#7c4de8;}
+    .recall-answer{margin-top:12px;background:#f5f5fc;border-radius:10px;padding:12px 14px;font-size:0.83rem;line-height:1.65;color:#222;display:none;}
+    .recall-answer.show{display:block;}
+
+    /* TABS */
+    .tabs-row{display:flex;gap:8px;margin-bottom:14px;}
+    .tab-pill{padding:7px 18px;border-radius:20px;font-size:0.8rem;font-weight:700;cursor:pointer;border:1.5px solid rgba(0,0,0,0.1);background:#fff;color:#888;transition:all 0.15s;font-family:inherit;}
+    .tab-pill.active{background:rgba(139,92,246,0.12);border-color:#8B5CF6;color:#8B5CF6;}
+
+    /* TOOLBAR */
+    .toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}
+    .btn-new-folder{display:flex;align-items:center;gap:6px;background:none;border:1.5px solid rgba(16,185,129,0.5);border-radius:10px;color:#10B981;font-size:0.78rem;font-weight:700;padding:7px 14px;cursor:pointer;font-family:inherit;transition:background 0.15s;}
+    .btn-new-folder:hover{background:rgba(16,185,129,0.08);}
+
+    /* FOLDER SECTIONS */
+    .folder-section{background:#fff;border-radius:12px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06);}
+    .folder-hd{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;transition:background 0.12s;}
+    .folder-hd:hover{background:#fafafa;}
+    .folder-icon{font-size:1.05rem;}
+    .folder-name{font-weight:700;font-size:0.9rem;color:#111120;flex:1;}
+    .folder-count{font-size:0.75rem;color:#888;font-weight:600;margin-right:6px;}
+    .folder-chevron{color:#aaa;font-size:0.8rem;transition:transform 0.2s;flex-shrink:0;}
+    .folder-chevron.open{transform:rotate(180deg);}
+    .folder-body{border-top:1px solid rgba(0,0,0,0.05);}
+    .folder-empty{padding:11px 18px;font-size:0.78rem;color:#aaa;font-style:italic;}
+
+    /* NOTE ROWS */
+    .note-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid rgba(0,0,0,0.04);transition:background 0.12s;cursor:grab;user-select:none;}
+    .note-row:first-child{border-top:none;}
+    .note-row:hover{background:#fafafa;}
+    .note-row.dragging{opacity:0.35;cursor:grabbing;}
+    .note-row.drag-above{border-top:3px solid #8B5CF6!important;background:rgba(139,92,246,0.05);}
+    .note-row.drag-below{border-bottom:3px solid #8B5CF6!important;background:rgba(139,92,246,0.05);}
+    .note-row.drag-merge{background:rgba(139,92,246,0.13)!important;outline:2px solid #8B5CF6;outline-offset:-2px;border-radius:8px;}
+    .note-tag{font-size:0.67rem;font-weight:700;padding:3px 9px;border-radius:6px;background:rgba(16,185,129,0.12);color:#059669;white-space:nowrap;flex-shrink:0;}
+    .note-title{font-size:0.86rem;font-weight:600;color:#111120;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .note-date{font-size:0.72rem;color:#aaa;flex-shrink:0;white-space:nowrap;}
+    .note-open{font-size:0.75rem;font-weight:700;color:#8B5CF6;text-decoration:none;flex-shrink:0;white-space:nowrap;}
+    .note-open:hover{text-decoration:underline;}
+
+    /* UNFILED */
+    .unfiled-section{background:#fff;border-radius:12px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06);}
+
+    /* EMPTY */
+    .empty-page{text-align:center;padding:60px 20px;color:#aaa;}
+    .empty-page .ei{font-size:2.5rem;margin-bottom:12px;}
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-back" href="dashboard.html">← Dashboard</a>
+  <a class="nav-center" href="index.html">
+    <img src="images/logo.png" alt="">
+    <span class="nav-center-text">GeniusNotes <span class="ai">AI</span></span>
+  </a>
+</nav>
+
+<div class="page">
+  <!-- Header -->
+  <div class="page-hd">
+    <div class="hd-left">
+      <div class="hd-icon">📝</div>
+      <div>
+        <div class="hd-title">My Notes</div>
+        <div class="hd-sub">Notes you've written and saved in the Notepad</div>
+      </div>
+    </div>
+    <div class="hd-actions">
+      <a class="btn-outline" href="notepad.html">📝 Open Notepad</a>
+      <button class="btn-danger-outline" onclick="clearAll()">Clear all</button>
+    </div>
+  </div>
+
+  <!-- AI Recall -->
+  <div class="recall-card">
+    <div class="recall-hd" onclick="toggleRecall()">
+      <div class="recall-hd-left">
+        <span class="recall-star">✦</span>
+        <div>
+          <div class="recall-title">AI Recall</div>
+          <div class="recall-sub">Ask anything about your saved notes — AI will find the answer</div>
+        </div>
+      </div>
+      <button class="recall-toggle" id="recall-toggle-btn">▲</button>
+    </div>
+    <div class="recall-body" id="recall-body">
+      <div class="recall-chips" id="recall-chips"></div>
+      <div class="recall-input-row">
+        <input class="recall-input" id="recall-q" placeholder="Ask a question about your notes..." onkeydown="if(event.key==='Enter')askRecall()">
+        <button class="recall-ask" onclick="askRecall()">Ask ✦</button>
+      </div>
+      <div class="recall-answer" id="recall-answer"></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-row">
+    <button class="tab-pill active" id="tab-notes" onclick="setTab('notes')">📝 My Notes</button>
+    <button class="tab-pill" id="tab-flash" onclick="setTab('flash')">🃏 Flashcards</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn-new-folder" onclick="newFolder()">🗂 New Folder</button>
+  </div>
+
+  <!-- Content -->
+  <div id="content-area"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="js/cloud-sync.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI',
+  authDomain:'geniusnotes-ai.firebaseapp.com',
+  projectId:'geniusnotes-ai',
+  storageBucket:'geniusnotes-ai.firebasestorage.app',
+  messagingSenderId:'1041746856723',
+  appId:'1:1041746856723:web:fae9072e0292c3946068e6'
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+
+let _uid = null;
+let _activeTab = 'notes';
+let _recallOpen = true;
+let _recallFolder = 'all';
+let _db = null;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function stripHtml(h){ const d=document.createElement('div'); d.innerHTML=h; return d.textContent||d.innerText||''; }
+function fmtDate(ts){
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' +
+    d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function getFolders(){
+  if (!_uid) return [];
+  try { return JSON.parse(localStorage.getItem('gn-folders-' + _uid) || '[]'); } catch { return []; }
+}
+function getNotes(){
+  try { return JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]'); } catch { return []; }
+}
+function getHistory(){
+  if (!_uid) return [];
+  try { return JSON.parse(localStorage.getItem('gn-history-' + _uid) || '[]'); } catch { return []; }
+}
+
+// ── AI Recall ──
+function toggleRecall(){
+  _recallOpen = !_recallOpen;
+  document.getElementById('recall-body').style.display = _recallOpen ? '' : 'none';
+  document.getElementById('recall-toggle-btn').textContent = _recallOpen ? '▲' : '▼';
+}
+function renderRecallChips(){
+  const folders = getFolders();
+  const chips = [{ id:'all', name:'All Notes', icon:'📝' }]
+    .concat(folders.map(f => ({ id:f.id, name:f.name, icon:'🗂' })));
+  document.getElementById('recall-chips').innerHTML = chips.map(c =>
+    `<div class="rc-chip${_recallFolder===c.id?' active':''}" onclick="setRecallFolder('${esc(c.id)}')">${c.icon} ${esc(c.name)}</div>`
+  ).join('');
+}
+function setRecallFolder(id){ _recallFolder = id; renderRecallChips(); }
+
+async function askRecall(){
+  const q = document.getElementById('recall-q').value.trim();
+  if (!q) return;
+  const ansEl = document.getElementById('recall-answer');
+  ansEl.className = 'recall-answer show';
+  ansEl.textContent = 'Thinking…';
+  try {
+    const notes = getNotes();
+    const folders = getFolders();
+    let notesToSearch = notes;
+    if (_recallFolder !== 'all') {
+      notesToSearch = notes.filter(n => n.folderId === _recallFolder);
+    }
+    const context = notesToSearch.slice(0,8).map(n =>
+      `[${n.title||'Untitled'}]: ${stripHtml(n.content||'').slice(0,400)}`
+    ).join('\n\n');
+    const r = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages:[
+        { role:'system', content:'You are an AI assistant. Answer the user\'s question based ONLY on the following notes:\n\n' + context },
+        { role:'user', content: q }
+      ]})
+    });
+    const d = await r.json();
+    ansEl.textContent = d.reply || d.message || 'No answer found.';
+  } catch(e) {
+    ansEl.textContent = 'Could not get answer. Try again.';
+  }
+}
+
+// ── Tabs ──
+function setTab(t){
+  _activeTab = t;
+  document.getElementById('tab-notes').className = 'tab-pill' + (t==='notes'?' active':'');
+  document.getElementById('tab-flash').className = 'tab-pill' + (t==='flash'?' active':'');
+  render();
+}
+
+// ── Folder management ──
+function newFolder(){
+  const name = prompt('Folder name:');
+  if (!name || !name.trim()) return;
+  const folders = getFolders();
+  folders.push({ id: 'f_' + Date.now(), name: name.trim() });
+  localStorage.setItem('gn-folders-' + _uid, JSON.stringify(folders));
+  if (_db && _uid) {
+    folders.forEach(f => {
+      _db.collection('users').doc(_uid).collection('notepad_folders').doc(f.id).set({ name:f.name, id:f.id, updated:Date.now() }).catch(()=>{});
+    });
+  }
+  render();
+  renderRecallChips();
+}
+
+function clearAll(){
+  if (!confirm('Delete all your notes? This cannot be undone.')) return;
+  localStorage.removeItem('gn-notepad-notes');
+  if (_uid) localStorage.removeItem('gn-history-' + _uid);
+  render();
+}
+
+// ── Open note ──
+function openNote(noteId){
+  localStorage.setItem('gn-notepad-open', noteId);
+  location.href = 'notepad.html';
+}
+
+// ── Toggle folder open/close ──
+const _openFolders = new Set();
+function toggleFolder(fid){
+  if (_openFolders.has(fid)) _openFolders.delete(fid);
+  else _openFolders.add(fid);
+  render();
+}
+
+// ── Render ──
+function render(){
+  renderRecallChips();
+  const area = document.getElementById('content-area');
+
+  if (_activeTab === 'flash') {
+    renderFlashcards(area);
+    return;
+  }
+
+  const folders = getFolders();
+  const notes = getNotes();
+
+  if (!notes.length && !folders.length) {
+    area.innerHTML = '<div class="empty-page"><div class="ei">📭</div><p>No notes yet.<br>Open the Notepad and save a note to see it here.</p></div>';
+    return;
+  }
+
+  // Auto-open all folders initially
+  if (_openFolders.size === 0 && folders.length) folders.forEach(f => _openFolders.add(f.id));
+  _openFolders.add('__unfiled__');
+
+  let html = '';
+
+  // Each named folder
+  folders.forEach(folder => {
+    const fNotes = notes.filter(n => n.folderId === folder.id);
+    const isOpen = _openFolders.has(folder.id);
+    html += `<div class="folder-section">
+      <div class="folder-hd" onclick="toggleFolder('${esc(folder.id)}')">
+        <span class="folder-icon">📁</span>
+        <span class="folder-name">${esc(folder.name)}</span>
+        <span class="folder-count">${fNotes.length}</span>
+        <span class="folder-chevron${isOpen?' open':''}">▼</span>
+      </div>`;
+    if (isOpen) {
+      html += '<div class="folder-body">';
+      if (!fNotes.length) {
+        html += `<div class="folder-empty">No notes saved here yet. Open Notepad → Save → pick "${esc(folder.name)}"</div>`;
+      } else {
+        fNotes.slice().sort((a,b)=>{if(a.sortOrder!=null&&b.sortOrder!=null)return a.sortOrder-b.sortOrder;return(b.updated||b.created||0)-(a.updated||a.created||0);}).forEach(n => {
+          html += noteRowHtml(n, folder.name);
+        });
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  // Unfiled notes
+  const unfiledNotes = notes.filter(n => !n.folderId || !folders.find(f=>f.id===n.folderId));
+  if (unfiledNotes.length) {
+    const isOpen = _openFolders.has('__unfiled__');
+    html += `<div class="folder-section">
+      <div class="folder-hd" onclick="toggleFolder('__unfiled__')">
+        <span class="folder-icon">📄</span>
+        <span class="folder-name">Unfiled</span>
+        <span class="folder-count">${unfiledNotes.length}</span>
+        <span class="folder-chevron${isOpen?' open':''}">▼</span>
+      </div>`;
+    if (isOpen) {
+      html += '<div class="folder-body">';
+      unfiledNotes.slice().sort((a,b)=>{if(a.sortOrder!=null&&b.sortOrder!=null)return a.sortOrder-b.sortOrder;return(b.updated||b.created||0)-(a.updated||a.created||0);}).forEach(n => {
+        html += noteRowHtml(n, 'Unfiled');
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  area.innerHTML = html || '<div class="empty-page"><div class="ei">📭</div><p>No notes yet.</p></div>';
+}
+
+function noteRowHtml(n, folderName){
+  const tag = `My Note${folderName ? ' · ' + folderName : ''}`;
+  const tagColor = folderName === 'Unfiled' ? 'background:rgba(107,114,128,0.12);color:#6B7280;' : 'background:rgba(16,185,129,0.12);color:#059669;';
+  return `<div class="note-row" draggable="true" data-nid="${esc(n.id)}">
+    <span class="note-tag" style="${tagColor}">${esc(tag)}</span>
+    <span class="note-title">${esc(n.title||'Untitled Note')}</span>
+    <span class="note-date">${fmtDate(n.updated||n.created||0)}</span>
+    <a class="note-open" href="#" onclick="openNote('${esc(n.id)}');return false;">Open →</a>
+  </div>`;
+}
+
+function renderFlashcards(area){
+  const hist = getHistory().filter(h => h.type === 'flashcards').reverse();
+  if (!hist.length) {
+    area.innerHTML = '<div class="empty-page"><div class="ei">🃏</div><p>No flashcard decks yet.<br>Create flashcards from any note or YouTube video.</p></div>';
+    return;
+  }
+  area.innerHTML = '<div class="folder-section"><div class="folder-body">' +
+    hist.map(h => `<div class="note-row">
+      <span class="note-tag" style="background:rgba(52,211,153,0.12);color:#059669;">🃏 Flashcards</span>
+      <span class="note-title">${esc(h.title||'Flashcard Deck')}</span>
+      <span class="note-date">${fmtDate(h.createdAt||0)}</span>
+      <a class="note-open" href="flashcards.html">Open →</a>
+    </div>`).join('') +
+  '</div></div>';
+}
+
+// ── DRAG: REORDER / MERGE ──
+let _mnDragging = null;
+
+function _mnClear() {
+  document.querySelectorAll('.note-row.dragging,.note-row.drag-above,.note-row.drag-below,.note-row.drag-merge')
+    .forEach(el => el.classList.remove('dragging','drag-above','drag-below','drag-merge'));
+}
+
+document.addEventListener('dragstart', function(e) {
+  const row = e.target.closest('.note-row[data-nid]');
+  if (!row) return;
+  _mnDragging = row.dataset.nid;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _mnDragging);
+  setTimeout(() => row.classList.add('dragging'), 0);
+});
+
+document.addEventListener('dragend', function() {
+  _mnClear();
+  _mnDragging = null;
+});
+
+document.addEventListener('dragover', function(e) {
+  if (!_mnDragging) return;
+  const row = e.target.closest('.note-row[data-nid]');
+  if (!row || row.dataset.nid === _mnDragging) return;
+  e.preventDefault();
+  document.querySelectorAll('.note-row.drag-above,.note-row.drag-below,.note-row.drag-merge')
+    .forEach(el => { if (el !== row) el.classList.remove('drag-above','drag-below','drag-merge'); });
+  const r = row.getBoundingClientRect();
+  const relY = e.clientY - r.top;
+  row.classList.remove('drag-above','drag-below','drag-merge');
+  if (relY < r.height * 0.3) row.classList.add('drag-above');
+  else if (relY > r.height * 0.7) row.classList.add('drag-below');
+  else row.classList.add('drag-merge');
+});
+
+document.addEventListener('dragleave', function(e) {
+  const row = e.target.closest('.note-row[data-nid]');
+  if (row && !row.contains(e.relatedTarget))
+    row.classList.remove('drag-above','drag-below','drag-merge');
+});
+
+document.addEventListener('drop', function(e) {
+  if (!_mnDragging) return;
+  const row = e.target.closest('.note-row[data-nid]');
+  if (!row) return;
+  e.preventDefault();
+  const targetId = row.dataset.nid;
+  if (targetId === _mnDragging) return;
+  const zone = row.classList.contains('drag-above') ? 'above'
+             : row.classList.contains('drag-below') ? 'below' : 'merge';
+  const dragId = _mnDragging;
+  _mnClear();
+  _mnDragging = null;
+
+  if (zone === 'merge') {
+    localStorage.setItem('gn-split-left', dragId);
+    localStorage.setItem('gn-split-right', targetId);
+    location.href = 'notepad.html';
+    return;
+  }
+
+  const notes = getNotes();
+  const folders = getFolders();
+  const dragNote = notes.find(n => n.id === dragId);
+  const targetNote = notes.find(n => n.id === targetId);
+  if (!dragNote || !targetNote) return;
+
+  const validIds = folders.map(f => f.id);
+  const dFid = dragNote.folderId && validIds.includes(dragNote.folderId) ? dragNote.folderId : null;
+  const tFid = targetNote.folderId && validIds.includes(targetNote.folderId) ? targetNote.folderId : null;
+  if (dFid !== tFid) return;
+
+  const group = notes.filter(n => {
+    const fid = n.folderId && validIds.includes(n.folderId) ? n.folderId : null;
+    return fid === dFid;
+  }).sort((a,b) => {
+    if (a.sortOrder != null && b.sortOrder != null) return a.sortOrder - b.sortOrder;
+    return (b.updated||b.created||0) - (a.updated||a.created||0);
+  });
+
+  const fi = group.findIndex(n => n.id === dragId);
+  group.splice(fi, 1);
+  const ti = group.findIndex(n => n.id === targetId);
+  group.splice(zone === 'above' ? ti : ti + 1, 0, dragNote);
+  group.forEach((n, i) => { n.sortOrder = i; });
+
+  saveNotesLocal(notes);
+  render();
+});
+
+function saveNotesLocal(notesArr) {
+  localStorage.setItem('gn-notepad-notes', JSON.stringify(notesArr));
+}
+
+// ── Firebase + GNSync init ──
+firebase.auth().onAuthStateChanged(function(user) {
+  if (!user) { render(); return; }
+  _uid = user.uid;
+  _db = firebase.firestore();
+  GNSync.init(_uid, _db, {
+    onReady: function(){ render(); },
+    onNotes: function(){ render(); },
+    onFolders: function(){ render(); renderRecallChips(); },
+    onHistory: function(){ render(); }
+  });
+});
+</script>
+</body>
+</html>

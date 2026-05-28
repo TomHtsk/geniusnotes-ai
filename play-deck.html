@@ -1,0 +1,538 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study — GeniusNotes AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.08);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7;--green:#22C55E;--red:#F87171;}
+    :root.light{--bg:#F5EFE0;--surface:#FAF6EC;--surface2:#EFE9D8;--border:rgba(160,130,80,0.18);--text:#2A1F0A;--muted:#7A6A50;--surface-card:#FFFFFF;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;}
+
+    /* ── NAV ── */
+    nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.94);backdrop-filter:blur(14px);position:sticky;top:0;z-index:200;}
+    :root.light nav{background:rgba(245,239,224,0.94);}
+    .nav-back{color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:600;padding:7px 13px;border-radius:9px;border:1px solid var(--border);transition:all 0.15s;white-space:nowrap;}
+    .nav-back:hover{color:var(--text);border-color:var(--purple2);}
+    .nav-title{font-size:0.9rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;text-align:center;}
+    .score-pill{display:flex;align-items:center;gap:10px;font-size:0.78rem;font-weight:700;}
+    .s-chip{padding:4px 11px;border-radius:20px;font-size:0.72rem;font-weight:800;}
+    .s-know{background:rgba(34,197,94,0.15);color:var(--green);}
+    .s-learn{background:rgba(248,113,113,0.15);color:var(--red);}
+
+    /* ── PROGRESS BAR ── */
+    .topbar{height:3px;background:var(--surface2);position:relative;}
+    .topfill{height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan));width:0;transition:width 0.35s ease;}
+
+    /* ── MAIN ── */
+    .main{max-width:660px;margin:0 auto;padding:36px 20px 60px;}
+
+    /* card counter + streak */
+    .card-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .card-counter{font-size:0.82rem;color:var(--muted);font-weight:600;}
+    .streak-badge{display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:800;padding:4px 12px;border-radius:20px;background:rgba(245,158,11,0.15);color:#FBBF24;opacity:0;transition:opacity 0.3s;}
+    .streak-badge.show{opacity:1;}
+
+    /* ── CARD STAGE ── */
+    .stage{position:relative;height:320px;margin-bottom:18px;perspective:1200px;overflow:visible;}
+    /* ghost cards behind */
+    .ghost{position:absolute;bottom:0;left:50%;transform:translateX(-50%) scaleX(0.93) translateY(10px);width:100%;border-radius:22px;background:var(--surface2);opacity:0.5;border:1px solid var(--border);pointer-events:none;transition:all 0.4s cubic-bezier(.4,0,.2,1);}
+    .ghost2{position:absolute;bottom:0;left:50%;transform:translateX(-50%) scaleX(0.87) translateY(20px);width:100%;border-radius:22px;background:var(--surface2);opacity:0.28;border:1px solid var(--border);pointer-events:none;}
+
+    /* flip card */
+    .flip-wrap{position:absolute;inset:0;transform-style:preserve-3d;transition:transform 0.52s cubic-bezier(.4,0,.2,1);cursor:pointer;border-radius:22px;user-select:none;}
+    .flip-wrap.flipped{transform:rotateY(180deg);}
+    /* slide in animations */
+    .flip-wrap.slide-in-right{animation:slideInR 0.32s cubic-bezier(.4,0,.2,1) both;}
+    .flip-wrap.slide-in-left{animation:slideInL 0.32s cubic-bezier(.4,0,.2,1) both;}
+    .flip-wrap.slide-out-left{animation:slideOutL 0.28s cubic-bezier(.4,0,.2,1) both;}
+    .flip-wrap.slide-out-right{animation:slideOutR 0.28s cubic-bezier(.4,0,.2,1) both;}
+    @keyframes slideInR{from{transform:translateX(70px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+    @keyframes slideInL{from{transform:translateX(-70px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+    @keyframes slideOutL{from{transform:translateX(0);opacity:1;}to{transform:translateX(-70px);opacity:0;}}
+    @keyframes slideOutR{from{transform:translateX(0);opacity:1;}to{transform:translateX(70px);opacity:0;}}
+
+    .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 36px;text-align:center;}
+    .face-front{background:var(--surface);border:2px solid rgba(139,92,246,0.28);}
+    :root.light .face-front{background:#FFFFFF;border-color:rgba(139,92,246,0.25);}
+    .face-back{background:linear-gradient(135deg,rgba(139,92,246,0.1) 0%,rgba(79,195,247,0.08) 100%);border:2px solid rgba(79,195,247,0.35);transform:rotateY(180deg);}
+    :root.light .face-back{background:linear-gradient(135deg,rgba(139,92,246,0.07),rgba(79,195,247,0.05));}
+    .face-label{font-size:0.62rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px;padding:3px 10px;border-radius:20px;}
+    .face-front .face-label{color:var(--purple2);background:rgba(139,92,246,0.1);}
+    .face-back .face-label{color:var(--cyan);background:rgba(79,195,247,0.1);}
+    .face-text{font-size:1.15rem;font-weight:600;line-height:1.7;color:var(--text);}
+    .face-hint{position:absolute;bottom:18px;font-size:0.65rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:5px;}
+    .face-hint svg{opacity:0.5;}
+
+    /* ── SWIPE INDICATOR ── */
+    .swipe-indicator{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;font-weight:900;opacity:0;pointer-events:none;z-index:10;transition:none;border-radius:16px;padding:10px 22px;}
+    .swipe-indicator.know{color:var(--green);background:rgba(34,197,94,0.15);animation:popIn 0.4s ease both;}
+    .swipe-indicator.learn{color:var(--red);background:rgba(248,113,113,0.15);animation:popIn 0.4s ease both;}
+    @keyframes popIn{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;}60%{transform:translate(-50%,-50%) scale(1.15);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+
+    /* ── ACTION BUTTONS (appear after flip) ── */
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity 0.25s,transform 0.25s;}
+    .actions.visible{opacity:1;pointer-events:auto;transform:translateY(0);}
+    .act-btn{border:none;border-radius:14px;padding:14px 10px;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:transform 0.15s,opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .act-btn:hover{transform:translateY(-2px);opacity:0.9;}
+    .act-btn:active{transform:scale(0.97);}
+    .btn-know{background:linear-gradient(135deg,#16A34A,#22C55E);color:#fff;}
+    .btn-learn{background:linear-gradient(135deg,#DC2626,#F87171);color:#fff;}
+
+    /* ── NAVIGATION ── */
+    .nav-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px;}
+    .nav-btn{background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:12px;width:46px;height:46px;font-size:1.1rem;cursor:pointer;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;}
+    .nav-btn:hover:not(:disabled){border-color:var(--purple2);color:var(--purple2);}
+    .nav-btn:disabled{opacity:0.25;cursor:default;}
+    .flip-cta{background:var(--surface);border:1.5px solid rgba(139,92,246,0.35);color:var(--purple2);border-radius:12px;padding:0 28px;height:46px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;gap:7px;}
+    .flip-cta:hover{background:rgba(139,92,246,0.12);}
+
+    /* ── DOTS ── */
+    .dots-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:28px;}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+    .dot.seen{background:rgba(139,92,246,0.35);}
+    .dot.active{background:var(--purple);transform:scale(1.5);}
+    .dot.know{background:var(--green);}
+    .dot.still{background:var(--red);opacity:0.7;}
+
+    /* ── KEYBOARD HINT ── */
+    .kbd-hint{text-align:center;font-size:0.68rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
+    .kbd{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-family:monospace;font-size:0.7rem;}
+
+    /* ── END SCREEN ── */
+    #end-screen{display:none;position:fixed;inset:0;background:rgba(6,6,15,0.88);backdrop-filter:blur(16px);z-index:500;align-items:center;justify-content:center;padding:20px;}
+    #end-screen.show{display:flex;}
+    .end-card{background:var(--surface);border:1.5px solid var(--border);border-radius:28px;max-width:480px;width:100%;padding:40px 36px;text-align:center;position:relative;overflow:hidden;}
+    .end-trophy{font-size:4rem;margin-bottom:6px;line-height:1;}
+    .end-stars{font-size:1.8rem;margin-bottom:16px;letter-spacing:4px;}
+    .end-title{font-size:1.6rem;font-weight:900;margin-bottom:6px;}
+    .end-sub{font-size:0.88rem;color:var(--muted);margin-bottom:28px;line-height:1.5;}
+    .end-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:28px;}
+    .end-stat{background:var(--surface2);border-radius:14px;padding:14px 8px;text-align:center;}
+    .end-stat-val{font-size:1.4rem;font-weight:900;margin-bottom:2px;}
+    .end-stat-lbl{font-size:0.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;}
+    .end-know .end-stat-val{color:var(--green);}
+    .end-learn .end-stat-val{color:var(--red);}
+    .end-pct .end-stat-val{color:var(--purple2);}
+    .end-btns{display:flex;flex-direction:column;gap:10px;}
+    .btn-retry{background:linear-gradient(135deg,var(--purple),#6D28D9);color:#fff;border:none;border-radius:12px;padding:13px;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity 0.15s;}
+    .btn-retry:hover{opacity:0.85;}
+    .btn-retry-missed{background:rgba(248,113,113,0.12);border:1.5px solid rgba(248,113,113,0.3);color:var(--red);border-radius:12px;padding:12px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+    .btn-retry-missed:hover{background:rgba(248,113,113,0.2);}
+    .btn-retry-missed:disabled{opacity:0.3;cursor:default;}
+    .btn-back-decks{background:none;border:1.5px solid var(--border);color:var(--muted);border-radius:12px;padding:12px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;text-decoration:none;display:block;}
+    .btn-back-decks:hover{border-color:var(--purple2);color:var(--text);}
+
+    /* confetti canvas */
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:501;}
+
+    /* ── LOADING / ERROR ── */
+    .center-msg{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--muted);}
+    .center-msg h2{font-size:1.2rem;font-weight:800;color:var(--text);}
+
+    @media(max-width:500px){
+      nav{padding:0 14px;}.nav-title{max-width:140px;font-size:0.8rem;}
+      .main{padding:24px 14px 60px;}
+      .stage{height:280px;}
+      .face{padding:30px 22px;}
+      .face-text{font-size:1rem;}
+      .actions{gap:8px;}
+      .act-btn{padding:12px 8px;font-size:0.82rem;}
+      .end-card{padding:28px 20px;}
+      .end-title{font-size:1.3rem;}
+      .kbd-hint{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas" style="display:none;"></canvas>
+
+<nav>
+  <a href="flashcards.html" class="nav-back">← Decks</a>
+  <div class="nav-title" id="nav-title">Loading…</div>
+  <div class="score-pill">
+    <span class="s-chip s-know" id="score-know">✓ 0</span>
+    <span class="s-chip s-learn" id="score-learn">✗ 0</span>
+  </div>
+</nav>
+<div class="topbar"><div class="topfill" id="topfill"></div></div>
+
+<div class="main" id="main-area" style="display:none;">
+
+  <div class="card-meta">
+    <div class="card-counter" id="card-counter">Card 1 of 8</div>
+    <div class="streak-badge" id="streak-badge">🔥 <span id="streak-num">0</span> streak</div>
+  </div>
+
+  <!-- CARD STAGE -->
+  <div class="stage" id="stage">
+    <div class="ghost2" id="ghost2" style="height:100%;"></div>
+    <div class="ghost"  id="ghost1" style="height:100%;"></div>
+    <div class="swipe-indicator" id="swipe-ind"></div>
+    <div class="flip-wrap" id="flip-wrap" onclick="flipCard()">
+      <div class="face face-front">
+        <div class="face-label">Question</div>
+        <div class="face-text" id="face-front-text"></div>
+        <div class="face-hint">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 2v8M10 14h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          Tap card or press Space to flip
+        </div>
+      </div>
+      <div class="face face-back">
+        <div class="face-label">Answer</div>
+        <div class="face-text" id="face-back-text"></div>
+        <div class="face-hint">Tap again to flip back</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KNOW IT / STILL LEARNING — appears after flip -->
+  <div class="actions" id="actions">
+    <button class="act-btn btn-learn" onclick="grade(false)">✗ Still Learning</button>
+    <button class="act-btn btn-know"  onclick="grade(true)">✓ Know It!</button>
+  </div>
+
+  <!-- NAV ROW -->
+  <div class="nav-row">
+    <button class="nav-btn" id="prev-btn" onclick="prevCard()" title="Previous (←)" disabled>←</button>
+    <button class="flip-cta" onclick="flipCard()">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10a6 6 0 0 1 6-6 6 6 0 0 1 4.24 1.76M16 10a6 6 0 0 1-6 6 6 6 0 0 1-4.24-1.76" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 8l2.24 3.76L20 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Flip Card
+    </button>
+    <button class="nav-btn" id="next-btn" onclick="nextCard()" title="Next (→)">→</button>
+  </div>
+
+  <!-- DOTS -->
+  <div class="dots-row" id="dots-row"></div>
+
+  <!-- KEYBOARD HINTS -->
+  <div class="kbd-hint">
+    <span><kbd class="kbd">Space</kbd> Flip</span>
+    <span><kbd class="kbd">←</kbd><kbd class="kbd">→</kbd> Navigate</span>
+    <span><kbd class="kbd">Y</kbd> Know it</span>
+    <span><kbd class="kbd">N</kbd> Still learning</span>
+  </div>
+
+</div>
+
+<!-- LOADING / ERROR PLACEHOLDER -->
+<div class="center-msg" id="msg-area">
+  <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin 0.75s linear infinite;"></div>
+  <p>Loading deck…</p>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+
+<!-- END SCREEN -->
+<div id="end-screen">
+  <div class="end-card">
+    <div class="end-trophy" id="end-trophy">🏆</div>
+    <div class="end-stars" id="end-stars">⭐⭐⭐</div>
+    <div class="end-title" id="end-title">Excellent!</div>
+    <div class="end-sub" id="end-sub">You crushed this deck.</div>
+    <div class="end-stats">
+      <div class="end-stat end-know"><div class="end-stat-val" id="es-know">0</div><div class="end-stat-lbl">Know It</div></div>
+      <div class="end-stat end-learn"><div class="end-stat-val" id="es-learn">0</div><div class="end-stat-lbl">Still Learning</div></div>
+      <div class="end-stat end-pct"><div class="end-stat-val" id="es-pct">0%</div><div class="end-stat-lbl">Score</div></div>
+    </div>
+    <div class="end-btns">
+      <button class="btn-retry" onclick="restartDeck(false)">🔄 Study Again</button>
+      <button class="btn-retry-missed" id="btn-missed" onclick="restartDeck(true)">📚 Retry Still Learning Only</button>
+      <a href="flashcards.html" class="btn-back-decks">← Back to My Decks</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Theme ──
+  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+
+  // ── Load deck from localStorage ──
+  const params = new URLSearchParams(location.search);
+  const deckId = params.get('deck');
+
+  function findHistory() {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('gn-history-') && k !== 'gn-history-') {
+        try {
+          const arr = JSON.parse(localStorage.getItem(k) || '[]');
+          const found = arr.find(item => item.id === deckId);
+          if (found) return found;
+        } catch {}
+      }
+    }
+    return null;
+  }
+
+  // ── State ──
+  let cards = [];        // current active card list (full or missed-only)
+  let allCards = [];     // original full list
+  let idx = 0;
+  let grades = {};       // idx → true/false
+  let streak = 0;
+  let bestStreak = 0;
+  let isFlipped = false;
+  let isAnimating = false;
+
+  // ── Boot ──
+  const deck = findHistory();
+  if (!deckId || !deck) {
+    document.getElementById('msg-area').innerHTML = `<h2>Deck not found</h2><p>This deck may have been deleted or is stored in a different browser.</p><br><a href="flashcards.html" style="color:var(--purple2);text-decoration:none;font-weight:700;">← Back to My Decks</a>`;
+  } else {
+    try {
+      allCards = JSON.parse(deck.content || '[]');
+    } catch { allCards = []; }
+    if (!allCards.length) {
+      document.getElementById('msg-area').innerHTML = `<h2>Empty deck</h2><p>This deck has no cards yet.</p><br><a href="flashcards.html" style="color:var(--purple2);text-decoration:none;font-weight:700;">← Back to My Decks</a>`;
+    } else {
+      document.getElementById('nav-title').textContent = deck.title || 'Untitled Deck';
+      document.getElementById('msg-area').style.display = 'none';
+      document.getElementById('main-area').style.display = '';
+      cards = [...allCards];
+      startSession();
+    }
+  }
+
+  function startSession() {
+    idx = 0;
+    grades = {};
+    streak = 0;
+    bestStreak = 0;
+    isFlipped = false;
+    updateScoreDisplay();
+    showCard('none');
+  }
+
+  // ── Render card ──
+  function showCard(direction) {
+    if (!cards.length) return;
+    const c = cards[idx];
+    isFlipped = false;
+    const wrap = document.getElementById('flip-wrap');
+
+    // Slide animation
+    if (direction !== 'none' && !isAnimating) {
+      isAnimating = true;
+      const outClass = direction === 'right' ? 'slide-out-left' : 'slide-out-right';
+      const inClass  = direction === 'right' ? 'slide-in-right' : 'slide-in-left';
+      wrap.classList.add(outClass);
+      setTimeout(() => {
+        wrap.classList.remove(outClass);
+        wrap.classList.remove('flipped');
+        document.getElementById('face-front-text').textContent = c.front;
+        document.getElementById('face-back-text').textContent  = c.back;
+        wrap.classList.add(inClass);
+        setTimeout(() => { wrap.classList.remove(inClass); isAnimating = false; }, 320);
+      }, 280);
+    } else {
+      wrap.classList.remove('flipped');
+      document.getElementById('face-front-text').textContent = c.front;
+      document.getElementById('face-back-text').textContent  = c.back;
+    }
+
+    hideActions();
+    updateMeta();
+  }
+
+  function updateMeta() {
+    const tot = cards.length;
+    document.getElementById('card-counter').textContent = `Card ${idx + 1} of ${tot}`;
+    document.getElementById('topfill').style.width = ((idx + 1) / tot * 100) + '%';
+    document.getElementById('prev-btn').disabled = idx === 0;
+    document.getElementById('next-btn').disabled = idx === tot - 1;
+    // dots
+    document.getElementById('dots-row').innerHTML = cards.map((_, i) => {
+      let cls = 'dot';
+      if (i === idx) cls += ' active';
+      else if (grades[i] === true)  cls += ' know';
+      else if (grades[i] === false) cls += ' still';
+      else if (i < idx) cls += ' seen';
+      return `<div class="${cls}" onclick="jumpTo(${i})"></div>`;
+    }).join('');
+    // streak
+    const sb = document.getElementById('streak-badge');
+    if (streak >= 2) {
+      document.getElementById('streak-num').textContent = streak;
+      sb.classList.add('show');
+    } else {
+      sb.classList.remove('show');
+    }
+    // score chips
+    updateScoreDisplay();
+  }
+
+  function updateScoreDisplay() {
+    const knowCount  = Object.values(grades).filter(v => v === true).length;
+    const learnCount = Object.values(grades).filter(v => v === false).length;
+    document.getElementById('score-know').textContent  = '✓ ' + knowCount;
+    document.getElementById('score-learn').textContent = '✗ ' + learnCount;
+  }
+
+  // ── Flip ──
+  function flipCard() {
+    isFlipped = !isFlipped;
+    const wrap = document.getElementById('flip-wrap');
+    if (isFlipped) {
+      wrap.classList.add('flipped');
+      showActions();
+    } else {
+      wrap.classList.remove('flipped');
+      hideActions();
+    }
+  }
+  function showActions() { document.getElementById('actions').classList.add('visible'); }
+  function hideActions() { document.getElementById('actions').classList.remove('visible'); }
+
+  // ── Grade ──
+  function grade(knew) {
+    grades[idx] = knew;
+    if (knew) {
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+    } else {
+      streak = 0;
+    }
+    // flash indicator
+    const ind = document.getElementById('swipe-ind');
+    ind.textContent = knew ? '✓' : '✗';
+    ind.className = 'swipe-indicator ' + (knew ? 'know' : 'learn');
+    setTimeout(() => { ind.className = 'swipe-indicator'; ind.textContent = ''; }, 600);
+
+    updateMeta();
+    // auto-advance after short delay
+    setTimeout(() => {
+      if (idx < cards.length - 1) {
+        idx++;
+        showCard('right');
+      } else {
+        showEndScreen();
+      }
+    }, 380);
+  }
+
+  // ── Navigation ──
+  function nextCard() {
+    if (isAnimating) return;
+    if (idx < cards.length - 1) { idx++; showCard('right'); }
+  }
+  function prevCard() {
+    if (isAnimating) return;
+    if (idx > 0) { idx--; showCard('left'); }
+  }
+  function jumpTo(i) { idx = i; showCard('none'); }
+
+  // ── Keyboard ──
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('end-screen').classList.contains('show')) return;
+    if (e.key === ' ' || e.key === 'f') { e.preventDefault(); flipCard(); }
+    else if (e.key === 'ArrowRight' || e.key === 'd') nextCard();
+    else if (e.key === 'ArrowLeft'  || e.key === 'a') prevCard();
+    else if ((e.key === 'y' || e.key === 'k') && isFlipped) grade(true);
+    else if ((e.key === 'n' || e.key === 'x') && isFlipped) grade(false);
+  });
+
+  // ── Touch / swipe ──
+  let touchStartX = 0, touchStartY = 0;
+  const stage = document.getElementById('stage');
+  stage.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  stage.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx < 0) nextCard(); else prevCard();
+    }
+  }, { passive: true });
+
+  // ── End screen ──
+  function showEndScreen() {
+    const total    = cards.length;
+    const knowCnt  = Object.values(grades).filter(v => v === true).length;
+    const learnCnt = Object.values(grades).filter(v => v === false).length;
+    const pct      = Math.round(knowCnt / total * 100);
+    document.getElementById('es-know').textContent  = knowCnt;
+    document.getElementById('es-learn').textContent = learnCnt;
+    document.getElementById('es-pct').textContent   = pct + '%';
+    // trophy + stars
+    let trophy, stars, title, sub;
+    if (pct === 100) { trophy='🏆'; stars='⭐⭐⭐'; title='Perfect Score!'; sub='You knew every single card. Amazing!'; }
+    else if (pct >= 80) { trophy='🎉'; stars='⭐⭐⭐'; title='Excellent!'; sub='You crushed it! Keep up the great work.'; }
+    else if (pct >= 60) { trophy='👍'; stars='⭐⭐'; title='Good Job!'; sub='Solid effort — a little more review and you\'ll ace it.'; }
+    else if (pct >= 40) { trophy='📚'; stars='⭐'; title='Keep Going!'; sub='You\'re making progress. Try the missed cards again.'; }
+    else { trophy='💪'; stars=''; title='Keep Practicing!'; sub='Review your missed cards and try again soon.'; }
+    document.getElementById('end-trophy').textContent = trophy;
+    document.getElementById('end-stars').textContent  = stars;
+    document.getElementById('end-title').textContent  = title;
+    document.getElementById('end-sub').textContent    = sub;
+    document.getElementById('btn-missed').disabled    = learnCnt === 0;
+    document.getElementById('end-screen').classList.add('show');
+    if (pct >= 70) launchConfetti();
+  }
+
+  function restartDeck(missedOnly) {
+    document.getElementById('end-screen').classList.remove('show');
+    if (missedOnly) {
+      const missedIdxs = Object.entries(grades).filter(([,v]) => v === false).map(([k]) => Number(k));
+      cards = missedIdxs.map(i => cards[i]);
+      if (!cards.length) { cards = [...allCards]; }
+    } else {
+      cards = [...allCards];
+    }
+    grades = {};
+    idx = 0;
+    streak = 0;
+    isFlipped = false;
+    hideActions();
+    document.getElementById('flip-wrap').classList.remove('flipped');
+    showCard('none');
+    updateMeta();
+  }
+
+  // ── Confetti ──
+  function launchConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    canvas.style.display = '';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const colors = ['#8B5CF6','#A78BFA','#4FC3F7','#22C55E','#F5C842','#F87171'];
+    const pieces = Array.from({length:90}, () => ({
+      x: Math.random() * canvas.width,
+      y: -10 - Math.random() * 60,
+      w: 7 + Math.random() * 8,
+      h: 4 + Math.random() * 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.15,
+      vx: (Math.random() - 0.5) * 3,
+      vy: 2.5 + Math.random() * 3,
+    }));
+    let frame = 0;
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.angle += p.spin;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - frame / 140);
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      frame++;
+      if (frame < 150) requestAnimationFrame(draw);
+      else { ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'none'; }
+    }
+    draw();
+  }
+</script>
+
+<script src="js/recorder.js"></script>
+</body>
+</html>

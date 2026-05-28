@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>sign in â€” geniusnotes ai</title>
+  <title>Sign In — GeniusNotes AI</title>
   <style>
     :root {
       --bg: #06060F; --surface: #12121E; --border: rgba(255,255,255,0.07);
@@ -18,7 +18,8 @@
 
     nav { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 60px; border-bottom: 1px solid var(--border); background: rgba(6,6,15,0.92); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
     :root.light nav { background: rgba(244,244,252,0.92); }
-    .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 800; color: var(--text); text-decoration: none; white-space: nowrap; }
+    
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 1rem; color: var(--text); }
     .nav-logo .ai { color: var(--purple2); }
     .nav-link { color: var(--muted); text-decoration: none; font-size: 0.875rem; font-weight: 500; }
     .nav-link:hover { color: var(--text); }
@@ -66,7 +67,7 @@
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo">✦ GeniusNotes <span class="ai">AI</span></a>
+  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
   <a href="signup.html" class="nav-link">Create account →</a>
 </nav>
 
@@ -92,7 +93,7 @@
     <div class="field">
       <label>Password</label>
       <div class="field-row">
-        <input type="password" id="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="current-password" />
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
         <button class="toggle-pw" id="togglePw" type="button"><svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
     </div>
@@ -120,8 +121,19 @@
   const auth = firebase.auth();
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-  // Redirect if already signed in
-  auth.onAuthStateChanged(user => { if (user) window.location.href = 'index.html'; });
+  // If already signed in, show a message instead of silently redirecting
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      document.querySelector('.auth-wrap').innerHTML = `
+        <div class="auth-card" style="text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:16px">👋</div>
+          <h1 style="margin-bottom:8px">You're signed in</h1>
+          <p class="subtitle">Signed in as <strong>${user.email}</strong></p>
+          <a href="dashboard.html" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--purple);color:#fff;font-weight:700;font-size:0.95rem;text-decoration:none;margin-bottom:12px;">Go to Dashboard →</a>
+          <button onclick="firebase.auth().signOut().then(()=>location.reload())" style="width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--muted);font-size:0.875rem;cursor:pointer;">Sign out &amp; use different account</button>
+        </div>`;
+    }
+  });
 
   // Theme
   if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
@@ -154,7 +166,7 @@
     const pass  = passEl.value;
     if (!email || !pass) return showError('Please fill in all fields.');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Signing inâ€¦';
+    submitBtn.textContent = 'Signing in…';
     try {
       await auth.signInWithEmailAndPassword(email, pass);
       window.location.href = 'index.html';

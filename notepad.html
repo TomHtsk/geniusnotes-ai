@@ -1260,6 +1260,8 @@ function renderNoteItem(n) {
   </div>`;
 }
 
+var _noteSort = 'updated'; // declared here so it's available before init IIFE runs
+
 function renderSidebar() {
   const list = document.getElementById('notes-list');
   const q = searchQuery.toLowerCase();
@@ -4110,7 +4112,6 @@ function applyBc(color) {
 // ── FOLDER / NOTE SORT ───────────────────────────────────────
 const _SORT_MODES = ['updated','alpha','created'];
 const _SORT_LABELS = { updated:'Recent', alpha:'A–Z', created:'Oldest' };
-let _noteSort = 'updated';
 
 function cycleSortMode() {
   const idx = (_SORT_MODES.indexOf(_noteSort) + 1) % _SORT_MODES.length;

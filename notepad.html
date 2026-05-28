@@ -1893,12 +1893,12 @@ function insertCodeIntoNote() {
   const text = document.getElementById('cm-code-edit').value || _pfRawOutput;
   if (!text) return;
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  document.getElementById('editor').focus();
-  document.execCommand('insertHTML', false,
-    `<div style="margin:12px 0;padding:16px 20px;border-radius:10px;border:1px solid #30363d;background:#0d1117;font-family:'SFMono-Regular','Fira Code',Consolas,monospace;font-size:0.82rem;line-height:1.65;white-space:pre-wrap;color:#c9d1d9;">${esc(text)}</div><p><br></p>`
-  );
-  closeCodeModal();
-  scheduleSave();
+  const origNote = notes.find(n => n.id === activeId);
+  const content = `<div style="margin:12px 0;padding:16px 20px;border-radius:10px;border:1px solid #30363d;background:#0d1117;font-family:'SFMono-Regular','Fira Code',Consolas,monospace;font-size:0.82rem;line-height:1.65;white-space:pre-wrap;color:#c9d1d9;">${esc(text)}</div><p><br></p>`;
+  const newNote = { id: genId(), title: (origNote?.title || 'Note') + ' — Formatted Code', content, created: Date.now(), updated: Date.now() };
+  notes.unshift(newNote); saveNotes(); closeCodeModal();
+  openNote(newNote.id); renderSidebar();
+  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 function closeCodeModal() {
@@ -2039,12 +2039,13 @@ function insertDocIntoNote() {
   }
   const text = _dfResult;
   if (!text) return;
+  const origNote = notes.find(n => n.id === activeId);
+  const suffix = _dfMode === 'academic' ? ' — ' + _dfStyle + ' Essay' : _dfMode === 'email' ? ' — Email' : ' — Formatted';
   const htmlContent = text.split('\n').map(l => l.trim() === '' ? '<p><br></p>' : '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>').join('');
-  document.getElementById('editor').focus();
-  document.execCommand('selectAll', false, null);
-  document.execCommand('insertHTML', false, htmlContent);
-  closeDocModal();
-  scheduleSave();
+  const newNote = { id: genId(), title: (origNote?.title || 'Note') + suffix, content: htmlContent, created: Date.now(), updated: Date.now() };
+  notes.unshift(newNote); saveNotes(); closeDocModal();
+  openNote(newNote.id); renderSidebar();
+  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 function _cornellToText(data) {
@@ -3432,12 +3433,12 @@ function copyHwResult() {
 
 function insertHwIntoNote() {
   if (!_hwResult) return;
+  const origNote = notes.find(n => n.id === activeId);
   const html = _hwResult.split('\n').map(l => l.trim() ? '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>' : '<p><br></p>').join('');
-  document.getElementById('editor').focus();
-  document.execCommand('selectAll', false, null);
-  document.execCommand('insertHTML', false, html);
-  closeHwSolver();
-  scheduleSave();
+  const newNote = { id: genId(), title: (origNote?.title || 'Note') + ' — Solution', content: html, created: Date.now(), updated: Date.now() };
+  notes.unshift(newNote); saveNotes(); closeHwSolver();
+  openNote(newNote.id); renderSidebar();
+  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 // ── CLOUD SYNC (Firestore) ──

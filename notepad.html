@@ -4108,16 +4108,23 @@ function applyFontSize(px) {
   const el = _getActiveEditorEl(); el.focus();
   const sel = window.getSelection();
   if (sel && sel.rangeCount && !sel.isCollapsed) {
-    // Wrap selected text in a styled span
     const range = sel.getRangeAt(0);
     const span = document.createElement('span');
     span.style.fontSize = px + 'px';
-    try { range.surroundContents(span); }
-    catch(e) {
-      // Selection spans multiple elements — use execCommand fallback
-      document.execCommand('insertHTML', false,
-        `<span style="font-size:${px}px">${range.toString()}</span>`);
+    try {
+      // surroundContents only works when selection doesn't cross element boundaries
+      range.surroundContents(span);
+    } catch(e) {
+      // Cross-element selection: extract full DOM fragment (preserves all formatting)
+      const frag = range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
     }
+    // Restore selection inside the new span
+    sel.removeAllRanges();
+    const r = document.createRange();
+    r.selectNodeContents(span);
+    sel.addRange(r);
   } else {
     // No selection — set default size for new typing via execCommand
     document.execCommand('fontSize', false, '7');

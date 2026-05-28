@@ -4410,10 +4410,11 @@ function _initDetachDrag() {
 }
 
 // Auto-save detached note on input
-document.getElementById('detach-body').addEventListener('input', function() {
+document.addEventListener('input', function(e) {
+  if (!e.target || e.target.id !== 'detach-body') return;
   if (!_detachedNoteId) return;
   const note = notes.find(n => n.id === _detachedNoteId);
-  if (note) { note.content = this.innerHTML; note.updated = Date.now(); saveNotes(); }
+  if (note) { note.content = e.target.innerHTML; note.updated = Date.now(); saveNotes(); }
 });
 
 // ── IMPORT DROPDOWN ──────────────────────────────────────────
@@ -4574,20 +4575,26 @@ function recSave() {
   const HANDLES = ['nw','n','ne','e','se','s','sw','w'];
   let _selImg = null, _selWrap = null;
 
-  document.addEventListener('click', e => {
-    const img = e.target.closest('img');
-    if (img && (img.closest('#editor') || img.closest('#editor-right'))) {
-      // Don't preventDefault — let normal cursor placement happen
-      selectImage(img);
-    } else if (!e.target.classList.contains('img-handle') && !e.target.closest('.img-wrap')) {
+  // Use mousedown in capture phase so we fire before contenteditable swallows the event
+  document.addEventListener('mousedown', function(e) {
+    const img = e.target.tagName === 'IMG' ? e.target : (e.target.closest && e.target.closest('img'));
+    const inEditor = img && (img.closest('#editor') || img.closest('#editor-right'));
+
+    if (inEditor) {
+      // Defer so the click fully completes before we add selection UI
+      setTimeout(() => selectImage(img), 0);
+    } else if (e.target.classList && e.target.classList.contains('img-handle')) {
+      // handled by startResize
+    } else if (!e.target.closest || !e.target.closest('.img-wrap')) {
       deselectImage();
     }
-  });
+  }, true); // capture phase
 
   function selectImage(img) {
+    if (_selImg === img) return; // already selected
     deselectImage();
     _selImg = img;
-    const wrap = img.parentElement && img.parentElement.classList.contains('img-wrap')
+    const wrap = (img.parentElement && img.parentElement.classList.contains('img-wrap'))
       ? img.parentElement : wrapImage(img);
     _selWrap = wrap;
     wrap.classList.add('selected');
@@ -4595,22 +4602,24 @@ function recSave() {
       const h = document.createElement('span');
       h.className = 'img-handle'; h.dataset.pos = pos;
       h.contentEditable = 'false';
-      h.addEventListener('pointerdown', startResize);
+      h.addEventListener('mousedown', startResize);
       wrap.appendChild(h);
     });
-    img.addEventListener('pointerdown', startDrag);
+    img.addEventListener('mousedown', startDragImg);
   }
 
   function deselectImage() {
-    if (_selWrap) {
-      _selWrap.classList.remove('selected');
-      _selWrap.querySelectorAll('.img-handle').forEach(h => h.remove());
-      if (_selImg) _selImg.removeEventListener('pointerdown', startDrag);
-    }
+    if (!_selWrap) return;
+    _selWrap.classList.remove('selected');
+    _selWrap.querySelectorAll('.img-handle').forEach(h => h.remove());
+    if (_selImg) _selImg.removeEventListener('mousedown', startDragImg);
     _selImg = null; _selWrap = null;
   }
 
   function wrapImage(img) {
+    if (img.parentElement && img.parentElement.classList.contains('img-wrap')) {
+      return img.parentElement;
+    }
     const wrap = document.createElement('span');
     wrap.className = 'img-wrap';
     wrap.contentEditable = 'false';
@@ -4620,28 +4629,30 @@ function recSave() {
   }
 
   // ── DRAG to reposition ──
-  function startDrag(e) {
+  function startDragImg(e) {
     if (e.target.classList.contains('img-handle')) return;
     const img = _selImg;
-    let lastX = e.clientX, lastY = e.clientY;
-    let dragging = false;
+    if (!img) return;
+    let lastX = e.clientX, lastY = e.clientY, moved = false;
 
     function onMove(ev) {
       const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
-      if (!dragging && Math.hypot(dx, dy) < 4) return;
-      dragging = true;
-      ev.preventDefault(); // only prevent default once we're actually dragging
+      if (!moved && Math.hypot(dx, dy) < 5) return;
+      moved = true;
+      ev.preventDefault();
       lastX = ev.clientX; lastY = ev.clientY;
-      img.style.marginLeft = (parseInt(img.style.marginLeft || 0) + dx) + 'px';
-      img.style.marginTop  = (parseInt(img.style.marginTop  || 0) + dy) + 'px';
+      const ml = parseFloat(img.style.marginLeft) || 0;
+      const mt = parseFloat(img.style.marginTop) || 0;
+      img.style.marginLeft = (ml + dx) + 'px';
+      img.style.marginTop  = (mt + dy) + 'px';
     }
     function onUp() {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      if (dragging) scheduleSave();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (moved && typeof scheduleSave === 'function') scheduleSave();
     }
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
   // ── RESIZE from handles ──
@@ -4649,9 +4660,11 @@ function recSave() {
     e.preventDefault(); e.stopPropagation();
     const pos = e.currentTarget.dataset.pos;
     const img = _selImg;
+    if (!img) return;
     const startX = e.clientX, startY = e.clientY;
-    const startW = img.offsetWidth, startH = img.offsetHeight;
-    const ratio = startW / startH;
+    const startW = img.offsetWidth || img.naturalWidth || 300;
+    const startH = img.offsetHeight || img.naturalHeight || 200;
+    const ratio = startW / (startH || 1);
     const isCorner = pos.length === 2;
 
     function onMove(ev) {
@@ -4663,48 +4676,39 @@ function recSave() {
       if (pos.includes('s')) newH = Math.max(40, startH + dy);
       if (pos.includes('n')) newH = Math.max(40, startH - dy);
 
-      if (isCorner || ev.shiftKey) {
-        // Maintain aspect ratio: drive off whichever axis moved more
-        if (Math.abs(dx) >= Math.abs(dy)) {
-          newH = newW / ratio;
-        } else {
-          newW = newH * ratio;
-        }
+      if (isCorner) {
+        // Lock aspect ratio on corners
+        if (pos.includes('e') || pos.includes('w')) newH = newW / ratio;
+        else newW = newH * ratio;
       }
 
       img.style.width  = Math.round(newW) + 'px';
-      if (!isCorner && !ev.shiftKey && (pos === 'n' || pos === 's')) {
-        img.style.height = Math.round(newH) + 'px';
-      } else {
-        img.style.height = 'auto';
-      }
+      img.style.height = isCorner ? 'auto' : Math.round(newH) + 'px';
     }
     function onUp() {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      scheduleSave();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (typeof scheduleSave === 'function') scheduleSave();
     }
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
-  // Wrap existing bare images in editors
-  function wrapAllImages(editorEl) {
-    editorEl.querySelectorAll('img').forEach(img => {
+  // Wrap bare images that appear in editors
+  function wrapBareImages(root) {
+    if (!root) return;
+    root.querySelectorAll('img').forEach(img => {
       if (!img.closest('.img-wrap')) wrapImage(img);
     });
   }
 
   const obs = new MutationObserver(() => {
-    ['editor','editor-right'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) wrapAllImages(el);
-    });
+    ['editor','editor-right'].forEach(id => wrapBareImages(document.getElementById(id)));
   });
   ['editor','editor-right'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      wrapAllImages(el);
+      wrapBareImages(el);
       obs.observe(el, { childList:true, subtree:true });
     }
   });

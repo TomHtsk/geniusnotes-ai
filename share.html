@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Shared Note — GeniusNotes AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0d0d16;color:#f0f0ff;min-height:100vh;display:flex;flex-direction:column;}
+    nav{display:flex;align-items:center;gap:12px;padding:0 24px;height:54px;background:#12121e;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
+    .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#f0f0ff;font-size:0.92rem;font-weight:700;}
+    .nav-logo img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
+    .ai{color:#a78bfa;}
+    .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+    .nav-badge{font-size:0.68rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.3);}
+    .collab-badge{background:rgba(139,92,246,0.15);color:#a78bfa;border-color:rgba(139,92,246,0.35);}
+    .open-btn{background:#8b5cf6;border:none;border-radius:8px;color:#fff;font-size:0.78rem;font-weight:700;padding:7px 14px;cursor:pointer;font-family:inherit;text-decoration:none;}
+    main{flex:1;max-width:860px;width:100%;margin:0 auto;padding:32px 24px 80px;}
+    .note-meta{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.07);}
+    .note-title{font-size:1.5rem;font-weight:800;color:#f0f0ff;margin-bottom:6px;}
+    .note-info{font-size:0.75rem;color:#555;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    #presence{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a78bfa;}
+    .presence-dot{width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;flex-shrink:0;animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+    #sync-status{font-size:0.7rem;color:#555;margin-left:auto;}
+    #sync-status.saving{color:#a78bfa;}
+    #sync-status.saved{color:#34d399;}
+    /* Editor */
+    #note-editor{font-size:0.9rem;line-height:1.85;color:#d0d0e8;outline:none;min-height:300px;padding:4px 0;position:relative;}
+    /* Remote cursors */
+    .rc{position:absolute;pointer-events:none;z-index:100;}
+    .rc-caret{display:inline-block;width:2px;height:1.2em;border-radius:1px;position:relative;animation:rc-blink 1.2s infinite;}
+    @keyframes rc-blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+    .rc-label{position:absolute;top:-20px;left:0;font-size:10px;font-family:'Inter',sans-serif;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;color:#fff;}
+    #note-editor[contenteditable=true]{border:none;caret-color:#a78bfa;}
+    #note-editor[contenteditable=true]:focus{outline:none;}
+    #note-editor h1,#note-editor h2,#note-editor h3{color:#f0f0ff;margin:18px 0 8px;}
+    #note-editor p{margin-bottom:8px;}
+    #note-editor ul,#note-editor ol{padding-left:24px;margin-bottom:10px;}
+    #note-editor li{margin-bottom:3px;}
+    #note-editor blockquote{border-left:3px solid #8b5cf6;padding-left:14px;color:#8888aa;margin:10px 0;}
+    #note-editor img{max-width:100%;border-radius:8px;}
+    #note-editor mark{background:rgba(253,224,71,0.2);color:#fde047;border-radius:3px;padding:1px 3px;}
+    #note-editor table{width:100%;border-collapse:collapse;margin:10px 0;}
+    #note-editor td,#note-editor th{border:1px solid rgba(255,255,255,0.1);padding:7px 12px;}
+    .toolbar{display:none;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px;flex-wrap:wrap;}
+    .toolbar.visible{display:flex;}
+    .tb{background:none;border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:#8888aa;font-size:0.75rem;padding:3px 8px;cursor:pointer;font-family:inherit;transition:all 0.12s;}
+    .tb:hover{border-color:#a78bfa;color:#a78bfa;}
+    .tb-sep{width:1px;height:16px;background:rgba(255,255,255,0.07);flex-shrink:0;}
+    .state{text-align:center;padding:80px 24px;color:#666;}
+    .spinner{width:28px;height:28px;border:3px solid rgba(139,92,246,0.2);border-top-color:#8b5cf6;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 14px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    :root.light body{background:#f5efe0;color:#2a1f0a;}
+    :root.light nav{background:#faf6ec;}
+    :root.light .note-title,:root.light #note-editor{color:#2a1f0a;}
+    :root.light #note-editor h1,:root.light #note-editor h2,:root.light #note-editor h3{color:#1a1008;}
+    :root.light .tb{border-color:rgba(0,0,0,0.12);color:#666;}
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">
+    <img src="images/logo.png" alt="logo">
+    <span>GeniusNotes <span class="ai">AI</span></span>
+  </a>
+  <div class="nav-right">
+    <span class="nav-badge" id="mode-badge">Shared Note</span>
+    <a class="open-btn" href="notepad.html">Open Notepad</a>
+  </div>
+</nav>
+
+<main id="main">
+  <div class="state" id="loading-state">
+    <div class="spinner"></div>
+    <div style="font-size:0.85rem;color:#555;">Loading shared note…</div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  if(localStorage.getItem('gn-theme')==='light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
+
+  firebase.initializeApp({
+    apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI',
+    authDomain:'geniusnotes-ai.firebaseapp.com',
+    projectId:'geniusnotes-ai',
+    appId:'1:1041746856723:web:fae9072e0292c3946068e6'
+  });
+  const db = firebase.firestore();
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) { showError('No note ID provided.'); return; }
+
+  let _isCollab = false;
+  let _saveTimer = null;
+  let _lastRemote = '';
+  let _lastTyped = 0;
+
+  // Presence / cursor
+  const _uid = Math.random().toString(36).slice(2, 9);
+  const _colors = ['#e05252','#e08c52','#b5c916','#34c98b','#4fc3f7','#a78bfa','#f472b6'];
+  const _color = _colors[Math.floor(Math.random() * _colors.length)];
+  const _label = 'User ' + _uid.slice(0, 4);
+
+  db.collection('shared_notes').doc(id).get().then(doc => {
+    if (!doc.exists) { showError('This note has been deleted or the link is invalid.'); return; }
+    const data = doc.data();
+    _isCollab = !!data.collaborative;
+    _lastRemote = data.content || '';
+    renderNote(data);
+    if (_isCollab) setupRealtime(doc.ref, data);
+  }).catch(e => showError('Failed to load: ' + e.message));
+
+  function renderNote(data) {
+    const main = document.getElementById('main');
+    const date = data.sharedAt ? new Date(data.sharedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    main.innerHTML = `
+      <div class="note-meta">
+        <div class="note-title" id="note-title-el">${esc(data.title||'Untitled Note')}</div>
+        <div class="note-info">
+          <span>📅 ${date}</span>
+          ${_isCollab ? '<span id="presence"><span class="presence-dot"></span> Live collaboration</span>' : '<span>🔒 Read-only</span>'}
+          <span id="sync-status"></span>
+        </div>
+      </div>
+      ${_isCollab ? `<div class="toolbar visible" id="collab-toolbar">
+        <button class="tb" onclick="document.execCommand('bold')"><b>B</b></button>
+        <button class="tb" onclick="document.execCommand('italic')"><i>I</i></button>
+        <button class="tb" onclick="document.execCommand('underline')"><u>U</u></button>
+        <div class="tb-sep"></div>
+        <button class="tb" onclick="document.execCommand('insertUnorderedList')">• List</button>
+        <button class="tb" onclick="document.execCommand('insertOrderedList')">1. List</button>
+        <div class="tb-sep"></div>
+        <button class="tb" onclick="document.execCommand('formatBlock','h2')">H2</button>
+        <button class="tb" onclick="document.execCommand('formatBlock','p')">¶</button>
+      </div>` : ''}
+      <div id="note-editor" contenteditable="${_isCollab ? 'true' : 'false'}"
+           spellcheck="true" data-placeholder="Start writing…">${data.content||'<p><br></p>'}</div>
+    `;
+    if (_isCollab) {
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = '✏️ Collaborative';
+      badge.className = 'nav-badge collab-badge';
+      document.title = (data.title||'Shared Note') + ' · Live — GeniusNotes AI';
+    } else {
+      document.title = (data.title||'Shared Note') + ' — GeniusNotes AI';
+    }
+  }
+
+  function setupRealtime(ref, initialData) {
+    const editor = document.getElementById('note-editor');
+    if (!editor) return;
+
+    // ── Cursor helpers ──
+    function getTextOffset(root, node, off) {
+      let count = 0;
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        if (w.currentNode === node) return count + off;
+        count += w.currentNode.length;
+      }
+      return count;
+    }
+
+    function getRangeFromOffset(root, offset) {
+      let count = 0;
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) {
+        const len = w.currentNode.length;
+        if (count + len >= offset) {
+          const r = document.createRange();
+          r.setStart(w.currentNode, Math.min(offset - count, len));
+          r.collapse(true);
+          return r;
+        }
+        count += len;
+      }
+      return null;
+    }
+
+    function renderRemoteCursor(uid, offset, color, label) {
+      document.getElementById('rc-' + uid)?.remove();
+      const range = getRangeFromOffset(editor, offset);
+      if (!range) return;
+      const rRect = range.getBoundingClientRect();
+      const eRect = editor.getBoundingClientRect();
+      if (!rRect.width && !rRect.height) return;
+      const el = document.createElement('div');
+      el.id = 'rc-' + uid;
+      el.className = 'rc';
+      el.style.top = (rRect.top - eRect.top) + 'px';
+      el.style.left = (rRect.left - eRect.left) + 'px';
+      el.innerHTML = `<div class="rc-caret" style="background:${color};"></div><div class="rc-label" style="background:${color};">${label}</div>`;
+      editor.appendChild(el);
+    }
+
+    // Broadcast own cursor position (debounced)
+    let _cursorTimer = null;
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+      clearTimeout(_cursorTimer);
+      _cursorTimer = setTimeout(() => {
+        const offset = getTextOffset(editor, sel.anchorNode, sel.anchorOffset);
+        const update = {};
+        update[`cursors.${_uid}`] = { offset, color: _color, label: _label, t: Date.now() };
+        ref.update(update).catch(() => {});
+      }, 80);
+    });
+
+    // Remove own cursor on leave
+    window.addEventListener('beforeunload', () => {
+      const update = {};
+      update[`cursors.${_uid}`] = firebase.firestore.FieldValue.delete();
+      ref.update(update).catch(() => {});
+    });
+
+    // Listen for remote changes + cursors
+    ref.onSnapshot(snap => {
+      if (!snap.exists) return;
+      const d = snap.data();
+
+      // Remote content
+      const remoteContent = d.content || '';
+      if (remoteContent !== _lastRemote) {
+        _lastRemote = remoteContent;
+        if (Date.now() - _lastTyped > 2000) applyRemoteContent(editor, remoteContent);
+      }
+
+      // Remote cursors
+      const cursors = d.cursors || {};
+      // Remove stale cursors
+      editor.querySelectorAll('.rc').forEach(el => {
+        const uid = el.id.replace('rc-', '');
+        if (!cursors[uid] || uid === _uid) el.remove();
+      });
+      // Render active remote cursors
+      Object.entries(cursors).forEach(([uid, c]) => {
+        if (uid === _uid) return;
+        if (Date.now() - c.t > 30000) return; // stale
+        renderRemoteCursor(uid, c.offset, c.color, c.label);
+      });
+
+      const titleEl = document.getElementById('note-title-el');
+      if (titleEl && d.title) titleEl.textContent = d.title;
+    });
+
+    // Push local changes to Firestore
+    editor.addEventListener('input', () => {
+      _lastTyped = Date.now();
+      setSyncStatus('saving');
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(() => {
+        const content = editor.innerHTML;
+        _lastRemote = content;
+        ref.update({ content, lastEditedAt: Date.now() })
+          .then(() => setSyncStatus('saved'))
+          .catch(() => setSyncStatus(''));
+      }, 1500);
+    });
+  }
+
+  function applyRemoteContent(editor, content) {
+    // Save cursor position
+    const sel = window.getSelection();
+    let savedRange = null;
+    if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+    editor.innerHTML = content;
+    // Restore cursor if possible
+    if (savedRange) {
+      try { sel.removeAllRanges(); sel.addRange(savedRange); } catch(e) {}
+    }
+    setSyncStatus('saved');
+  }
+
+  function setSyncStatus(state) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    if (state === 'saving') { el.textContent = '● Syncing…'; el.className = 'saving'; }
+    else if (state === 'saved') { el.textContent = '✓ Synced'; el.className = 'saved'; setTimeout(() => { el.textContent=''; el.className=''; }, 2500); }
+    else { el.textContent = ''; el.className = ''; }
+  }
+
+  function showError(msg) {
+    document.getElementById('main').innerHTML = `<div class="state"><div style="font-size:2.5rem;opacity:0.3;margin-bottom:14px;">🔗</div><div style="font-size:0.88rem;color:#666;">${msg}</div></div>`;
+  }
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+})();
+</script>
+</body>
+</html>

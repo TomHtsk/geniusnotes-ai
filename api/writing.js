@@ -55,6 +55,9 @@ Text:\n${t}`,
       return `You are an intelligent text highlighting assistant.\n\n${instruction}\n\nRules:\n- Return the COMPLETE original text — every word, every sentence, every paragraph break\n- Wrap ONLY the relevant passages with <mark> tags: <mark>sentence or phrase</mark>\n- Highlight complete meaningful units (full sentences preferred over fragments)\n- Do NOT change, reorder, add, or remove any text outside the mark tags\n- Do NOT add commentary, headings, or explanations\n- If nothing in the text is relevant, return the text unchanged\n\nText:\n${t}`;
     })(),
     email:      `You are a professional email writing assistant. Transform the following notes into a polished, well-structured email.\n\nRequirements:\n- Generate a concise, descriptive Subject line\n- Open with an appropriate salutation (use "Dear [Name]," if a recipient is mentioned, otherwise "Hello," or "Hi,")\n- Write a clear, professional email body — direct and concise, no fluff\n- Use paragraph breaks for readability\n- Close with an appropriate sign-off ("Best regards," / "Sincerely," / "Thank you,") and a placeholder name if none is given\n- Match the tone to the content (formal for business, warm for personal)\n- Output in this exact format:\n\nSubject: [subject line]\n\n[salutation]\n\n[email body]\n\n[sign-off]\n[Name]\n\nOutput ONLY the email — no meta-commentary.\n\nNotes to transform:\n\n${t}`,
+    bullets:    `You are an expert note-taker. Convert the following notes into a clean, organized bullet-point summary. Rules: Use • for main points, indent sub-bullets with 2 spaces and ◦. Group related points under bold section headers (e.g. **Key Concepts:**). Keep each bullet concise but complete — one idea per bullet. Preserve ALL facts, definitions, names, dates, and examples from the source. Return ONLY the formatted bullet points — no intro, no commentary.\n\nNotes:\n${t}`,
+    outline:    `You are an expert academic outliner. Convert the following notes into a formal hierarchical outline. Use this exact format:\nI. Main Topic\n   A. Subtopic\n      1. Detail\n         a. Sub-detail\nRules: Every level must be complete sentences or clear phrases. Group logically. Preserve ALL information — every fact, definition, example, and name. Return ONLY the outline — no intro, no commentary.\n\nNotes:\n${t}`,
+    studyguide: `You are an expert academic tutor. Convert the following notes into a comprehensive study guide. Structure it with these sections:\n**Key Terms & Definitions** — every term with its precise definition\n**Core Concepts** — the main ideas explained clearly\n**Important Facts** — dates, names, formulas, statistics\n**Examples & Applications** — concrete examples from the notes\n**Likely Exam Questions** — 5-8 questions a professor would ask, with brief answers\n**Summary** — 3-4 sentences synthesizing the big picture\nRules: Include ALL information from the source. Use bold for terms. Return ONLY the study guide — no intro, no commentary.\n\nNotes:\n${t}`,
     inline:     `You are an AI writing assistant embedded in a notepad. Complete the following task and return ONLY the content — no "Here is...", no meta-commentary, no explanations before or after. Match the appropriate format (essay → paragraphs, problems → numbered list, steps → numbered steps, code → plain code blocks, etc.). Be thorough but concise.\n\nTask: ${t}`,
     math:       `Convert the following natural language description into a valid LaTeX math expression. Return ONLY the raw LaTeX — no dollar signs, no markdown fences, no explanation, no prose.\n\nCRITICAL RULES:\n- ALWAYS use Arabic numerals (90, not ninety). Convert ALL number words to digits: "ninety" → 90, "three" → 3, "one hundred" → 100, etc.\n- Arithmetic operators: "plus" → +, "minus" → -, "times"/"multiplied by" → \\times, "divided by" → \\div or \\frac{}{}, "equals" → =\n- Simple arithmetic stays simple: "ninety plus fifty" → 90 + 50, "3 times 4" → 3 \\times 4\n- Never concatenate words or numbers without the correct operator between them\n\nExamples:\n"ninety plus 50" → 90 + 50\n"three times four" → 3 \\times 4\n"one hundred divided by five" → \\frac{100}{5}\n"square root of 20" → \\sqrt{20}\n"x squared plus 3x minus 2" → x^2 + 3x - 2\n"integral from 0 to pi of sin x dx" → \\int_0^{\\pi} \\sin(x)\\,dx\n"sum of 1/n^2 from n=1 to infinity" → \\sum_{n=1}^{\\infty} \\frac{1}{n^2}\n"derivative of x cubed" → \\frac{d}{dx}x^3\n"e to the power of 2x" → e^{2x}\n"what is 90 plus 50" → 90 + 50\n\nInput: ${t}`,
   };
@@ -79,6 +82,13 @@ async function groqFetch(body, apiKey) {
   }
 }
 
+// ── citation merged from api/citation.js ────────────────────────────────────
+const _CIT_STYLES={apa7:'APA 7th Edition',mla9:'MLA 9th Edition',chicago18:'Chicago 18th Edition (Notes-Bibliography)',turabian9:'Turabian 9th Edition',ieee:'IEEE Style'};
+async function _citGroq(b,k){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${k}`},body:JSON.stringify(b),signal:AbortSignal.timeout(25000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
+
+// ── textbook merged from api/textbook.js ────────────────────────────────────
+const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -89,9 +99,48 @@ module.exports = async function handler(req, res) {
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
 
+  // citation route (rewired from /api/citation)
+  if (req.body?.sourceType !== undefined) {
+    try {
+      const { style, sourceType, autoUrl, ...fields } = req.body;
+      let meta = { ...fields };
+      if (autoUrl) { try { const jr=await fetch(`https://r.jina.ai/${autoUrl}`,{headers:{'X-Return-Format':'markdown'},signal:AbortSignal.timeout(8000)});const txt=await jr.text();const tm=txt.match(/^#\s+(.+)/m);if(tm&&!meta.title)meta.title=tm[1].trim();if(!meta.url)meta.url=autoUrl;if(!meta.siteName){try{meta.siteName=new URL(autoUrl).hostname.replace('www.','');}catch{}}} catch{} }
+      const fieldLines=Object.entries(meta).filter(([,v])=>v&&String(v).trim()).map(([k,v])=>`${k}: ${v}`).join('\n');
+      if (!fieldLines.trim()) return res.status(400).json({ error: 'No source information provided.' });
+      const styleName=_CIT_STYLES[style]||'APA 7th Edition';
+      const prompt=`Generate a precisely formatted ${styleName} citation for this ${sourceType||'source'}.\n\n${fieldLines}\n\nReturn ONLY valid JSON:\n{"citation":"Full reference entry per ${styleName}","inText":"In-text or footnote format"}\n\n- Match ${styleName} punctuation, capitalization, italics (*Title*), and field order exactly\n- IEEE: use [1] format. Chicago/Turabian: footnote in inText. No text outside JSON.`;
+      const r=await _citGroq({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:400,temperature:0.05},GROQ);
+      const data=await r.json();const raw=data.choices?.[0]?.message?.content||'';const start=raw.indexOf('{'),end=raw.lastIndexOf('}');
+      if(start===-1||end===-1)throw new Error('No JSON in response');
+      return res.json(JSON.parse(raw.slice(start,end+1)));
+    } catch(err){ return res.status(500).json({ error: err.message||'Could not generate citation.' }); }
+  }
+
+  // textbook route (rewired from /api/textbook)
+  if (req.body?.chapter !== undefined) {
+    try {
+      const { chapter, questionsText, questionsImage, questionsMime } = req.body;
+      if (!chapter) return res.status(400).json({ error: 'Chapter text is required' });
+      let questions = (questionsText||'').trim();
+      if (questionsImage&&!questions) {
+        const vRes=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',messages:[{role:'user',content:[{type:'image_url',image_url:{url:`data:${questionsMime||'image/jpeg'};base64,${questionsImage}`}},{type:'text',text:'Extract every question from this image. List each question on a new line, numbered (1. 2. 3. ...). Return ONLY the numbered questions — no other text.'}]}],max_tokens:800,temperature:0.1})});
+        const vData=await vRes.json();questions=vData.choices?.[0]?.message?.content?.trim()||'';
+        if(!questions)return res.status(400).json({error:'Could not extract questions from image.'});
+      }
+      if (!questions) return res.status(400).json({ error: 'No questions provided.' });
+      const prompt=`You are a study assistant. A student has textbook questions and chapter text. For each question, find 1–3 short exact phrases or sentences from the chapter that directly answer or relate to that question. The phrases MUST be verbatim substrings of the chapter text (exact match, same spelling and punctuation).\n\nQUESTIONS:\n${questions}\n\nCHAPTER TEXT:\n${chapter.slice(0,18000)}\n\nReturn ONLY valid JSON, no markdown fences:\n{\n  "matches": [\n    { "question": "full question text", "phrases": ["exact phrase from chapter"] }\n  ]\n}`;
+      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:2000,temperature:0.1})});
+      const data=await r.json();if(!r.ok)return res.status(500).json({error:data.error?.message||'AI error'});
+      let raw=(data.choices?.[0]?.message?.content?.trim()||'').replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();const s=raw.indexOf('{'),e=raw.lastIndexOf('}');if(s!==-1&&e>s)raw=raw.slice(s,e+1);
+      let result;try{result=JSON.parse(raw);}catch{result=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}
+      result.matches=(result.matches||[]).map((m,i)=>({...m,color:_TB_COLORS[i%_TB_COLORS.length]}));
+      return res.status(200).json({matches:result.matches,questionsExtracted:questions});
+    } catch(err){ return res.status(500).json({ error: err.message }); }
+  }
+
   try {
     const { text, mode = 'improve', tone = 'professional' } = req.body || {};
-    const minLen = (mode === 'math' || mode === 'inline') ? 1 : 10;
+    const minLen = (mode === 'math' || mode === 'inline' || mode === 'grammar') ? 1 : 10;
     if (!text || text.trim().length < minLen)
       return res.status(400).json({ error: 'Please enter at least 10 characters.' });
 

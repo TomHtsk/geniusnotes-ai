@@ -99,8 +99,24 @@
     @media(max-width:600px){.main{padding:24px 16px 60px;}nav{padding:0 16px;}.card{padding:20px;}}
   </style>
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
+<style>
+  #tab-bar-root{position:fixed;top:0;left:0;right:0;z-index:10001;height:5px;}
+  #tab-bar{display:none;flex-direction:row;align-items:center;gap:2px;padding:0 8px;height:34px;background:#07071a;border-bottom:1px solid rgba(139,92,246,0.3);overflow-x:auto;}
+  #tab-bar-root.open #tab-bar{display:flex;}
+  .nb-tab{display:flex;align-items:center;gap:5px;padding:0 10px;height:26px;border-radius:6px 6px 0 0;cursor:pointer;font-size:0.72rem;font-family:inherit;color:#8888AA;background:rgba(255,255,255,0.03);border:1px solid rgba(139,92,246,0.15);border-bottom:none;transition:background 0.12s,color 0.12s;text-decoration:none;flex-shrink:0;}
+  .nb-tab:hover{background:rgba(139,92,246,0.12);color:#F0F0FF;}
+  .nb-tab.active{background:rgba(139,92,246,0.2);color:#F0F0FF;border-color:rgba(139,92,246,0.5);font-weight:600;}
+  nav{margin-top:34px;}
+</style>
 </head>
 <body>
+<div id="tab-bar-root">
+  <div id="tab-bar">
+    <a class="nb-tab" href="notepad.html">📝 Notepad</a>
+    <a class="nb-tab active" href="create-deck.html">🃏 Flashcards</a>
+    <a class="nb-tab" href="dashboard.html">🏠 Dashboard</a>
+  </div>
+</div>
 <nav>
   <a href="flashcards.html" class="nav-back">← My Flashcards</a>
   <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">GeniusNotes <span class="ai">AI</span></a>
@@ -166,7 +182,7 @@
 </div>
 
 <script>
-  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   // ── UID helpers ──
   let currentUid = null;
@@ -467,7 +483,16 @@
     firebase.auth().onAuthStateChanged(u => { if (u && u.uid !== currentUid) currentUid = u.uid; });
   } catch(e) {}
 </script>
-
+<script>
+(function(){
+  const root=document.getElementById('tab-bar-root');
+  let t=null;
+  root.addEventListener('mouseenter',()=>{clearTimeout(t);root.classList.add('open');});
+  root.addEventListener('mouseleave',()=>{t=setTimeout(()=>root.classList.remove('open'),250);});
+  // Show sticky if notepad had tabs open
+  if(localStorage.getItem('gn-tabs-collapsed')!=='1') root.classList.add('open');
+})();
+</script>
 <script src="js/recorder.js"></script>
 </body>
 </html>

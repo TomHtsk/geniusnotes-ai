@@ -5,6 +5,19 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
+  // musicnotes route (rewired from /api/musicnotes)
+  if (req.body?.lyrics) {
+    const { lyrics, title, key, style } = req.body;
+    if (!lyrics.trim()) return res.status(400).json({ error: 'No lyrics provided' });
+    const prompt = `You are a music composer. Convert the following song lyrics into ABC notation format.\n\nRules:\n- Output ONLY valid ABC notation — no explanations, no markdown code blocks, no extra text\n- Include X:, T:, M:, L:, Q:, K: headers\n- Write a simple, singable melody — quarter and eighth notes mostly\n- Add chord symbols above the staff using "Chord" format (e.g. "C", "Am", "G7", "F")\n- Include ALL lyrics under the notes using w: lines after each staff line\n- Split syllables with hyphens in w: lines (e.g. "hap-py birth-day to you")\n- Use 4/4 time unless lyrics clearly suggest otherwise\n- Default to C major unless the user specified a different key\n- Keep it 1–2 lines of music maximum\n\nSong title: ${title||'Song'}\nKey: ${key||'C major'}\nStyle: ${style||'folk/pop'}\n\nLyrics:\n${lyrics.slice(0,1200)}\n\nOutput ONLY the ABC notation:`;
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${process.env.GROQ_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:1500,temperature:0.65})});
+    if (!resp.ok) return res.status(502).json({ error: 'Groq API error' });
+    const data = await resp.json();
+    let abc = (data.choices?.[0]?.message?.content||'').trim().replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();
+    if (!abc||!abc.includes('K:')) return res.status(500).json({ error: 'Invalid ABC notation generated. Please try again.' });
+    return res.status(200).json({ abc });
+  }
+
   try {
     const { url } = req.body || {};
     if (!url) return res.status(400).json({ error: 'No input provided' });

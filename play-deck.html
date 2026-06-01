@@ -247,7 +247,8 @@
 
 <script>
   // ── Theme ──
-  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+  if (localStorage.getItem('gn-theme') === 'light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   // ── Load deck from localStorage ──
   const params = new URLSearchParams(location.search);

@@ -241,7 +241,7 @@
       onHistory: function() { render(); }
     });
   });
-  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   const params = new URLSearchParams(location.search);
   const filterType = params.get('type') || 'notepad';

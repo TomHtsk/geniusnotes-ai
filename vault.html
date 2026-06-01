@@ -249,6 +249,7 @@
   // ── Theme ──
   if (localStorage.getItem('gn-theme') === 'light') { document.documentElement.classList.add('light'); document.getElementById('themeBtn').textContent = '☀️'; }
   function toggleTheme() { const l = document.documentElement.classList.toggle('light'); localStorage.setItem('gn-theme', l?'light':'dark'); document.getElementById('themeBtn').textContent = l?'☀️':'🌙'; }
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue === 'light'); document.getElementById('themeBtn').textContent = e.newValue === 'light' ? '☀️' : '🌙'; } });
 
   // ── Constants ──
   const PIN_KEY  = 'gn-dash-vault-pin';

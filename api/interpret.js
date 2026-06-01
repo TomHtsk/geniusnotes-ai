@@ -25,6 +25,9 @@ async function groqCall(prompt, apiKey) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
+const _CHAT_SYSTEM = `You are an expert AI study tutor for GeniusNotes AI. Help students learn effectively.\n- Explain concepts clearly — start simple, build up\n- Use examples and real-world connections\n- Keep responses concise: 2-4 paragraphs or a short list\n- Use **bold** for key terms\n- Be encouraging but academically rigorous`;
+async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -34,6 +37,19 @@ module.exports = async function handler(req, res) {
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
+
+  // chat route (rewired from /api/chat)
+  if (req.body?.messages) {
+    try {
+      const { messages } = req.body;
+      if (!Array.isArray(messages)||!messages.length) return res.status(400).json({ error: 'Missing messages' });
+      const r = await _chatGroq({model:'llama-3.1-8b-instant',messages:[{role:'system',content:_CHAT_SYSTEM},...messages.slice(-20)],max_tokens:700,temperature:0.65}, GROQ);
+      const data = await r.json();
+      const reply = data.choices?.[0]?.message?.content;
+      if (!reply) return res.status(500).json({ error: 'No reply returned' });
+      return res.status(200).json({ reply });
+    } catch(err) { return res.status(500).json({ error: err.message }); }
+  }
 
   const { text, mode, noteTitle, noteContext } = req.body || {};
   if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });

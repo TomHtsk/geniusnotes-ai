@@ -136,8 +136,7 @@
     }
   });
 
-  // Theme
-  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   const emailEl   = document.getElementById('email');
   const passEl    = document.getElementById('password');

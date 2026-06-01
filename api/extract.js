@@ -48,9 +48,33 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ text: texts.join('\n\n'), pages: texts.length });
     }
 
+    const { fileType } = req.body || {};
     if (!content) return res.status(400).json({ error: 'Missing file content' });
 
     const buffer = Buffer.from(content, 'base64');
+
+    // PPTX path: extract text from slide XML
+    if (fileType === 'pptx') {
+      const zip = await JSZip.loadAsync(buffer);
+      const slideFiles = Object.keys(zip.files)
+        .filter(n => /^ppt\/slides\/slide\d+\.xml$/i.test(n))
+        .sort((a, b) => {
+          const na = parseInt(a.match(/\d+/)?.[0] || 0);
+          const nb = parseInt(b.match(/\d+/)?.[0] || 0);
+          return na - nb;
+        });
+      if (slideFiles.length === 0) throw new Error('No slides found in this PPTX file.');
+      const slideTexts = [];
+      for (let i = 0; i < slideFiles.length; i++) {
+        const xml = await zip.files[slideFiles[i]].async('string');
+        // Extract all <a:t> text nodes
+        const matches = [...xml.matchAll(/<a:t[^>]*>([^<]*)<\/a:t>/g)].map(m => m[1]);
+        const slideText = matches.join(' ').replace(/\s+/g, ' ').trim();
+        if (slideText) slideTexts.push(`[Slide ${i + 1}]\n${slideText}`);
+      }
+      if (slideTexts.length === 0) throw new Error('No text found in slides.');
+      return res.status(200).json({ text: slideTexts.join('\n\n'), slides: slideTexts.length });
+    }
 
     // 1. Try mammoth text extraction first (fast, no API cost)
     const mammothResult = await mammoth.extractRawText({ buffer });
@@ -67,13 +91,12 @@ module.exports = async function handler(req, res) {
 
     const imageEntries = Object.values(zip.files).filter(f =>
       !f.dir && f.name.startsWith('word/media/') && /\.(png|jpe?g|gif|bmp)$/i.test(f.name)
-    ).slice(0, 4); // cap to avoid 60s timeout
+    ).slice(0, 4);
 
     if (imageEntries.length === 0) {
       throw new Error('No readable text or images found in this DOCX file.');
     }
 
-    // Process images sequentially to avoid rate-limit bursts
     const texts = [];
     for (const entry of imageEntries) {
       const ext = entry.name.split('.').pop().toLowerCase();

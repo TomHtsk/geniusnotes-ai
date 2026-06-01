@@ -189,7 +189,7 @@
 
 
 <script>
-  if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light');
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   // ── find history key immediately, no Firebase needed to display ──
   let currentUid = null;

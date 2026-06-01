@@ -24,8 +24,8 @@
       --save: #28c840;
     }
     :root.light {
-      --bg: #F5EFE0; --surface: #FAF6EC; --surface2: #EFE9D8;
-      --border: rgba(160,130,80,0.15); --text: #2A1F0A; --muted: #7A6A50;
+      --bg: #F5F5FA; --surface: #FFFFFF; --surface2: #EEEEF6;
+      --border: rgba(0,0,0,0.08); --text: #111120; --muted: #666688;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -36,6 +36,7 @@
       padding: 0 14px; height: 52px; flex-shrink: 0;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
+      margin-top: 0; transition: margin-top 0.18s ease;
     }
     .np-sidebar-toggle {
       background: none; border: none; color: var(--muted);
@@ -87,45 +88,82 @@
 
     /* ── SIDEBAR ── */
     .np-sidebar {
-      width: 240px; min-width: 240px; border-right: 1px solid var(--border);
+      width: 256px; min-width: 256px; border-right: 1px solid var(--border);
       display: flex; flex-direction: column; background: var(--surface);
-      overflow: hidden; transition: width 0.2s ease, min-width 0.2s ease, opacity 0.18s;
+      overflow: hidden; transition: width 0.22s ease, min-width 0.22s ease, opacity 0.18s;
     }
     .np-sidebar.hidden { width: 0; min-width: 0; opacity: 0; pointer-events: none; }
-    .sidebar-header { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .sidebar-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
-    .btn-new { width: 100%; background: var(--purple); border: none; color: #fff; border-radius: 8px; padding: 9px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
-    .btn-new:hover { opacity: 0.85; }
-    .search-box { margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 0.82rem; color: var(--text); font-family: inherit; outline: none; width: 100%; transition: border-color 0.15s; }
-    .search-box:focus { border-color: rgba(139,92,246,0.5); }
-    .notes-list { flex: 1; overflow-y: auto; padding: 6px; }
-    .notes-list::-webkit-scrollbar { width: 4px; }
-    .notes-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
-    .note-item { padding: 10px 12px; border-radius: 8px; cursor: grab; transition: background 0.12s; margin-bottom: 2px; position: relative; user-select:none; touch-action:none; }
+    /* Top: logo + name + icon buttons */
+    .sb-top { display:flex; align-items:center; gap:8px; padding:13px 14px 11px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .sb-logo { width:26px; height:26px; border-radius:7px; overflow:hidden; flex-shrink:0; }
+    .sb-logo img { width:100%; height:100%; object-fit:cover; }
+    .sb-name { font-size:0.88rem; font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sb-name span { background:linear-gradient(90deg,#a78bfa,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .sb-icon-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:5px; border-radius:7px; display:flex; align-items:center; justify-content:center; transition:background 0.12s,color 0.12s; flex-shrink:0; }
+    .sb-icon-btn:hover { background:rgba(139,92,246,0.12); color:var(--purple2); }
+    /* Search */
+    .sb-search { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .sb-search-wrap { display:flex; align-items:center; gap:7px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:7px 11px; transition:border-color 0.15s; }
+    .sb-search-wrap:focus-within { border-color:rgba(139,92,246,0.45); }
+    .sb-search-icon { color:var(--muted); flex-shrink:0; opacity:0.7; }
+    .sb-search-input { flex:1; background:none; border:none; outline:none; font-size:0.81rem; color:var(--text); font-family:inherit; }
+    .sb-search-input::placeholder { color:var(--muted); }
+    /* Section headers */
+    .sb-section-hd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 3px; flex-shrink:0; }
+    .sb-section-label { font-size:0.8rem; font-weight:800; color:var(--text); letter-spacing:-0.01em; }
+    .sb-section-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:3px 5px; border-radius:6px; display:flex; align-items:center; gap:3px; font-size:0.72rem; font-weight:700; font-family:inherit; transition:color 0.12s,background 0.12s; }
+    .sb-section-btn:hover { color:var(--purple2); background:rgba(139,92,246,0.08); }
+    /* Notes list */
+    .notes-list { flex:1; overflow-y:auto; padding:3px 6px; }
+    .notes-list::-webkit-scrollbar { width:3px; }
+    .notes-list::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.2); border-radius:4px; }
+    /* Note items — clean rows */
+    .note-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; cursor:pointer; margin-bottom:1px; position:relative; user-select:none; touch-action:none; transition:background 0.12s; }
     .note-item * { touch-action:none; user-select:none; }
-    .note-item.dragging { opacity:0.35; cursor:grabbing; }
-    .note-item:hover { background: var(--surface2); }
-    .note-item.active { background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3); }
-    .note-item.drop-top { border-top: 3px solid var(--purple) !important; background: rgba(139,92,246,0.05); }
-    .note-item.drop-bot { border-bottom: 3px solid var(--purple) !important; background: rgba(139,92,246,0.05); }
-    .note-item.drop-mid { background: rgba(139,92,246,0.18) !important; outline: 2px solid var(--purple); outline-offset:-2px; border-radius:8px; }
-    .note-item-title-row { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; min-width: 0; margin-right: 22px; }
-    .note-item-title { font-size: 0.85rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-    .df-chip { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); color: #8888aa; border-radius: 6px; padding: 3px 10px; font-size: 0.7rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
-    .df-chip:hover { border-color: rgba(139,92,246,0.5); color: #a78bfa; }
-    .df-chip-active { background: rgba(139,92,246,0.2); border-color: #8b5cf6; color: #a78bfa; }
-    .note-rename-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 0.72rem; opacity: 0; padding: 1px 3px; line-height: 1; border-radius: 4px; transition: opacity 0.12s; color: var(--muted); }
-    .note-item:hover .note-rename-btn { opacity: 0.7; }
-    .note-rename-btn:hover { opacity: 1 !important; color: var(--purple2); }
-    .note-item-preview { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .note-item-date { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
-    .note-delete { position: absolute; right: 8px; top: 8px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; padding: 2px 4px; }
-    .note-item:hover .note-delete { opacity: 1; }
-    .note-delete:hover { color: #ff5555; }
-    .note-compare-btn { display:none; position:absolute; bottom:6px; right:8px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35); border-radius:6px; color:var(--purple2); font-size:0.65rem; font-weight:700; cursor:pointer; padding:2px 7px; font-family:inherit; white-space:nowrap; }
-    .note-item:hover .note-compare-btn { display:block; }
-    .note-compare-btn:hover { background:rgba(139,92,246,0.28); }
-    .empty-state { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 0.82rem; }
+    .note-item:hover { background:var(--surface2); }
+    .note-item.active { background:rgba(139,92,246,0.11); }
+    .note-item.dragging { opacity:0.3; cursor:grabbing; }
+    .note-item.drop-top { border-top:2px solid var(--purple) !important; }
+    .note-item.drop-bot { border-bottom:2px solid var(--purple) !important; }
+    .note-item.drop-mid { background:rgba(139,92,246,0.18)!important; outline:2px solid var(--purple); outline-offset:-2px; }
+    .ni-icon { flex-shrink:0; color:var(--muted); opacity:0.55; display:flex; align-items:center; }
+    .ni-text { flex:1; min-width:0; }
+    .ni-title { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .note-item.active .ni-title { font-weight:600; color:var(--purple2); }
+    .ni-date { font-size:0.66rem; color:var(--muted); margin-top:1px; }
+    .note-rename-btn { flex-shrink:0; background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 3px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
+    .note-item:hover .note-rename-btn { opacity:0.6; }
+    .note-rename-btn:hover { opacity:1!important; color:var(--purple2); }
+    .note-delete { position:absolute; right:7px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.85rem; opacity:0; transition:opacity 0.15s; padding:2px 4px; }
+    .note-item:hover .note-delete { opacity:0.6; }
+    .note-delete:hover { color:#ff5555; opacity:1!important; }
+    .note-compare-btn { display:none; }
+    .note-move-btn { position:absolute;right:28px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
+    .note-item:hover .note-move-btn { opacity:0.7; }
+    .note-move-btn:hover { opacity:1!important; color:var(--purple2); }
+    .note-item-preview,.note-item-date,.note-item-title-row,.note-item-title,.df-chip,.df-chip-active { display:none; }
+    .note-folder-tag { display:none; }
+    .empty-state { text-align:center; padding:28px 12px; color:var(--muted); font-size:0.8rem; }
+    /* Folders section */
+    .sb-folders { border-top:1px solid var(--border); display:flex; flex-direction:column; min-height:0; max-height:45%; }
+    #sb-folder-list { overflow-y:auto; flex:1; }
+    #sb-folder-list::-webkit-scrollbar { width:3px; }
+    #sb-folder-list::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.2); border-radius:4px; }
+    .sb-folder-item { display:flex; align-items:center; gap:10px; padding:7px 10px; margin:1px 6px; cursor:pointer; transition:background 0.12s; border-radius:8px; }
+    .sb-folder-item:hover { background:var(--surface2); }
+    .sb-folder-item:first-child { margin-top:2px; }
+    .sb-fdot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .sb-fname { font-size:0.83rem; font-weight:500; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sb-fdel { background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.75rem; opacity:0; padding:2px 4px; transition:opacity 0.12s; }
+    .sb-folder-item:hover .sb-fdel { opacity:0.6; }
+    .sb-fdel:hover { color:#ff5555; opacity:1!important; }
+    /* Bottom bar */
+    .sb-bottom { border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-around; padding:6px 4px; flex-shrink:0; }
+    .sb-bot-btn { display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--muted); cursor:pointer; padding:7px 10px; border-radius:9px; font-size:0.58rem; font-weight:700; font-family:inherit; transition:background 0.15s,color 0.15s; text-transform:uppercase; letter-spacing:0.04em; }
+    .sb-bot-btn:hover { background:rgba(139,92,246,0.1); color:var(--purple2); }
+    .sb-bot-btn svg { flex-shrink:0; }
+    /* Hide old sidebar header elements */
+    .sidebar-header,.sidebar-title,.btn-new,.search-box { display:none; }
 
     /* ── SIDEBAR DRAG ── */
     .note-drag-handle { cursor:grab; color:var(--muted); font-size:0.75rem; opacity:0; padding:0 3px; flex-shrink:0; transition:opacity 0.12s; }
@@ -141,7 +179,7 @@
     .tb-btn { background: none; border: none; color: var(--muted); border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 0.85rem; font-family: inherit; transition: background 0.12s, color 0.12s; line-height: 1; }
     .tb-btn:hover, .tb-btn.active { background: rgba(139,92,246,0.12); color: var(--purple2); }
     .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
-    .editor-wrap { flex: 1; overflow-y: auto; padding: 40px 24px; scroll-behavior: smooth; background: #08081a; position: relative; }
+    .editor-wrap { flex: 1; overflow-y: auto; padding: 48px 32px; scroll-behavior: smooth; background: #3a3a4a; position: relative; }
 
     /* ── SPLIT SCREEN ── */
     .editor-split-row { flex:1; display:flex; overflow:hidden; min-height:0; }
@@ -151,6 +189,8 @@
     .right-pane { display:none; flex:1; flex-direction:column; overflow:hidden; min-width:0; border-left:1px solid rgba(139,92,246,0.25); }
     .right-pane.visible { display:flex; }
     .right-pane-hd { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .left-pane-hd { display:none; align-items:center; gap:6px; padding:6px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .left-pane-hd.visible { display:flex; }
     .right-pane-title { font-size:0.78rem; font-weight:700; color:var(--muted); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .right-pane-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.9rem; padding:3px 7px; border-radius:5px; transition:color 0.12s; }
     .right-pane-close:hover { color:#ff5555; }
@@ -166,8 +206,31 @@
     #detach-title { font-size:0.8rem; font-weight:700; color:var(--purple2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #detach-body { flex:1; overflow-y:auto; padding:18px 20px; font-family:'Inter',system-ui,sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text); outline:none; }
     #detach-body:focus { outline:none; }
-    .right-editor-wrap { flex:1; overflow-y:auto; padding:28px 20px; background:#08081a; }
-    #editor-right { font-family:'Inter',system-ui,sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text); outline:none; min-height:100%; cursor:text; }
+    .right-editor-wrap { flex:1; overflow-y:auto; padding:48px 32px; background:#3a3a4a; }
+    :root.light .right-editor-wrap { background: #b0b0b0; }
+    #editor-right {
+      font-family:'Inter',system-ui,sans-serif; font-size:1rem; line-height:1.8; color:var(--text);
+      outline:none; cursor:text; border-radius:0; position:relative;
+      min-height:1056px; max-width:816px; margin:0 auto; padding:136px 96px;
+      background-color:var(--surface);
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--surface) 0px,
+        var(--surface) 1056px,
+        #3a3a4a 1056px,
+        #3a3a4a 1088px
+      );
+      box-shadow:none;
+    }
+    :root.light #editor-right {
+      background-image: repeating-linear-gradient(
+        to bottom,
+        #ffffff 0px,
+        #ffffff 1056px,
+        #b0b0b0 1056px,
+        #b0b0b0 1088px
+      );
+    }
     #editor-right:empty::before { content:attr(data-placeholder); color:var(--muted); pointer-events:none; }
     .split-drop-overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(139,92,246,0.1); border:3px dashed rgba(139,92,246,0.5); border-radius:6px; z-index:200; pointer-events:none; flex-direction:column; gap:10px; }
     .split-drop-overlay.show { display:flex; pointer-events:auto; cursor:copy; }
@@ -188,20 +251,22 @@
     .cmd-kbd { background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.32); border-radius:5px; padding:3px 9px; font-size:0.74rem; color:#a78bfa; font-family:inherit; }
     #cmd-panel-preview { background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:8px; padding:9px 14px; font-size:0.82rem; color:#a78bfa; font-family:inherit; letter-spacing:0.02em; }
     #editor:empty::before { content: attr(data-placeholder); color: rgba(255,255,255,0.18); font-style: italic; pointer-events: none; }
-    #editor:empty::after { content: 'type /prompt for AI writing · /cornellnotes · /format flashcards · /solve anything'; display: block; margin-top: 10px; color: rgba(255,255,255,0.13); font-size: 0.78rem; font-style: italic; pointer-events: none; }
+    #editor:empty::after { content: 'type /prompt · /bullets · /outline · /studyguide · /cornellnotes · /flashcards · /solve · /share'; display: block; margin-top: 10px; color: rgba(255,255,255,0.13); font-size: 0.78rem; font-style: italic; pointer-events: none; }
+    :root.light #editor:empty::after { color: rgba(17,17,32,0.22); }
     #editor mark { background:rgba(245,184,66,0.38); color:inherit; padding:1px 2px; border-radius:3px; }
     #hl-sb-panel { display:none; position:absolute; bottom:calc(100% + 6px); right:0; width:270px; background:#181828; border:1px solid rgba(245,184,66,0.38); border-radius:12px; padding:12px; box-shadow:0 10px 32px rgba(0,0,0,0.7); z-index:300; }
     #hl-sb-panel input { width:100%; padding:7px 10px; border-radius:8px; border:1px solid rgba(245,184,66,0.35); background:#0d0d1a; color:#e8e8f0; font-size:0.78rem; font-family:inherit; outline:none; margin-bottom:8px; box-sizing:border-box; }
     #hl-sb-panel input::placeholder { color:#555577; }
     mark.diff-mark { background:rgba(255,90,20,0.42); border-radius:2px; outline:1px solid rgba(255,90,20,0.25); }
-    :root.light .editor-wrap { background: #ccc8bc; }
+    :root.light .editor-wrap { background: #b0b0b0; }
     .editor-wrap::-webkit-scrollbar { width: 6px; }
     .editor-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    :root.light .editor-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
     .math-eq { display:inline-block; padding:0 2px; margin:0 1px; cursor:pointer; vertical-align:middle; }
     .math-eq-block { display:block; padding:8px 0; margin:6px 0; text-align:center; cursor:pointer; }
     .math-eq:hover { outline:1px dashed rgba(139,92,246,0.4); border-radius:3px; }
     .math-eq-block:hover { outline:1px dashed rgba(139,92,246,0.4); border-radius:6px; }
-    .cornell-block { display:block; margin:16px 0; font-family:'Georgia',serif; font-size:0.88rem; }
+    .cornell-block { display:block; margin:16px 0; font-family:'Georgia',serif; font-size:0.88rem; width:100%; box-sizing:border-box; }
     .cornell-block:hover { outline:1px dashed rgba(139,92,246,0.3); border-radius:11px; }
     .cn-cell[contenteditable="true"]:focus { outline:none; background:rgba(139,92,246,0.08); border-radius:3px; }
     .cn-cell[contenteditable="true"] { min-height:1em; }
@@ -238,28 +303,109 @@
     #draw-toolbar-row { display:none; align-items:center; gap:7px; padding:5px 14px; border-bottom:1px solid rgba(255,140,50,0.25); background:rgba(255,140,50,0.06); flex-wrap:wrap; }
     #draw-overlay { position:fixed; pointer-events:none; z-index:500; display:none; cursor:crosshair; touch-action:none; }
     #editor {
-      min-height: 1040px; outline: none; font-size: 1rem; line-height: 1.8; color: var(--text);
-      max-width: 700px; margin: 0 auto; padding: 68px 72px;
+      min-height: 1056px; outline: none; font-size: 1rem; line-height: 1.8; color: var(--text);
+      max-width: 816px; margin: 0 auto; padding: 136px 96px;
+      position: relative; border-radius: 0;
+      /* 1056px page + 32px gray gap, repeating.
+         background-position shifts gradient so gap falls at page_height - bottom_margin.
+         falls at y=920 (inside the bottom margin zone, not over content). */
       background-color: var(--surface);
       background-image: repeating-linear-gradient(
         to bottom,
-        transparent 0px,
-        transparent 988px,
-        rgba(8,8,26,0.97) 988px,
-        rgba(8,8,26,0.97) 1040px
+        var(--surface) 0px,
+        var(--surface) 1056px,
+        #3a3a4a 1056px,
+        #3a3a4a 1088px
       );
-      box-shadow: 0 4px 28px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.3);
-      border-radius: 2px;
+      background-position: 0 -136px;
+      box-shadow: none;
     }
     :root.light #editor {
       background-image: repeating-linear-gradient(
         to bottom,
-        transparent 0px,
-        transparent 988px,
-        rgba(204,200,188,0.98) 988px,
-        rgba(204,200,188,0.98) 1040px
+        #ffffff 0px,
+        #ffffff 1056px,
+        #b0b0b0 1056px,
+        #b0b0b0 1088px
       );
-      box-shadow: 0 4px 28px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1);
+      background-position: 0 -136px;
+    }
+    /* Single continuous page — no gradient, no gap separators */
+    #editor.no-page-breaks {
+      background-image: none !important;
+      min-height: unset !important;
+    }
+    /* pg-sep: transparent spacer that occupies the gray gap area, preventing text from appearing inside it */
+    .pg-sep { display: block; background: transparent; pointer-events: none; user-select: none; flex-shrink: 0; }
+    .pg-break-band { display: block; }
+
+    /* ── MARGIN PANEL ── */
+    #margin-panel {
+      display: none; position: fixed; top: 80px; right: 16px; z-index: 700;
+      background: #181828; border: 1px solid rgba(139,92,246,0.35);
+      border-radius: 12px; padding: 14px 16px; width: 220px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+      font-size: 0.78rem; font-family: inherit;
+    }
+    :root.light #margin-panel { background: #f4f4fc; border-color: rgba(139,92,246,0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    #margin-panel.open { display: block; }
+    #margin-panel h4 { margin: 0 0 10px; font-size: 0.8rem; font-weight: 700; color: #a78bfa; }
+    .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .mg-label { color: rgba(200,200,230,0.7); width: 56px; flex-shrink: 0; }
+    :root.light .mg-label { color: rgba(50,50,90,0.7); }
+    .mg-input { flex: 1; background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); border-radius: 6px; color: #e0e0ff; font-size: 0.78rem; font-family: inherit; padding: 4px 8px; outline: none; width: 100%; box-sizing: border-box; }
+    :root.light .mg-input { background: rgba(139,92,246,0.05); color: #222; border-color: rgba(139,92,246,0.2); }
+    .mg-unit { color: rgba(200,200,230,0.5); font-size: 0.7rem; flex-shrink: 0; }
+    .mg-apply { width: 100%; margin-top: 10px; padding: 6px; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); border-radius: 7px; color: #a78bfa; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .mg-apply:hover { background: rgba(139,92,246,0.35); }
+    .mg-reset { width: 100%; margin-top: 5px; padding: 5px; background: none; border: 1px solid rgba(139,92,246,0.15); border-radius: 7px; color: rgba(167,139,250,0.6); font-size: 0.72rem; cursor: pointer; font-family: inherit; }
+    .mg-reset:hover { border-color: rgba(139,92,246,0.3); color: #a78bfa; }
+
+    /* ── RULER ── */
+    #doc-ruler {
+      flex-shrink: 0; height: 26px; overflow: hidden; position: relative;
+      background: #1c1c2e; border-top: 1px solid rgba(139,92,246,0.15); border-bottom: 1px solid rgba(139,92,246,0.15);
+    }
+    :root.light #doc-ruler { background: #dcdce8; border-color: rgba(0,0,0,0.12); }
+    #doc-ruler-track { position: relative; max-width: 816px; margin: 0 auto; height: 100%; }
+    .ruler-margin { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.22); }
+    :root.light .ruler-margin { background: rgba(0,0,0,0.1); }
+    .ruler-content-zone { position: absolute; top: 0; bottom: 0; background: rgba(139,92,246,0.07); }
+    .ruler-tick { position: absolute; bottom: 0; width: 1px; background: rgba(255,255,255,0.55); }
+    .ruler-tick-half { position: absolute; bottom: 0; width: 1px; background: rgba(255,255,255,0.28); }
+    :root.light .ruler-tick { background: rgba(0,0,0,0.5); }
+    :root.light .ruler-tick-half { background: rgba(0,0,0,0.22); }
+    .ruler-label { position: absolute; top: 3px; font-size: 9px; color: rgba(255,255,255,0.7); transform: translateX(-50%); font-family: inherit; line-height: 1; font-weight: 500; }
+    :root.light .ruler-label { color: rgba(0,0,0,0.6); }
+
+    /* ── STATUS BAR (page counter + zoom) ── */
+    #doc-statusbar {
+      position: fixed; bottom: 14px; right: 16px; z-index: 600;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(18,18,32,0.9); border: 1px solid rgba(139,92,246,0.18);
+      border-radius: 20px; padding: 3px 10px;
+      backdrop-filter: blur(8px);
+      font-size: 0.72rem; font-family: inherit;
+    }
+    :root.light #doc-statusbar { background: rgba(235,235,250,0.93); border-color: rgba(139,92,246,0.2); }
+    #page-counter { color: rgba(190,190,230,0.7); white-space: nowrap; }
+    :root.light #page-counter { color: rgba(50,50,90,0.65); }
+    .zoom-sep { width: 1px; height: 11px; background: rgba(139,92,246,0.25); margin: 0 2px; }
+    .zoom-btn { background: none; border: none; color: rgba(190,190,230,0.7); cursor: pointer; font-size: 1rem; padding: 0 4px; border-radius: 4px; line-height: 1; }
+    .zoom-btn:hover { background: rgba(139,92,246,0.2); color: #a78bfa; }
+    :root.light .zoom-btn { color: rgba(50,50,90,0.65); }
+    #zoom-label { color: rgba(190,190,230,0.7); min-width: 36px; text-align: center; font-size: 0.72rem; }
+    :root.light #zoom-label { color: rgba(50,50,90,0.65); }
+
+    /* ── PRINT ── */
+    @media print {
+      .np-sidebar, .np-header, #doc-ruler, #doc-statusbar,
+      .split-divider, .right-pane-hd, .left-pane-hd { display: none !important; }
+      .np-body, .editor-split-row, .split-pane { display: block !important; overflow: visible !important; height: auto !important; }
+      .editor-wrap { overflow: visible !important; padding: 0 !important; background: white !important; box-shadow: none !important; }
+      #editor { box-shadow: none !important; max-width: 100% !important; margin: 0 !important; zoom: 1 !important; }
+      #pg-line-overlay { display: none !important; }
+      @page { size: 8.5in 11in; margin: 1in; }
     }
     /* Auto-slide: smooth transition when content grows */
     #editor * { transition: none; }
@@ -274,10 +420,10 @@
     #editor blockquote { border-left: 3px solid var(--purple2); padding-left: 16px; color: var(--muted); margin: 0.5em 0; }
     #editor a { color: var(--purple2); }
     #editor hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
-    #editor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
+    #editor img { border-radius: 8px; margin: 8px 0; display: block; max-width: 100%; }
     .img-wrap { display:inline-block; position:relative; line-height:0; vertical-align:middle; margin: 4px 0; }
     .img-wrap.selected { outline:2px solid #8B5CF6; }
-    .img-wrap img { display:block; max-width:100%; border-radius:6px; cursor:move; }
+    .img-wrap img { display:block; max-width:none; border-radius:6px; cursor:move; }
     .img-handle { position:absolute; width:10px; height:10px; background:#8B5CF6; border:2px solid #fff; border-radius:2px; z-index:10; }
     .img-handle[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
     .img-handle[data-pos="n"]  { top:-5px; left:calc(50% - 5px); cursor:n-resize; }
@@ -287,6 +433,11 @@
     .img-handle[data-pos="s"]  { bottom:-5px; left:calc(50% - 5px); cursor:s-resize; }
     .img-handle[data-pos="sw"] { bottom:-5px; left:-5px; cursor:sw-resize; }
     .img-handle[data-pos="w"]  { top:calc(50% - 5px); left:-5px; cursor:w-resize; }
+    .img-draw-btn { position:absolute; top:4px; right:4px; width:28px; height:28px; background:rgba(139,92,246,0.9); border:none; border-radius:7px; color:#fff; font-size:0.88rem; cursor:pointer; z-index:11; display:none; align-items:center; justify-content:center; line-height:1; padding:0; }
+    .img-hl-btn { top:36px; background:rgba(245,158,11,0.9); }
+    .img-wrap.selected .img-draw-btn { display:flex; }
+    .img-ctx-item { display:block; width:100%; padding:9px 16px; border:none; background:none; color:#e8e8f0; font-size:0.83rem; text-align:left; cursor:pointer; font-family:inherit; box-sizing:border-box; }
+    .img-ctx-item:hover { background:rgba(139,92,246,0.2); color:#a78bfa; }
     .no-note { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 12px; }
     .no-note-icon { font-size: 2.5rem; opacity: 0.4; }
     .no-note p { font-size: 0.9rem; }
@@ -377,9 +528,7 @@
     .folder-hdr:hover .folder-add-note-btn{opacity:1;}
     .folder-notes-sub{padding-left:12px;}
     .unfiled-sep{font-size:0.63rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding:10px 14px 3px;opacity:0.55;}
-    .note-move-btn{position:absolute;right:26px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.73rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2;}
-    .note-item:hover .note-move-btn{opacity:1;}
-    .folder-pick{position:absolute;right:0;top:calc(100% + 2px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:500;display:none;}
+    .folder-pick{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:2000;display:none;}
     .fp-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;color:var(--text);font-size:0.78rem;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:background 0.12s;}
     .fp-opt:hover{background:rgba(139,92,246,0.1);}
     .fp-opt.fp-current{color:var(--purple2);}
@@ -423,7 +572,7 @@
     #ff-wrap { position:relative; display:inline-flex; align-items:center; }
     #ff-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:600; padding:3px 7px; cursor:pointer; font-family:inherit; min-width:72px; text-align:left; transition:border-color 0.12s; display:flex; align-items:center; justify-content:space-between; gap:4px; }
     #ff-display:hover { border-color:var(--purple); color:var(--purple2); }
-    #ff-popup { display:none; position:absolute; top:calc(100% + 5px); left:0; background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.7); min-width:180px; }
+    #ff-popup { display:none; position:absolute; top:calc(100% + 5px); left:0; background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:180px; }
     #ff-popup.on { display:block; }
     .ff-opt { display:block; width:100%; text-align:left; padding:6px 12px; border:none; background:none; color:var(--text); cursor:pointer; border-radius:6px; font-size:0.82rem; transition:background 0.1s; }
     .ff-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
@@ -433,7 +582,7 @@
     #fs-wrap { position:relative; display:inline-flex; align-items:center; }
     #fs-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:700; padding:3px 6px; cursor:pointer; font-family:inherit; min-width:36px; text-align:center; transition:border-color 0.12s; display:flex; align-items:center; gap:3px; }
     #fs-display:hover { border-color:var(--purple); color:var(--purple2); }
-    #fs-popup { display:none; position:absolute; top:calc(100% + 5px); left:50%; transform:translateX(-50%); background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.7); min-width:80px; }
+    #fs-popup { display:none; position:absolute; top:calc(100% + 5px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:80px; }
     #fs-popup.on { display:block; }
     .fs-opt { display:block; width:100%; text-align:center; padding:5px 10px; border:none; background:none; color:var(--text); font-family:inherit; cursor:pointer; border-radius:6px; font-size:0.8rem; font-weight:600; transition:background 0.1s; }
     .fs-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
@@ -442,15 +591,15 @@
     #fs-custom-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; padding:3px 6px; font-family:inherit; outline:none; width:44px; }
 
     /* ── COLOR PICKERS ── */
-    .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1a1a2e; border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.7); width:176px; }
-    .color-picker-pop .cp-label { font-size:0.64rem; font-weight:700; color:#555577; letter-spacing:0.07em; margin-bottom:7px; text-transform:uppercase; }
+    .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.25); width:176px; }
+    .color-picker-pop .cp-label { font-size:0.64rem; font-weight:700; color:var(--muted); letter-spacing:0.07em; margin-bottom:7px; text-transform:uppercase; }
     .color-picker-pop .cp-swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin-bottom:8px; }
     .color-picker-pop .cp-swatch { width:18px; height:18px; border-radius:4px; cursor:pointer; border:2px solid transparent; transition:transform 0.1s,border-color 0.1s; flex-shrink:0; }
     .color-picker-pop .cp-swatch:hover { transform:scale(1.2); border-color:rgba(255,255,255,0.4); }
     .color-picker-pop .cp-swatch.cp-clear { background:linear-gradient(135deg,#fff 40%,#f00 40%,#f00 60%,#fff 60%); }
     .color-picker-pop .cp-custom { display:flex; align-items:center; gap:6px; margin-top:4px; }
     .color-picker-pop .cp-custom input[type=color] { width:28px; height:22px; border:none; border-radius:4px; cursor:pointer; padding:0; background:none; }
-    .color-picker-pop .cp-custom span { font-size:0.7rem; color:#888; }
+    .color-picker-pop .cp-custom span { font-size:0.7rem; color:var(--muted); }
     #tc-btn-bar { display:inline-block; height:3px; border-radius:2px; width:12px; margin-top:2px; transition:background 0.2s; }
 
     /* ── RECORD MODAL ── */
@@ -518,6 +667,7 @@
 
     .vd-btn:hover { background:rgba(139,92,246,0.1); }
     .vd-del { color:#ff5555; }
+
   </style>
 </head>
 <body>
@@ -553,7 +703,8 @@
     <button onclick="openRecModal()" class="np-btn" style="color:#f87171;" title="Record Meeting/Lecture">🎙 <span class="np-btn-label">Record</span></button>
     <button id="save-btn" onclick="manualSave()" class="np-btn np-btn-primary">💾 <span class="np-btn-label">Save</span></button>
     <button onclick="copyNote()" class="np-btn" id="copy-btn">📋 <span class="np-btn-label">Copy</span></button>
-    <button class="np-close-btn" onclick="window.location.href='history.html?type=notepad'" title="My Notes">✕</button>
+    <button onclick="openShareModal()" class="np-btn" title="Share note" style="color:#34d399;">🔗 <span class="np-btn-label">Share</span></button>
+    <button class="np-close-btn" onclick="window.location.href='my-notes.html'" title="My Notes">📂</button>
   </div>
 </div>
 
@@ -562,24 +713,60 @@
 
   <!-- SIDEBAR -->
   <div class="np-sidebar" id="np-sidebar">
-    <div class="sidebar-header">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div class="sidebar-title" style="margin-bottom:0;">📝 My Notes</div>
-        <button class="sort-btn" id="sort-toggle-btn" onclick="cycleSortMode()" title="Change sort order">⇅ <span id="sort-label">Recent</span></button>
+    <!-- Top header: logo + name + actions -->
+    <div class="sb-top">
+      <div class="sb-logo"><img src="images/logo.png" alt="GN"></div>
+      <span class="sb-name">GeniusNotes <span>AI</span></span>
+      <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <!-- Search -->
+    <div class="sb-search">
+      <div class="sb-search-wrap">
+        <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search by title" oninput="filterNotes(this.value)" />
       </div>
-      <div style="display:flex;gap:6px;">
-        <div style="flex:1;">
-          <button id="add-note-btn" class="btn-new" onclick="toggleNewNoteMenu()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;">+ Add Note <span style="font-size:0.65rem;opacity:0.7;">▾</span></button>
-        </div>
-        <button class="btn-new" onclick="newFolder()" title="New folder" style="flex-shrink:0;padding:9px 11px;background:rgba(139,92,246,0.15);color:var(--purple2);font-size:0.8rem;">📁+</button>
-      </div>
-      <input class="search-box" type="text" placeholder="Search notes…" oninput="filterNotes(this.value)" />
+    </div>
+    <!-- Notes section -->
+    <div class="sb-section-hd">
+      <span class="sb-section-label">Notes</span>
+      <button class="sb-section-btn" id="sort-toggle-btn" onclick="cycleSortMode()" title="Change sort order">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
+        <span id="sort-label">Recent</span>
+      </button>
     </div>
     <div class="notes-list" id="notes-list">
-      <div class="empty-state">No notes yet.<br>Click "+ Add Note" to start.</div>
+      <div class="empty-state">No notes yet</div>
     </div>
-    <div style="border-top:1px solid var(--border);padding:10px 12px;">
-      <button onclick="toggleNpTheme()" id="np-theme-btn" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border:none;background:none;color:var(--muted);font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(139,92,246,0.1)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--muted)'">🌙 Dark mode</button>
+    <!-- Folders section -->
+    <div class="sb-folders">
+      <div class="sb-section-hd">
+        <span class="sb-section-label">Folders</span>
+        <button class="sb-section-btn" id="folder-sort-btn" onclick="cycleFolderSort()" title="Sort folders">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6-6 6 6"/><path d="M6 15l6 6 6-6"/></svg>
+          <span id="folder-sort-label">A–Z</span>
+        </button>
+        <button class="sb-section-btn" id="folder-add-btn" onclick="toggleFolderAreaMenu()" title="New note or folder">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+      <div id="sb-folder-list"></div>
+    </div>
+    <!-- Bottom bar -->
+    <div class="sb-bottom">
+      <button class="sb-bot-btn" onclick="window.open('notepad.html','_blank')" title="Study Tools">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Study
+      </button>
+      <button class="sb-bot-btn" onclick="toggleNpTheme()" id="np-theme-btn" title="Toggle theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        Theme
+      </button>
+      <button class="sb-bot-btn" onclick="window.open('dashboard.html','_blank')" title="Dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
     </div>
   </div>
 
@@ -589,6 +776,7 @@
       <div class="no-note-icon">📝</div>
       <p>Select a note or create a new one</p>
       <button onclick="newNote()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;">+ Add Note</button>
+      <a href="my-notes.html" style="font-size:0.8rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:5px;margin-top:4px;">📂 Open My Notes</a>
     </div>
     <div id="editor-container" style="display:none;flex-direction:column;overflow:hidden;">
       <!-- Toolbar -->
@@ -716,6 +904,8 @@
             </div>
           </div>
         </div>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="toggleMarginPanel()" title="Page margins" id="margin-tb-btn">📐 Margins</button>
       </div>
       <!-- Draw toolbar row -->
       <div id="draw-toolbar-row">
@@ -746,6 +936,11 @@
       <div class="editor-split-row" id="editor-split-row">
         <!-- Left pane (always visible) -->
         <div class="split-pane">
+          <div class="left-pane-hd" id="left-pane-hd">
+            <span class="right-pane-title" id="left-pane-title">Current Note</span>
+            <button class="rp-btn" id="left-save-btn" onclick="saveLeftNote()" title="Save left note">💾 Save</button>
+          </div>
+          <div id="doc-ruler"><div id="doc-ruler-track"></div></div>
           <div class="editor-wrap" id="editor-wrap-left" style="position:relative;"
             ondragover="onEditorDragOver(event)" ondrop="onEditorDrop(event)" ondragleave="onEditorDragLeave(event)">
             <div id="editor" contenteditable="true" data-placeholder="Start writing…" spellcheck="true"></div>
@@ -811,12 +1006,15 @@
         </div>
         <div id="conv-wrap" style="position:relative;">
           <button class="convert-btn" onclick="toggleConvMenu()">⚡ Convert ▾</button>
-          <div id="conv-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px;min-width:180px;z-index:300;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openCodeConvert()">🍪 Format Code</div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="sendNoteToFlashcards()">🃏 Flashcards</div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('academic')">🎓 Academic Formatting</div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('cornell')">📋 Cornell Notes</div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openHomeworkSolver()">🧠 Homework Solver</div>
+          <div id="conv-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px;min-width:220px;z-index:300;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openCodeConvert()">🍪 Format Code <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /format code</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="sendNoteToFlashcards()">🃏 Flashcards <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /flashcards</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('academic')">🎓 Academic <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /academic</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('cornell')">📋 Cornell Notes <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /cornellnotes</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('bullets')">• Bullet Points <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /bullets</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('outline')">≡ Outline <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /outline</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('studyguide')">📚 Study Guide <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /studyguide</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openHomeworkSolver()">🧠 Homework Solver <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /solve</span></div>
           </div>
         </div>
       </div>
@@ -876,6 +1074,39 @@
 </div>
 
 <!-- HOMEWORK SOLVER MODAL -->
+<!-- SHARE MODAL -->
+<div id="share-modal" onclick="if(event.target===this)closeShareModal()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#12121e;border:1px solid rgba(52,211,153,0.3);border-radius:16px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 64px rgba(0,0,0,0.7);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:700;color:#e0e0f0;">🔗 Share Note</div>
+      <button onclick="closeShareModal()" style="background:none;border:none;color:#666;cursor:pointer;font-size:1.1rem;padding:2px 6px;">✕</button>
+    </div>
+
+    <!-- Two mode buttons -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+      <button onclick="generateShareLink(false)" id="share-btn-view" style="background:rgba(52,211,153,0.12);border:1.5px solid rgba(52,211,153,0.4);border-radius:10px;color:#34d399;font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
+        <span style="font-size:1.3rem;">👁</span>
+        <span>View Only</span>
+        <span style="font-size:0.65rem;font-weight:400;color:#555;">Read-only link</span>
+      </button>
+      <button onclick="generateShareLink(true)" id="share-btn-collab" style="background:rgba(139,92,246,0.12);border:1.5px solid rgba(139,92,246,0.4);border-radius:10px;color:#a78bfa;font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
+        <span style="font-size:1.3rem;">🔴</span>
+        <span>Live Collaboration</span>
+        <span style="font-size:0.65rem;font-weight:400;color:#555;">Both can edit in real-time</span>
+      </button>
+    </div>
+
+    <div id="share-status" style="font-size:0.82rem;color:#34d399;margin-bottom:10px;min-height:18px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input id="share-link-input" readonly style="flex:1;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;font-size:0.78rem;color:#c8c8f0;font-family:monospace;outline:none;" placeholder="Click a button above to generate…">
+      <button onclick="copyShareLink()" id="share-copy-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);border-radius:8px;color:#34d399;font-size:0.78rem;font-weight:700;padding:9px 14px;cursor:pointer;font-family:inherit;white-space:nowrap;">Copy</button>
+      <button onclick="openShareInTab()" title="Open in new tab" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);border-radius:8px;color:#a78bfa;font-size:0.9rem;padding:9px 12px;cursor:pointer;">↗</button>
+    </div>
+    <input type="hidden" id="share-collab-toggle">
+    <button onclick="revokeShareLink()" style="background:rgba(255,80,80,0.06);border:1px solid rgba(255,80,80,0.2);border-radius:8px;color:#ff8080;font-size:0.73rem;font-weight:700;padding:6px 14px;cursor:pointer;font-family:inherit;">🗑 Revoke Link</button>
+  </div>
+</div>
+
 <div id="hw-solver-modal" onclick="if(event.target===this)closeHwSolver()" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,0.78);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
   <div style="background:#12121e;border:1px solid rgba(139,92,246,0.35);border-radius:16px;width:min(700px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
@@ -932,11 +1163,13 @@
 
 <!-- Selection Popup -->
 <div id="sel-popup" style="flex-direction:column;padding:5px;">
-  <div style="display:flex;gap:4px;align-items:center;">
+  <div id="sel-multi-row" style="display:flex;gap:4px;align-items:center;">
     <button class="sel-btn sel-btn-define" onclick="runInterpret('define')">📖 Define</button>
-    <button class="sel-btn sel-btn-interpret" onclick="runInterpret('interpret')">🔮 Interpret</button>
     <button class="sel-btn sel-btn-comprehend" onclick="runInterpret('comprehend')">💡 Comprehend</button>
     <button class="sel-btn sel-btn-grammar" onclick="runInterpret('grammar')">✏️ Grammar</button>
+  </div>
+  <div id="sel-single-row" style="display:none;gap:4px;align-items:center;">
+    <button class="sel-btn sel-btn-grammar" onclick="runInterpret('spelling')">🔤 Spelling</button>
   </div>
   <div style="height:1px;background:rgba(255,255,255,0.07);margin:4px 0;"></div>
   <div style="display:flex;align-items:center;gap:7px;padding:2px 4px;">
@@ -1002,7 +1235,10 @@ function toggleNpTheme() {
   const isLight = document.documentElement.classList.toggle('light');
   localStorage.setItem('gn-theme', isLight ? 'light' : 'dark');
   _updateNpThemeBtn();
+  schedulePageLines();
 }
+window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue === 'light'); _updateNpThemeBtn(); schedulePageLines(); setTimeout(buildRuler, 50); } });
+window.addEventListener('resize', function() { schedulePageLines(); setTimeout(buildRuler, 50); });
 
 // ── CUSTOM PROMPT ──
 let _cpCallback = null;
@@ -1097,13 +1333,25 @@ function manualSave() {
   clearTimeout(saveTimer);
   const note = notes.find(n => n.id === activeId);
   if (note) {
-    note.content = document.getElementById('editor').innerHTML;
+    note.content = _stripImgSelection(document.getElementById('editor').innerHTML);
     note.title = document.getElementById('note-title-input').value;
     note.updated = Date.now();
+  }
+  // Also save right pane if split is active
+  let rightNote = null;
+  if (_splitActive && _rightNoteId) {
+    rightNote = notes.find(n => n.id === _rightNoteId);
+    if (rightNote) {
+      rightNote.content = _stripImgSelection(document.getElementById('editor-right').innerHTML);
+      rightNote.updated = Date.now();
+    }
   }
   saveNotes();
   renderSidebar();
   setSaved();
+  // Cloud-sync both notes
+  if (note) _cloudSaveNote(note);
+  if (rightNote) _cloudSaveNote(rightNote);
   // Save to history using the note's existing folderId (no popup)
   saveToHistory(note ? note.folderId || null : null);
   const btn = document.getElementById('save-btn');
@@ -1113,6 +1361,20 @@ function manualSave() {
     btn.innerHTML = '💾 <span class="np-btn-label">Save</span>';
     btn.style.background = 'var(--purple)';
   }, 2000);
+}
+
+function saveLeftNote() {
+  if (!activeId) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note) return;
+  note.content = _stripImgSelection(document.getElementById('editor').innerHTML);
+  note.title = document.getElementById('note-title-input').value;
+  note.updated = Date.now();
+  saveNotes();
+  setSaved();
+  renderSidebar();
+  const btn = document.getElementById('left-save-btn');
+  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '💾 Save'; }, 1500); }
 }
 
 function showSaveDest() {
@@ -1176,7 +1438,209 @@ function loadNotes() {
   try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { notes = []; }
 }
 
+function _stripImgSelection(html) {
+  if (!html) return html;
+  const needsClean = html.includes('img-handle') || html.includes('pg-sep');
+  if (!needsClean) return html;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  tmp.querySelectorAll('.img-handle').forEach(h => h.remove());
+  tmp.querySelectorAll('.img-draw-btn').forEach(b => b.remove());
+  tmp.querySelectorAll('.img-wrap').forEach(w => w.classList.remove('selected'));
+  tmp.querySelectorAll('.pg-sep').forEach(e => e.remove()); // clean stale pg-sep from old saved notes
+  return tmp.innerHTML;
+}
+
+// ── WORD-LIKE PAGE LINES (overlay, never touches editor DOM) ──────────────────────────────────────────
+var _pgTimer = null;
+const _PG_H = 1056; // Letter page height at 96dpi
+
+const _GAP_H = 32; // matches CSS gradient gap (1056px page → 1088px cycle)
+
+// Insert transparent pg-sep spacers before elements that would render inside the gray gap band.
+// #editor has position:relative so child.offsetTop is relative to the editor's own top.
+// The gap band visual position depends on background-position (set by _applyMarginsToEditor).
+// Gap N starts at: (N-1) * cycle + (_PG_H - bottomMargin)
+function _applyPageBreaks(ed) {
+  if (!ed || !ed.offsetParent) return;
+  if (ed.classList.contains('no-page-breaks')) { ed.querySelectorAll('.pg-sep').forEach(e => e.remove()); return; }
+  ed.querySelectorAll('.pg-sep').forEach(e => e.remove());
+
+  const cycle = _PG_H + _GAP_H;                     // 1088px
+  const bm    = Math.max(0, _margins?.bottom || 136); // bottom margin
+  const gapOff = _PG_H - bm;                         // gap offset within each cycle (e.g. 920)
+
+  let page = 1, idx = 0, guard = 0;
+  while (idx < ed.children.length && guard++ < 150) {
+    const child = ed.children[idx];
+    if (child.classList.contains('pg-sep')) { idx++; continue; }
+
+    const childTop    = child.offsetTop;
+    const childBottom = childTop + child.offsetHeight;
+
+    // Skip elements taller than a full page — can't reposition
+    if (child.offsetHeight >= _PG_H) {
+      while ((page - 1) * cycle + gapOff < childBottom) page++;
+      idx++; continue;
+    }
+
+    const gapStart = (page - 1) * cycle + gapOff;
+    const gapEnd   = gapStart + _GAP_H;
+
+    if (childBottom > gapStart) {
+      // Element bottom crosses into or past the gray band — push entire element to next page
+      const sepH = gapEnd - childTop;
+      if (sepH > 0) {
+        const sep = document.createElement('div');
+        sep.className = 'pg-sep';
+        sep.contentEditable = 'false';
+        sep.style.height = sepH + 'px';
+        ed.insertBefore(sep, child);
+      }
+      page++;
+    } else if (childTop >= gapEnd) {
+      // Child is already past this gap — jump to the correct page
+      page = Math.floor((childTop - gapOff + cycle) / cycle) + 1;
+      if (page < 1) page = 1;
+    } else {
+      idx++;
+    }
+  }
+}
+
+function refreshPageLines() {
+  _applyPageBreaks(document.getElementById('editor'));
+  _applyPageBreaks(document.getElementById('editor-right'));
+  for (const edId of ['editor', 'editor-right']) {
+    const ed = document.getElementById(edId);
+    if (!ed || !ed.offsetParent) continue;
+    const cycle = _PG_H + _GAP_H;
+    const pages = Math.max(1, Math.ceil(ed.scrollHeight / cycle));
+    ed.style.minHeight = (pages * cycle - _GAP_H) + 'px';
+  }
+  updatePageCounter();
+}
+
+function schedulePageLines() {
+  clearTimeout(_pgTimer);
+  _pgTimer = setTimeout(refreshPageLines, 200);
+}
+
+// ── RULER ────────────────────────────────────────────────────────────
+function buildRuler() {
+  const track = document.getElementById('doc-ruler-track');
+  if (!track) return;
+  // The track uses max-width:816px; margin:0 auto — same centering math as #editor.
+  // No getBoundingClientRect needed; positions are relative to the track's own 816px width.
+  const W = 816;
+  const marginL = _margins?.left  || 96;
+  const marginR = _margins?.right || 96;
+  const contentW = Math.max(0, W - marginL - marginR);
+  let html = '';
+  html += `<div class="ruler-margin ruler-margin-l" style="left:0;width:${marginL}px"></div>`;
+  html += `<div class="ruler-margin ruler-margin-r" style="right:0;width:${marginR}px"></div>`;
+  html += `<div class="ruler-content-zone" style="left:${marginL}px;width:${contentW}px"></div>`;
+  for (let px = 0; px <= W; px += 48) {
+    const isInch = px % 96 === 0;
+    html += `<div class="${isInch?'ruler-tick':'ruler-tick-half'}" style="left:${px}px;height:${isInch?12:6}px"></div>`;
+    if (isInch && px > 0) html += `<div class="ruler-label" style="left:${px}px">${px/96}"</div>`;
+  }
+  track.innerHTML = html;
+}
+
+// ── PAGE COUNTER ─────────────────────────────────────────────────────
+function updatePageCounter() {
+  const wrap = document.getElementById('editor-wrap-left');
+  const ed = document.getElementById('editor');
+  const el = document.getElementById('page-counter');
+  if (!wrap || !ed || !el) return;
+  const cycle = _PG_H + _GAP_H; // 1088px per page+gap
+  const relScroll = Math.max(0, wrap.scrollTop - ed.offsetTop);
+  const cur = Math.floor(relScroll / cycle) + 1;
+  const total = Math.max(1, Math.ceil(ed.scrollHeight / cycle));
+  el.textContent = `Page ${cur} of ${total}`;
+}
+
+// ── ZOOM ──────────────────────────────────────────────────────────────
+var _zoomLevel = parseInt(localStorage.getItem('gn-zoom') || '100', 10);
+function setZoom(z) {
+  _zoomLevel = Math.max(50, Math.min(200, z));
+  document.getElementById('editor').style.zoom = _zoomLevel / 100;
+  const lbl = document.getElementById('zoom-label');
+  if (lbl) lbl.textContent = _zoomLevel + '%';
+  localStorage.setItem('gn-zoom', _zoomLevel);
+  schedulePageLines();
+}
+function zoomIn()  { setZoom(_zoomLevel + 10); }
+function zoomOut() { setZoom(_zoomLevel - 10); }
+
+// ── MARGINS ──────────────────────────────────────────────────────────
+var _margins = JSON.parse(localStorage.getItem('gn-margins') || 'null') || { top:136, bottom:136, left:96, right:96 };
+
+function _applyMarginsToEditor() {
+  const { top, bottom, left, right } = _margins;
+  const pad = `${top}px ${right}px ${bottom}px ${left}px`;
+  // Shift gradient so the gray gap falls at (pageHeight - bottomMargin) — inside the bottom margin zone
+  const bgPos = `0 -${bottom}px`;
+  for (const edId of ['editor', 'editor-right']) {
+    const ed = document.getElementById(edId);
+    if (!ed) continue;
+    ed.style.padding = pad;
+    ed.style.backgroundPosition = bgPos;
+  }
+  schedulePageLines();
+  setTimeout(buildRuler, 50);
+}
+
+function applyMargins() {
+  _margins = {
+    top:    Math.max(0, parseInt(document.getElementById('mg-top').value) || 136),
+    bottom: Math.max(0, parseInt(document.getElementById('mg-bottom').value) || 136),
+    left:   Math.max(0, parseInt(document.getElementById('mg-left').value) || 96),
+    right:  Math.max(0, parseInt(document.getElementById('mg-right').value) || 96),
+  };
+  localStorage.setItem('gn-margins', JSON.stringify(_margins));
+  _applyMarginsToEditor();
+  document.getElementById('margin-panel').classList.remove('open');
+}
+
+function resetMargins() {
+  _margins = { top:136, bottom:136, left:96, right:96 };
+  localStorage.removeItem('gn-margins');
+  document.getElementById('mg-top').value = 136;
+  document.getElementById('mg-bottom').value = 136;
+  document.getElementById('mg-left').value = 96;
+  document.getElementById('mg-right').value = 96;
+  _applyMarginsToEditor();
+}
+
+function toggleMarginPanel() {
+  const panel = document.getElementById('margin-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    document.getElementById('mg-top').value = _margins.top;
+    document.getElementById('mg-bottom').value = _margins.bottom;
+    document.getElementById('mg-left').value = _margins.left;
+    document.getElementById('mg-right').value = _margins.right;
+  }
+}
+
+// Prevent toolbar buttons from stealing editor focus/selection
+(function() {
+  const tb = document.querySelector('.toolbar');
+  if (tb) tb.addEventListener('mousedown', function(e) { e.preventDefault(); });
+})();
+
+// Close margin panel on outside click
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('margin-panel');
+  if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !e.target.closest('[onclick*="toggleMarginPanel"]')) {
+    panel.classList.remove('open');
+  }
+});
+
 function saveNotes() {
+  if (!_fbUid) return; // only save for logged-in users
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
 }
 
@@ -1195,6 +1659,7 @@ function newFolder() {
     saveFolders();
     _cloudSaveFolder(folder);
     renderSidebar();
+    renderSbFolders();
   });
 }
 
@@ -1202,6 +1667,7 @@ function deleteFolder(e, folderId) {
   e.stopPropagation();
   if (!confirm('Delete folder? Notes inside will become unfiled.')) return;
   folders = folders.filter(f => f.id !== folderId);
+  if (_folderFilter === folderId) _folderFilter = null;
   saveFolders();
   _cloudDeleteFolder(folderId);
   notes.forEach(n => { if (n.folderId === folderId) { delete n.folderId; _cloudSaveNote(n); } });
@@ -1242,7 +1708,23 @@ function toggleFolderPick(e, noteId) {
   const menu = document.getElementById('fp-' + noteId);
   const all = document.querySelectorAll('.folder-pick');
   all.forEach(m => { if (m !== menu) m.style.display = 'none'; });
-  if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  if (!menu) return;
+  if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
+  // Position using fixed coords from the trigger button
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  menu.style.display = 'block';
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = rect.right - mw;
+  let top = rect.bottom + 4;
+  if (left < 4) left = 4;
+  if (left + mw > vw - 4) left = vw - mw - 4;
+  if (top + mh > vh - 4) top = rect.top - mh - 4;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
 }
 
 // ── HISTORY SAVE ──
@@ -1301,25 +1783,83 @@ function fmtDate(ts) {
 }
 
 // ── RENDER SIDEBAR ──
+const _FOLDER_COLORS = ['#8b5cf6','#4fc3f7','#34d399','#fbbf24','#f472b6','#fb923c','#60a5fa','#a3e635'];
+
+var _folderSort = 'name'; // 'name' | 'recent' | 'count'
+
+function cycleFolderSort() {
+  const modes = ['name','recent','count'];
+  _folderSort = modes[(modes.indexOf(_folderSort)+1) % modes.length];
+  const labels = { name:'A–Z', recent:'Recent', count:'Count' };
+  const el = document.getElementById('folder-sort-label');
+  if (el) el.textContent = labels[_folderSort];
+  renderSbFolders();
+}
+
+function _sortFolders(arr) {
+  if (_folderSort === 'name') return [...arr].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (_folderSort === 'recent') {
+    return [...arr].sort((a,b) => {
+      const lastA = Math.max(0, ...notes.filter(n=>n.folderId===a.id).map(n=>n.updated||0));
+      const lastB = Math.max(0, ...notes.filter(n=>n.folderId===b.id).map(n=>n.updated||0));
+      return lastB - lastA;
+    });
+  }
+  if (_folderSort === 'count') {
+    return [...arr].sort((a,b) => {
+      const ca = notes.filter(n=>n.folderId===a.id).length;
+      const cb = notes.filter(n=>n.folderId===b.id).length;
+      return cb - ca;
+    });
+  }
+  return arr;
+}
+
+function renderSbFolders() {
+  const el = document.getElementById('sb-folder-list');
+  if (!el) return;
+  const sorted = _sortFolders(folders);
+  let html = `<div class="sb-folder-item" onclick="setFolderFilter(null)">
+    <span class="sb-fdot" style="background:rgba(139,92,246,0.35);border:1.5px solid rgba(139,92,246,0.5);"></span>
+    <span class="sb-fname" style="${!_folderFilter?'color:var(--purple2);font-weight:600;':''}">All Notes</span>
+    <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;padding-right:4px;">${notes.length}</span>
+  </div>`;
+  sorted.forEach(f => {
+    const count = notes.filter(n=>n.folderId===f.id).length;
+    html += `<div class="sb-folder-item" onclick="setFolderFilter('${f.id}')">
+      <span class="sb-fdot" style="background:var(--purple2);opacity:${_folderFilter===f.id?'1':'0.55'};"></span>
+      <span class="sb-fname" style="${_folderFilter===f.id?'color:var(--purple2);font-weight:600;':''}">${escHtml(f.name)}</span>
+      <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;">${count||''}</span>
+      <button class="sb-fdel" onclick="deleteFolder(event,'${f.id}')" title="Delete folder">✕</button>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+let _folderFilter = null;
+function setFolderFilter(id) {
+  _folderFilter = id;
+  renderSidebar();
+}
+
 function renderNoteItem(n) {
-  const preview = n.content.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim().slice(0,60) || 'Empty note';
-  const folder = n.folderId ? folders.find(f => f.id === n.folderId) : null;
-  const folderTag = folder ? `<span class="note-folder-tag">📁 ${escHtml(folder.name)}</span><br>` : '';
-  const fpMenu = folders.length > 0 ? `
-    <button class="note-move-btn" onclick="toggleFolderPick(event,'${n.id}')" title="Move to folder">📁</button>
+  return `<div class="note-item${n.id===activeId?' active':''}"
+    onclick="openNote('${n.id}')" data-nid="${n.id}">
+    <div class="ni-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="ni-text">
+      <div class="ni-title">${escHtml(n.title || 'Untitled')}</div>
+      <div class="ni-date">${fmtDate(n.updated)}</div>
+    </div>
+    <button class="note-rename-btn" onclick="renameNoteInline(event,'${n.id}')" title="Rename">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </button>
+    ${folders.length > 0 ? `<button class="note-move-btn" onclick="toggleFolderPick(event,'${n.id}')" title="Move to folder">📁</button>
     <div class="folder-pick" id="fp-${n.id}">
       <button class="fp-opt${!n.folderId?' fp-current':''}" onclick="moveNoteToFolder(event,'${n.id}',null)">— No folder</button>
       ${folders.map(f=>`<button class="fp-opt${n.folderId===f.id?' fp-current':''}" onclick="moveNoteToFolder(event,'${n.id}','${f.id}')">${escHtml(f.name)}</button>`).join('')}
-    </div>` : '';
-  return `<div class="note-item${n.id===activeId?' active':''}"
-    onclick="openNote('${n.id}')" data-nid="${n.id}">
-    <div class="note-item-title-row">
-      <div class="note-item-title">${escHtml(n.title || 'Untitled')}</div>
-      <button class="note-rename-btn" onclick="renameNoteInline(event,'${n.id}')" title="Rename">✏️</button>
-    </div>
-    <div class="note-item-preview">${escHtml(preview)}</div>
-    ${folderTag}<div class="note-item-date">${fmtDate(n.updated)}</div>
-    ${fpMenu}
+    </div>` : ''}
     <button class="note-delete" onclick="deleteNote(event,'${n.id}')" title="Delete">✕</button>
     <button class="note-compare-btn" onclick="event.stopPropagation();enterSplitMode('${n.id}')" title="Compare side by side">⊞ Compare</button>
   </div>`;
@@ -1328,13 +1868,17 @@ function renderNoteItem(n) {
 var _noteSort = 'updated'; // declared here so it's available before init IIFE runs
 
 function renderSidebar() {
+  renderSbFolders();
   const list = document.getElementById('notes-list');
   const q = searchQuery.toLowerCase();
   const filtered = _sortNotes(
-    notes.filter(n => !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q))
+    notes.filter(n => {
+      if (_folderFilter && n.folderId !== _folderFilter) return false;
+      return !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q);
+    })
   );
   if (!filtered.length) {
-    list.innerHTML = `<div class="empty-state">${searchQuery ? 'No notes match your search.' : 'No notes yet.<br>Click "+ Add Note" to start.'}</div>`;
+    list.innerHTML = `<div class="empty-state">${searchQuery ? 'No matches' : _folderFilter ? 'No notes in folder' : 'No notes yet'}</div>`;
     return;
   }
   list.innerHTML = filtered.map(n => renderNoteItem(n)).join('');
@@ -1346,6 +1890,10 @@ function escHtml(s) {
 
 // ── OPEN / CREATE ──
 function newNote() {
+  if (!_fbUid) {
+    if (confirm('Sign in to create and save notes.\n\nGo to Sign In?')) window.location.href = 'signin.html';
+    return;
+  }
   const note = { id: genId(), title: '', content: '', created: Date.now(), updated: Date.now() };
   notes.unshift(note);
   saveNotes();
@@ -1367,15 +1915,22 @@ function openNote(id) {
   ec.style.flex = '1';
 
   document.getElementById('note-title-input').value = note.title;
-  document.getElementById('editor').innerHTML = note.content;
+  document.getElementById('editor').innerHTML = _stripImgSelection(note.content);
+  // Demo note: single continuous page, no page-break gradient
+  const isDemo = note._isDemo || note.id === _DEMO_NOTE_ID;
+  document.getElementById('editor').classList.toggle('no-page-breaks', isDemo);
+  document.getElementById('editor-container').classList.toggle('no-page-breaks', isDemo);
   updateStats();
   setSaved();
+  if (!isDemo) schedulePageLines();
+  setTimeout(buildRuler, 100);
   renderSidebar();
   document.getElementById('editor').focus();
 }
 
 function deleteNote(e, id) {
   e.stopPropagation();
+  if (id === _DEMO_NOTE_ID) return;
   if (!confirm('Delete this note?')) return;
   notes = notes.filter(n => n.id !== id);
   saveNotes();
@@ -1394,7 +1949,7 @@ function renameNoteInline(e, id) {
   if (!note) return;
   const item = document.querySelector(`.note-item[data-nid="${id}"]`);
   if (!item) return;
-  const titleEl = item.querySelector('.note-item-title');
+  const titleEl = item.querySelector('.ni-title');
   if (!titleEl) return;
   const inp = document.createElement('input');
   inp.type = 'text';
@@ -1434,6 +1989,10 @@ function _getActiveEditorEl() {
   return document.getElementById(_activeEditor === 'right' ? 'editor-right' : 'editor');
 }
 
+function _getActiveNoteId() {
+  return _activeEditor === 'right' ? _rightNoteId : activeId;
+}
+
 // Track which editor was last clicked/focused
 (function() {
   function _setLeft() { _activeEditor = 'left'; }
@@ -1470,10 +2029,11 @@ document.getElementById('editor').addEventListener('input', () => {
   if (!activeId) return;
   const note = notes.find(n => n.id === activeId);
   if (!note) return;
-  note.content = document.getElementById('editor').innerHTML;
+  note.content = _stripImgSelection(document.getElementById('editor').innerHTML);
   note.updated = Date.now();
   updateStats();
   scheduleSave();
+  schedulePageLines();
   // Endless paper: auto-scroll so cursor is always visible past page breaks
   const sel = window.getSelection();
   if (sel && sel.rangeCount > 0) {
@@ -1489,12 +2049,14 @@ document.getElementById('editor').addEventListener('input', () => {
 function scheduleSave() {
   setSaving();
   clearTimeout(saveTimer);
+  const _savedActiveId = activeId; // capture at schedule time to avoid switching-tab race
   saveTimer = setTimeout(() => {
+    const note = _savedActiveId ? notes.find(n => n.id === _savedActiveId) : null;
     saveNotes();
     renderSidebar();
     setSaved();
-    if (activeId) _cloudSaveNote(notes.find(n => n.id === activeId));
-  }, 800);
+    if (note) { _cloudSaveNote(note); saveToHistory(note.folderId || null); }
+  }, 500);
 }
 
 function setSaving() {
@@ -1509,7 +2071,7 @@ function setSaved() {
 }
 
 function updateStats() {
-  const text = document.getElementById('editor').innerText || '';
+  const text = _getActiveEditorEl().innerText || '';
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   document.getElementById('word-count').textContent = words + (words === 1 ? ' word' : ' words');
   const chars = text.replace(/\n/g, '').length;
@@ -1690,7 +2252,7 @@ function convertNote() {
   if (!text.trim()) { alert('Note is empty — write something first.'); return; }
   localStorage.setItem('gn-convert-text', text.slice(0, 12000));
   localStorage.setItem('gn-convert-title', note.title || 'Untitled');
-  window.location.href = 'study.html#upload';
+  window.location.href = 'notepad.html';
 }
 
 let _pfRawOutput = '';
@@ -1737,6 +2299,26 @@ function _toggleNNFolder(folderId) {
   if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
 }
 
+function toggleFolderAreaMenu() {
+  const menu = document.getElementById('folder-area-menu');
+  const open = menu.style.display === 'block';
+  if (!open) {
+    const btn = document.getElementById('folder-add-btn');
+    const r = btn.getBoundingClientRect();
+    menu.style.top = (r.bottom + 6) + 'px';
+    menu.style.left = Math.max(4, r.right - 180) + 'px';
+    menu.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', function _closeFAM(e) {
+      if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+        menu.style.display = 'none';
+        document.removeEventListener('click', _closeFAM);
+      }
+    }), 10);
+  } else {
+    menu.style.display = 'none';
+  }
+}
+
 function toggleNewNoteMenu() {
   const menu = document.getElementById('new-note-menu');
   const open = menu.style.display === 'block';
@@ -1745,81 +2327,8 @@ function toggleNewNoteMenu() {
     const r = btn.getBoundingClientRect();
     menu.style.top = (r.bottom + 6) + 'px';
     menu.style.left = r.left + 'px';
-
-    const container = document.getElementById('new-note-recents');
-    const uid = findUid();
-    let histEntries = [];
-    if (uid) {
-      try { histEntries = JSON.parse(localStorage.getItem('gn-history-' + uid) || '[]'); } catch {}
-    }
-
-    // De-dupe history by noteId (most recent save wins)
-    const seen = new Set();
-    const histNotes = histEntries
-      .filter(h => h.type === 'notepad' && h.noteId)
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .filter(h => { if (seen.has(h.noteId)) return false; seen.add(h.noteId); return true; });
-
-    // Also include active notes not yet in history
-    const activeOnly = notes.filter(n => !seen.has(n.id));
-
-    // Build folder map: folderId → { name, notes[] }
-    const folderMap = {};
-    const addToMap = (noteId, title, folderId, folderName, histEntry) => {
-      const key = folderId || '__none__';
-      const label = folderName || '— No folder';
-      if (!folderMap[key]) folderMap[key] = { name: label, items: [] };
-      const isActive = !!notes.find(n => n.id === noteId);
-      folderMap[key].items.push({ noteId, title, isActive, histEntry });
-    };
-
-    histNotes.forEach(h => addToMap(h.noteId, h.title, h.folderId, h.folderName, h));
-    activeOnly.forEach(n => {
-      const f = n.folderId ? folders.find(f => f.id === n.folderId) : null;
-      addToMap(n.id, n.title, n.folderId || null, f ? f.name : '', null);
-    });
-
-    if (!Object.keys(folderMap).length) {
-      container.innerHTML = '<div style="padding:10px 14px;font-size:0.8rem;color:var(--muted);">No saved notes yet.</div>';
-    } else {
-      // Sort folders: active folders from folders[] first (in order), then __none__ last
-      // Ensure every folder from folders[] appears even if it has no notes yet
-      folders.forEach(f => {
-        if (!folderMap[f.id]) folderMap[f.id] = { name: f.name, items: [] };
-      });
-
-      const sortedKeys = [
-        ...folders.map(f => f.id),
-        ...Object.keys(folderMap).filter(k => k !== '__none__' && !folders.find(f => f.id === k)),
-        ...(folderMap['__none__'] ? ['__none__'] : [])
-      ];
-
-      let html = sortedKeys.map((key, idx) => {
-        const group = folderMap[key];
-        const fid = 'nnf' + idx;
-        const notesHtml = group.items.map(item => {
-          const deletedDot = !item.isActive ? `<span style="width:5px;height:5px;border-radius:50%;background:#f59e0b;display:inline-block;margin-left:5px;flex-shrink:0;" title="Deleted — restores on click"></span>` : '';
-          const safeH = item.histEntry ? JSON.stringify(item.histEntry).replace(/</g,'\\u003c').replace(/"/g,'&quot;') : 'null';
-          return `<button onclick="_restoreAndOpen('${item.noteId}',${safeH})" style="display:flex;align-items:flex-start;width:100%;text-align:left;padding:8px 14px 8px 28px;border:none;background:none;color:var(--text);cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:500;line-height:1.35;gap:5px;" onmouseover="this.style.background='rgba(139,92,246,0.12)'" onmouseout="this.style.background='none'">
-            <span style="flex:1;word-break:break-word;">${escHtml(item.title || 'Untitled')}</span>${deletedDot}
-          </button>`;
-        }).join('');
-        return `<div>
-          <button onclick="_toggleNNFolder('${fid}')" style="display:flex;align-items:center;gap:7px;width:100%;padding:9px 14px;border:none;background:none;color:var(--text);cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:700;line-height:1.2;" onmouseover="this.style.background='rgba(139,92,246,0.08)'" onmouseout="this.style.background='none'">
-            <span id="nn-arrow-${fid}" style="font-size:0.6rem;color:var(--muted);transition:transform 0.15s;transform:rotate(90deg);">▶</span>
-            <span style="font-size:0.75rem;margin-right:4px;">📁</span>
-            <span style="flex:1;text-align:left;word-break:break-word;">${escHtml(group.name)}</span>
-            <span style="font-size:0.7rem;color:var(--muted);font-weight:400;">${group.items.length}</span>
-          </button>
-          <div id="nn-folder-${fid}" style="display:block;">${notesHtml}</div>
-        </div>`;
-      }).join('');
-      container.innerHTML = html;
-    }
-
     menu.style.display = 'block';
     setTimeout(() => document.addEventListener('click', function _closeNN(e) {
-      const btn = document.getElementById('add-note-btn');
       if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
         menu.style.display = 'none';
         document.removeEventListener('click', _closeNN);
@@ -1828,6 +2337,22 @@ function toggleNewNoteMenu() {
   } else {
     menu.style.display = 'none';
   }
+}
+
+function newNoteWithName() {
+  document.getElementById('new-note-menu').style.display = 'none';
+  if (!_fbUid) {
+    if (confirm('Sign in to create and save notes.\n\nGo to Sign In?')) window.location.href = 'signin.html';
+    return;
+  }
+  showCustomPrompt('New Note', 'Enter a name for your note', '', function(name) {
+    if (name === null) return;
+    const note = { id: genId(), title: name.trim(), content: '', created: Date.now(), updated: Date.now() };
+    notes.unshift(note);
+    saveNotes();
+    openNote(note.id);
+    renderSidebar();
+  });
 }
 
 function toggleConvMenu() {
@@ -1845,8 +2370,9 @@ function toggleConvMenu() {
 }
 
 function openCodeConvert() {
-  if (!activeId) return;
-  const note = notes.find(n => n.id === activeId);
+  const _aNoteId = _getActiveNoteId();
+  if (!_aNoteId) return;
+  const note = notes.find(n => n.id === _aNoteId);
   if (!note) return;
   _pfNoteText = _getActiveEditorEl().innerText || '';
   if (!_pfNoteText.trim()) {
@@ -2075,12 +2601,11 @@ function insertCodeIntoNote() {
   const text = document.getElementById('cm-code-edit').value || _pfRawOutput;
   if (!text) return;
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const origNote = notes.find(n => n.id === activeId);
+  const origNote = notes.find(n => n.id === _getActiveNoteId());
   const content = `<div style="margin:12px 0;padding:16px 20px;border-radius:10px;border:1px solid #30363d;background:#0d1117;font-family:'SFMono-Regular','Fira Code',Consolas,monospace;font-size:0.82rem;line-height:1.65;white-space:pre-wrap;color:#c9d1d9;">${esc(text)}</div><p><br></p>`;
   const newNote = { id: genId(), title: (origNote?.title || 'Note') + ' — Formatted Code', content, created: Date.now(), updated: Date.now() };
   notes.unshift(newNote); saveNotes(); closeCodeModal();
   openNote(newNote.id); renderSidebar();
-  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 function closeCodeModal() {
@@ -2095,8 +2620,9 @@ let _dfNoteText = '';
 let _dfCornellData = null;
 
 function openDocFormat(mode) {
-  if (!activeId) return;
-  const note = notes.find(n => n.id === activeId);
+  const _aNoteId = _getActiveNoteId();
+  if (!_aNoteId) return;
+  const note = notes.find(n => n.id === _aNoteId);
   if (!note) return;
   _dfNoteText = _getActiveEditorEl().innerText || '';
   if (!_dfNoteText.trim()) {
@@ -2109,14 +2635,23 @@ function openDocFormat(mode) {
   _dfCornellData = null;
   const isAcademic = mode === 'academic';
   const isCornell = mode === 'cornell';
-  document.getElementById('df-mode-icon').textContent = isCornell ? '📋' : isAcademic ? '🎓' : '📧';
-  document.getElementById('df-mode-label').textContent = isCornell ? 'Cornell Notes' : isAcademic ? 'Academic Formatting' : 'Email Draft';
+  const modeInfo = {
+    cornell:    { icon:'📋', label:'Cornell Notes',       status:'Building Cornell Notes…',  msg:'Generating Cornell Notes…' },
+    academic:   { icon:'🎓', label:'Academic Formatting', status:'Restructuring…',           msg:'Formatting as ' + _dfStyle + ' essay…' },
+    email:      { icon:'📧', label:'Email Draft',         status:'Drafting email…',           msg:'Drafting email…' },
+    bullets:    { icon:'•',  label:'Bullet Points',       status:'Converting to bullets…',   msg:'Generating bullet points…' },
+    outline:    { icon:'≡',  label:'Outline',             status:'Building outline…',         msg:'Generating outline…' },
+    studyguide: { icon:'📚', label:'Study Guide',         status:'Building study guide…',    msg:'Generating study guide…' },
+  };
+  const info = modeInfo[mode] || modeInfo.email;
+  document.getElementById('df-mode-icon').textContent = info.icon;
+  document.getElementById('df-mode-label').textContent = info.label;
   document.getElementById('df-style-chips').style.display = isAcademic ? 'flex' : 'none';
-  document.getElementById('df-status').textContent = isCornell ? 'Building Cornell Notes…' : isAcademic ? 'Restructuring…' : 'Drafting email…';
+  document.getElementById('df-status').textContent = info.status;
   const prev = document.getElementById('df-preview');
   prev.style.whiteSpace = isCornell ? 'normal' : 'pre-wrap';
   prev.style.padding = isCornell ? '16px' : '28px 36px';
-  prev.innerHTML = '<span style="color:#555;font-style:italic;">' + (isCornell ? 'Generating Cornell Notes…' : isAcademic ? 'Formatting as ' + _dfStyle + ' essay…' : 'Drafting email…') + '</span>';
+  prev.innerHTML = '<span style="color:#555;font-style:italic;">' + info.msg + '</span>';
   document.getElementById('df-copy-btn').textContent = '📋 Copy';
   document.getElementById('doc-format-modal').style.display = 'flex';
   toggleConvMenu();
@@ -2198,9 +2733,10 @@ function copyDocResult() {
 }
 
 function insertDocIntoNote() {
+  const _aNoteId = _getActiveNoteId();
   if (_dfMode === 'cornell' && _dfCornellData) {
     // Create a NEW note with the Cornell content — original note stays untouched
-    const origNote = notes.find(n => n.id === activeId);
+    const origNote = notes.find(n => n.id === _aNoteId);
     const newTitle = (origNote?.title || 'Note') + ' — Cornell Notes';
     const wrapper = document.createElement('div');
     wrapper.innerHTML = _renderCornellEditable(_dfCornellData);
@@ -2215,19 +2751,16 @@ function insertDocIntoNote() {
     closeDocModal();
     openNote(newNote.id);
     renderSidebar();
-    // Auto-enter split mode to compare Cornell (left) vs original (right)
-    if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
     return;
   }
   const text = _dfResult;
   if (!text) return;
-  const origNote = notes.find(n => n.id === activeId);
-  const suffix = _dfMode === 'academic' ? ' — ' + _dfStyle + ' Essay' : _dfMode === 'email' ? ' — Email' : ' — Formatted';
+  const origNote = notes.find(n => n.id === _aNoteId);
+  const suffix = _dfMode === 'academic' ? ' — ' + _dfStyle + ' Essay' : _dfMode === 'email' ? ' — Email' : _dfMode === 'bullets' ? ' — Bullet Points' : _dfMode === 'outline' ? ' — Outline' : _dfMode === 'studyguide' ? ' — Study Guide' : ' — Formatted';
   const htmlContent = text.split('\n').map(l => l.trim() === '' ? '<p><br></p>' : '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>').join('');
   const newNote = { id: genId(), title: (origNote?.title || 'Note') + suffix, content: htmlContent, created: Date.now(), updated: Date.now() };
   notes.unshift(newNote); saveNotes(); closeDocModal();
   openNote(newNote.id); renderSidebar();
-  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 function _cornellToText(data) {
@@ -2276,7 +2809,7 @@ function _renderCornellHTML(data) {
     <td style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1a1a2a;font-family:Arial,sans-serif;">${_cnFmtCuePreview(r.cue||'', x)}</td>
     <td style="padding:10px 16px;border-bottom:1px dotted #ccc;vertical-align:top;font-size:0.83rem;line-height:1.65;color:#111;font-family:Arial,sans-serif;">${_cnFmtNote(r.note||'', x)}</td>
   </tr>`).join('');
-  return `<div style="font-family:Arial,sans-serif;background:#fff;color:#111;border-radius:6px;overflow:hidden;">
+  return `<div style="font-family:Arial,sans-serif;background:#fff;color:#111;border-radius:6px;overflow:hidden;width:100%;box-sizing:border-box;">
     <div style="text-align:center;padding:14px 20px 12px;border-bottom:${B};">
       <div style="font-size:1.45rem;font-weight:900;color:#1a2744;letter-spacing:-0.01em;">Cornell Note-Taking</div>
     </div>
@@ -2285,7 +2818,7 @@ function _renderCornellHTML(data) {
       <span style="margin-left:8px;font-size:0.84rem;color:#1a2744;font-weight:700;border-bottom:1px dotted #999;padding-bottom:1px;">${x(data.topic)}</span>
     </div>
     <div style="border:${B};border-radius:4px;margin:0 14px 10px;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <thead><tr style="border-bottom:${B};">
           <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;width:30%;background:#fafafa;">Questions and Ideas</th>
           <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;background:#fafafa;">Notes:</th>
@@ -2307,7 +2840,7 @@ function _renderCornellEditable(data) {
     <td class="cn-cell" contenteditable="true" style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1a1a2a;font-family:Arial,sans-serif;cursor:text;">${_cnFmtCuePreview(r.cue||'', x)}</td>
     <td class="cn-cell cn-note" contenteditable="true" onclick="cnReveal(this)" style="padding:10px 16px;border-bottom:1px dotted #ccc;vertical-align:top;font-size:0.83rem;line-height:1.65;color:#111;font-family:Arial,sans-serif;cursor:text;">${_cnFmtNote(r.note||'', x)}</td>
   </tr>`).join('');
-  return `<div class="cornell-block" contenteditable="false"><div style="font-family:Arial,sans-serif;background:#fff;color:#111;border:${B};border-radius:6px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+  return `<div class="cornell-block" contenteditable="false" style="display:block;width:100%;box-sizing:border-box;"><div style="font-family:Arial,sans-serif;background:#fff;color:#111;border:${B};border-radius:6px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);width:100%;box-sizing:border-box;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:${B};">
       <div style="font-size:1.3rem;font-weight:900;color:#1a2744;">Cornell Note-Taking</div>
       <button class="cn-recall-btn" onclick="toggleCornellRecall(this)" style="background:rgba(192,57,43,0.1);border:1.5px solid #c0392b;color:#c0392b;">🎯 Active Recall</button>
@@ -2318,7 +2851,7 @@ function _renderCornellEditable(data) {
       <span class="cn-cell" contenteditable="true" style="margin-left:8px;font-size:0.84rem;color:#1a2744;font-weight:700;cursor:text;border-bottom:1px dotted #999;padding-bottom:1px;">${x(data.topic)}</span>
     </div>
     <div style="border:${B};border-radius:4px;margin:0 14px 8px;overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <thead><tr style="border-bottom:${B};">
           <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;width:30%;background:#fafafa;">Questions and Ideas</th>
           <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;background:#fafafa;">Notes:</th>
@@ -2445,17 +2978,19 @@ function closeDocModal() {
 }
 
 function sendNoteToFlashcards() {
-  if (!activeId) return;
+  if (!_getActiveNoteId()) return;
   const text = _getActiveEditorEl().innerText || '';
   if (!text.trim()) return;
   localStorage.setItem('gn-to-flashcards', text.trim());
-  toggleConvMenu();
-  window.location.href = 'create-deck.html';
+  // Close conv menu only if it's open
+  const cm = document.getElementById('conv-menu');
+  if (cm && cm.style.display === 'block') cm.style.display = 'none';
+  window.open('create-deck.html', '_blank');
 }
 
 function copyNote() {
-  if (!activeId) return;
-  const text = document.getElementById('editor').innerText;
+  if (!_getActiveNoteId()) return;
+  const text = _getActiveEditorEl().innerText;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.innerHTML = '✓ <span class="np-btn-label">Copied!</span>';
@@ -2491,6 +3026,9 @@ function showSelectionPopup() {
   _selText = text;
   try { _selRange = sel.getRangeAt(0).cloneRange(); } catch(e) {}
   const rect = sel.getRangeAt(0).getBoundingClientRect();
+  const isSingleWord = text.trim().split(/\s+/).length === 1;
+  document.getElementById('sel-multi-row').style.display = isSingleWord ? 'none' : 'flex';
+  document.getElementById('sel-single-row').style.display = isSingleWord ? 'flex' : 'none';
   popup.style.display = 'flex';
   _positionNear(popup, rect);
 }
@@ -2565,8 +3103,8 @@ function runInterpret(mode) {
   const noteTitle = note?.title || '';
   const noteContext = note ? (_getActiveEditorEl().innerText || '').slice(0, 600) : '';
 
-  const modeLabels = { define:'📖 Define', interpret:'🔮 Interpret', comprehend:'💡 Comprehend', grammar:'✏️ Grammar', highlight:'✦ Highlight' };
-  const badgeClass = { define:'ic-badge-define', interpret:'ic-badge-interpret', comprehend:'ic-badge-comprehend', grammar:'ic-badge-grammar', highlight:'ic-badge-highlight' };
+  const modeLabels = { define:'📖 Define', interpret:'🔮 Interpret', comprehend:'💡 Comprehend', grammar:'✏️ Grammar', highlight:'✦ Highlight', spelling:'🔤 Spelling' };
+  const badgeClass = { define:'ic-badge-define', interpret:'ic-badge-interpret', comprehend:'ic-badge-comprehend', grammar:'ic-badge-grammar', highlight:'ic-badge-highlight', spelling:'ic-badge-grammar' };
   const badge = document.getElementById('ic-badge');
   badge.textContent = modeLabels[mode];
   badge.className = 'ic-mode-badge ' + (badgeClass[mode] || 'ic-badge-comprehend');
@@ -2577,7 +3115,7 @@ function runInterpret(mode) {
   card.style.display = 'block';
   if (_selRange) { const rect = _selRange.getBoundingClientRect(); _positionNear(card, rect); }
 
-  const isGrammar = mode === 'grammar';
+  const isGrammar = mode === 'grammar' || mode === 'spelling';
   const isHighlight = mode === 'highlight';
 
   function _runHlFetch(prompt) {
@@ -2738,10 +3276,14 @@ const _CMD_INFO = {
   cornellnotes:    { icon:'📋', title:'Cornell Notes',     desc:'Convert note into cue → key answer · notes · summary format' },
   convert_default: { icon:'📋', title:'/convert …',        desc:'Available: cornell notes' },
   convert_cornell: { icon:'📋', title:'Cornell Notes',     desc:'Convert note into cue → key answer · notes · summary format' },
-  format_default:  { icon:'⚡', title:'/format …',         desc:'Available: code · flashcards · academic' },
+  format_default:  { icon:'⚡', title:'/format …',         desc:'Available: code · flashcards · academic · bullets · outline · studyguide' },
   format_academic: { icon:'🎓', title:'Academic Essay',    desc:'Format as structured APA / MLA / Chicago essay' },
   format_flash:    { icon:'🃏', title:'Flashcards',        desc:'Create a flashcard deck from this note' },
   format_code:     { icon:'🍪', title:'Format Code',       desc:'Clean and format code with syntax highlighting' },
+  format_bullets:  { icon:'•',  title:'Bullet Points',     desc:'Convert note into organized bullet point summary' },
+  format_outline:  { icon:'≡',  title:'Outline',           desc:'Convert note into formal hierarchical outline' },
+  format_study:    { icon:'📚', title:'Study Guide',       desc:'Convert note into full study guide with exam questions' },
+  share:           { icon:'🔗', title:'Share Note',        desc:'Generate a shareable link for this note' },
   highlight:       { icon:'✦',  title:'Highlight Note',    desc:'AI-highlight key concepts in the current note' },
 };
 
@@ -2754,6 +3296,10 @@ function _cmdFamily(verb) {
   if (v === 'apa') return 'apa';
   if (v === 'mla') return 'mla';
   if (v === 'chicago' || (v.length >= 3 && 'chicago'.startsWith(v))) return 'chicago';
+  if (v === 'bullets' || (v.length >= 3 && 'bullets'.startsWith(v))) return 'bullets';
+  if (v === 'outline' || (v.length >= 3 && 'outline'.startsWith(v))) return 'outline';
+  if (v === 'studyguide' || (v.length >= 4 && 'studyguide'.startsWith(v))) return 'studyguide';
+  if (v === 'share' || (v.length >= 3 && 'share'.startsWith(v))) return 'share';
   if (v === 'cornell' || (v.length >= 3 && 'cornell'.startsWith(v) && !'cornellnotes'.startsWith(v))) return 'cornell';
   if (v === 'cornellnotes' || (v.length >= 4 && 'cornellnotes'.startsWith(v))) return 'cornellnotes';
   if (v === 'homeworksolver' || (v.length >= 2 && 'homeworksolver'.startsWith(v))) return 'homeworksolver';
@@ -2775,11 +3321,18 @@ function _getSlashAction(family, sub) {
   if (family === 'apa') return () => { _dfStyle = 'APA'; openDocFormat('academic'); };
   if (family === 'mla') return () => { _dfStyle = 'MLA'; openDocFormat('academic'); };
   if (family === 'chicago') return () => { _dfStyle = 'Chicago'; openDocFormat('academic'); };
+  if (family === 'bullets') return () => openDocFormat('bullets');
+  if (family === 'outline') return () => openDocFormat('outline');
+  if (family === 'studyguide') return () => openDocFormat('studyguide');
+  if (family === 'share') return openShareModal;
   if (family === 'convert' && /cornell/.test(s)) return () => openDocFormat('cornell');
   if (family === 'format') {
     if (/academic|apa|mla|chicago/.test(s)) return () => openDocFormat('academic');
     if (/flash/.test(s)) return sendNoteToFlashcards;
     if (/code/.test(s)) return openCodeConvert;
+    if (/bullet/.test(s)) return () => openDocFormat('bullets');
+    if (/outline/.test(s)) return () => openDocFormat('outline');
+    if (/study/.test(s)) return () => openDocFormat('studyguide');
   }
   return null;
 }
@@ -2802,12 +3355,23 @@ function _updateCmdPanel(text) {
     key = 'cornellnotes';
   } else if (fam === 'flashcards') {
     key = 'format_flash';
+  } else if (fam === 'bullets') {
+    key = 'format_bullets';
+  } else if (fam === 'outline') {
+    key = 'format_outline';
+  } else if (fam === 'studyguide') {
+    key = 'format_study';
+  } else if (fam === 'share') {
+    key = 'share';
   } else if (fam === 'academic' || fam === 'apa' || fam === 'mla' || fam === 'chicago') {
     key = 'format_academic';
   } else if (fam === 'format') {
     if (/flash/.test(sub) || (sub && 'flashcards'.startsWith(sub))) key = 'format_flash';
     else if (/academic|apa|mla|chicago/.test(sub) || (sub && 'academic'.startsWith(sub))) key = 'format_academic';
     else if (/code/.test(sub) || (sub && 'code'.startsWith(sub))) key = 'format_code';
+    else if (/bullet/.test(sub) || (sub && 'bullets'.startsWith(sub))) key = 'format_bullets';
+    else if (/outline/.test(sub) || (sub && 'outline'.startsWith(sub))) key = 'format_outline';
+    else if (/study/.test(sub) || (sub && 'studyguide'.startsWith(sub))) key = 'format_study';
     else key = 'format_default';
   } else {
     if (/cornell/.test(sub) || (sub && 'cornell'.startsWith(sub))) key = 'convert_cornell';
@@ -2949,7 +3513,8 @@ document.getElementById('editor-right').addEventListener('keydown', function(e) 
 // Close AI popup on outside click
 document.addEventListener('mousedown', e => {
   if (_aiInlineActive && !document.getElementById('ai-inline-popup').contains(e.target)
-      && !document.getElementById('editor').contains(e.target)) {
+      && !document.getElementById('editor').contains(e.target)
+      && !document.getElementById('editor-right').contains(e.target)) {
     _cancelAiInline();
   }
 });
@@ -3024,7 +3589,7 @@ async function runHlSb() {
     return runHlSbSplit();
   }
 
-  const editor = document.getElementById('editor');
+  const editor = _getActiveEditorEl();
   const text = editor.innerText.trim();
   if (!text) return;
 
@@ -3070,17 +3635,18 @@ async function runHlSb() {
     const r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode:'highlight', tone: prompt }) });
     const d = await _safeJson(r);
     if (!r.ok || !d.result) throw new Error(d.error || 'No result');
-    _applyNoteHighlights(d.result);
+    _applyNoteHighlights(d.result, editor);
     status.textContent = '✦ Done — highlights applied';
     scheduleSave();
   } catch(e) { status.textContent = '⚠ ' + e.message; }
 }
 
 function clearHlSb() {
-  document.getElementById('editor').querySelectorAll('mark').forEach(m => {
+  const editor = _getActiveEditorEl();
+  editor.querySelectorAll('mark').forEach(m => {
     m.replaceWith(document.createTextNode(m.textContent));
   });
-  document.getElementById('editor').normalize();
+  editor.normalize();
   document.getElementById('hl-sb-status').textContent = 'Highlights cleared';
   scheduleSave();
 }
@@ -3097,11 +3663,11 @@ function _extractPhrases(markedText) {
   return phrases;
 }
 
-function _applyNoteHighlights(markedText) {
+function _applyNoteHighlights(markedText, editor) {
   const phrases = _extractPhrases(markedText);
   if (!phrases.length) { document.getElementById('hl-sb-status').textContent = 'Nothing to highlight'; return; }
 
-  const editor = document.getElementById('editor');
+  if (!editor) editor = document.getElementById('editor');
   editor.querySelectorAll('mark:not(.diff-mark)').forEach(mk => mk.replaceWith(document.createTextNode(mk.textContent)));
   editor.normalize();
 
@@ -3176,9 +3742,13 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
     clearTimeout(saveTimer);
+    clearTimeout(_rightSaveTimer);
     saveNotes();
     renderSidebar();
     setSaved();
+    // Cloud-sync active note (and right pane if in split)
+    if (activeId) { const _n = notes.find(n => n.id === activeId); if (_n) _cloudSaveNote(_n); }
+    if (_splitActive && _rightNoteId) { const _rn = notes.find(n => n.id === _rightNoteId); if (_rn) _cloudSaveNote(_rn); }
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
     e.preventDefault();
@@ -3202,7 +3772,7 @@ function insertPhotos(input) {
     if (idx >= files.length) {
       if (_activeEditor === 'right' && _rightNoteId) {
         const note = notes.find(n => n.id === _rightNoteId);
-        if (note) { note.content = document.getElementById('editor-right').innerHTML; note.updated = Date.now(); saveNotes(); }
+        if (note) { note.content = _stripImgSelection(document.getElementById('editor-right').innerHTML); note.updated = Date.now(); saveNotes(); }
       } else {
         const note = notes.find(n => n.id === activeId);
         if (note) { note.content = document.getElementById('editor').innerHTML; note.updated = Date.now(); scheduleSave(); }
@@ -3224,16 +3794,19 @@ function insertPhotos(input) {
 // ── DRAWING PEN (overlay on document) ──
 let _drawTool = 'pen', _drawColor = '#ff3333', _drawSize = 3;
 let _isDrawing = false, _lastDX = 0, _lastDY = 0, _drawEventsInit = false;
+let _drawTargetEditorId = 'editor';
 
 function enterDrawMode() {
-  // Show toolbar row first so layout reflows before we measure
+  _drawTargetEditorId = _activeEditor === 'right' ? 'editor-right' : 'editor';
   document.getElementById('draw-toolbar-row').style.display = 'flex';
   document.getElementById('draw-tb-btn').style.display = 'none';
-  // Measure after reflow
   requestAnimationFrame(() => {
-    const wrap = document.querySelector('.editor-wrap');
+    // In split mode span canvas across both panes via the split row container
+    const measureEl = _splitActive
+      ? document.getElementById('editor-split-row')
+      : document.getElementById('editor-wrap-left');
     const canvas = document.getElementById('draw-overlay');
-    const rect = wrap.getBoundingClientRect();
+    const rect = measureEl.getBoundingClientRect();
     canvas.style.top = rect.top + 'px';
     canvas.style.left = rect.left + 'px';
     canvas.style.width = rect.width + 'px';
@@ -3243,6 +3816,7 @@ function enterDrawMode() {
     canvas.style.display = 'block';
     canvas.style.pointerEvents = 'all';
     document.getElementById('editor').style.pointerEvents = 'none';
+    if (_splitActive) document.getElementById('editor-right').style.pointerEvents = 'none';
     if (!_drawEventsInit) { _initDrawEvents(); _drawEventsInit = true; }
   });
 }
@@ -3255,7 +3829,7 @@ function exitDrawMode(save) {
     const hasContent = Array.from({length: d.length / 4}, (_, i) => d[i*4+3]).some(a => a > 10);
     if (hasContent) {
       const dataUrl = canvas.toDataURL('image/png');
-      const editor = document.getElementById('editor');
+      const editor = document.getElementById(_drawTargetEditorId);
       editor.focus();
       const img = document.createElement('img');
       img.src = dataUrl;
@@ -3273,6 +3847,7 @@ function exitDrawMode(save) {
   canvas.style.pointerEvents = 'none';
   canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   document.getElementById('editor').style.pointerEvents = '';
+  document.getElementById('editor-right').style.pointerEvents = '';
   document.getElementById('draw-toolbar-row').style.display = 'none';
   document.getElementById('draw-tb-btn').style.display = '';
 }
@@ -3674,12 +4249,11 @@ function copyHwResult() {
 
 function insertHwIntoNote() {
   if (!_hwResult) return;
-  const origNote = notes.find(n => n.id === activeId);
+  const origNote = notes.find(n => n.id === _getActiveNoteId());
   const html = _hwResult.split('\n').map(l => l.trim() ? '<p>' + l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>' : '<p><br></p>').join('');
   const newNote = { id: genId(), title: (origNote?.title || 'Note') + ' — Solution', content: html, created: Date.now(), updated: Date.now() };
   notes.unshift(newNote); saveNotes(); closeHwSolver();
   openNote(newNote.id); renderSidebar();
-  if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
 }
 
 // ── CLOUD SYNC (Firestore) ──
@@ -3710,16 +4284,52 @@ function initCloudSync() {
       if (user) {
         _fbUid = user.uid;
         _setCloudIcon('☁️');
+        _seedWelcomeNote(user.uid);
         _startCloudListeners();
         _uploadLocalToCloud();
       } else {
+        // Upload any unsaved local notes to Firestore BEFORE clearing localStorage
+        if (_fbDb && _fbUid && notes.length) {
+          try {
+            const batch = _fbDb.batch();
+            notes.forEach(n => { if (n && n.id) batch.set(_fbDb.doc(`users/${_fbUid}/notepad_notes/${n.id}`), n, { merge: true }); });
+            folders.forEach(f => { if (f && f.id) batch.set(_fbDb.doc(`users/${_fbUid}/notepad_folders/${f.id}`), f, { merge: true }); });
+            batch.commit().catch(() => {});
+          } catch(e) {}
+        }
         _fbUid = null;
         _setCloudIcon('');
         if (_cloudUnsub) { _cloudUnsub(); _cloudUnsub = null; }
         if (_cloudFolderUnsub) { _cloudFolderUnsub(); _cloudFolderUnsub = null; }
+        localStorage.removeItem('gn-notepad-notes');
+        localStorage.removeItem('gn-notepad-folders');
+        notes = []; folders = [];
+        renderSidebar();
       }
     });
   } catch(e) { console.warn('Cloud sync init failed:', e); }
+}
+
+async function _seedWelcomeNote(uid) {
+  try {
+    const metaRef = _fbDb.doc(`users/${uid}/meta/welcome`);
+    const snap = await metaRef.get();
+    if (snap.exists) return; // already seeded
+    const folderId = 'folder-commands-' + uid.slice(0, 8);
+    const folder = { id: folderId, name: 'Prompt Guide', created: Date.now() };
+    const welcomeId = 'welcome-' + uid.slice(0, 8);
+    const welcomeNote = {
+      id: welcomeId,
+      title: 'Getting Started — GeniusNotes AI',
+      content: `<h1>Welcome to GeniusNotes AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p>`,
+      folderId,
+      created: Date.now(),
+      updated: Date.now()
+    };
+    await _fbDb.doc(`users/${uid}/notepad_folders/${folderId}`).set(folder);
+    await _fbDb.doc(`users/${uid}/notepad_notes/${welcomeId}`).set(welcomeNote);
+    await metaRef.set({ seeded: true, at: Date.now() });
+  } catch(e) {}
 }
 
 function _startCloudListeners() {
@@ -3735,11 +4345,18 @@ function _startCloudListeners() {
           if (i >= 0 && d.id !== activeId) { notes.splice(i, 1); changed = true; }
         } else {
           const i = notes.findIndex(n => n.id === d.id);
-          if (i >= 0) { if ((d.updated || 0) > (notes[i].updated || 0)) { notes[i] = d; changed = true; } }
-          else { notes.push(d); changed = true; }
+          if (i >= 0) {
+            // Always apply Firestore changes — don't skip based on timestamp
+            // (metadata-only changes like folderId have the same timestamp)
+            if (JSON.stringify(notes[i]) !== JSON.stringify(d)) { notes[i] = d; changed = true; }
+          } else { notes.push(d); changed = true; }
         }
       });
-      if (changed) { saveNotes(); renderSidebar(); _setCloudIcon('☁️'); }
+      if (changed) {
+        // Remove demo note once real notes arrive
+        notes = notes.filter(n => !n._isDemo);
+        saveNotes(); renderSidebar(); _setCloudIcon('☁️');
+      }
     }, () => _setCloudIcon('⚠️'));
 
   _cloudFolderUnsub = _fbDb.collection(`users/${_fbUid}/notepad_folders`)
@@ -3803,10 +4420,163 @@ function _cloudDeleteFolder(id) {
   _fbDb.doc(`users/${_fbUid}/notepad_folders/${id}`).delete().catch(() => {});
 }
 
-// ── INIT ──
+
+// ── SHARE ────────────────────────────────────────────────────
+function openShareModal() {
+  if (!activeId) return;
+  document.getElementById('share-modal').style.display = 'flex';
+  document.getElementById('share-status').textContent = '';
+  const note = notes.find(n => n.id === activeId);
+  if (note && note.shareId) {
+    document.getElementById('share-link-input').value = location.origin + '/share.html?id=' + note.shareId;
+    document.getElementById('share-status').textContent = '✓ Link active';
+  } else {
+    document.getElementById('share-link-input').value = '';
+    document.getElementById('share-status').textContent = 'No link yet — click New Link to generate one.';
+    document.getElementById('share-status').style.color = '#888';
+  }
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').style.display = 'none';
+}
+
+async function generateShareLink(collaborative) {
+  if (!activeId) { alert('Open a note first.'); return; }
+  if (!_fbDb) { alert('Sign in to share notes.'); return; }
+  const note = notes.find(n => n.id === activeId);
+  if (!note) return;
+  const statusEl = document.getElementById('share-status');
+  // Highlight active button
+  document.getElementById('share-btn-view').style.opacity = collaborative ? '0.5' : '1';
+  document.getElementById('share-btn-collab').style.opacity = collaborative ? '1' : '0.5';
+
+  // Generate ID and show link immediately — don't wait for Firestore
+  const shareId = note.shareId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+  note.shareId = shareId;
+  saveNotes();
+  const link = location.origin + '/share.html?id=' + shareId;
+  document.getElementById('share-link-input').value = link;
+  statusEl.textContent = '⏳ Uploading note…';
+  statusEl.style.color = '#888';
+
+  // Upload to Firestore in background
+  const shareData = {
+    id: shareId,
+    noteId: note.id,
+    title: note.title || 'Untitled',
+    content: note.content || '',
+    sharedBy: _fbUid || 'anonymous',
+    sharedAt: Date.now(),
+    collaborative
+  };
+  _fbDb.collection('shared_notes').doc(shareId).set(shareData)
+    .then(() => {
+      statusEl.textContent = collaborative
+        ? '✓ Live collaboration link ready.'
+        : '✓ Link ready — anyone with it can view this note.';
+      statusEl.style.color = '#34d399';
+      if (collaborative) _startCollabSync(shareId);
+    })
+    .catch(e => {
+      statusEl.textContent = '⚠ Upload failed: ' + (e.message || 'try again.');
+      statusEl.style.color = '#ff8080';
+    });
+}
+
+async function revokeShareLink() {
+  if (!activeId || !_fbDb) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note || !note.shareId) return;
+  try {
+    await _fbDb.collection('shared_notes').doc(note.shareId).delete();
+    delete note.shareId;
+    saveNotes();
+    document.getElementById('share-link-input').value = '';
+    const statusEl = document.getElementById('share-status');
+    statusEl.textContent = 'Link revoked.';
+    statusEl.style.color = '#ff8080';
+  } catch(e) {
+    alert('Failed to revoke: ' + e.message);
+  }
+}
+
+function openShareInTab() {
+  const val = document.getElementById('share-link-input').value;
+  if (!val) { generateShareLink(false); return; }
+  window.open(val, '_blank');
+}
+
+function copyShareLink() {
+  const val = document.getElementById('share-link-input').value;
+  if (!val) { generateShareLink(); return; }
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('share-copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
+  });
+}
+
+let _collabUnsub = null;
+let _collabLastTyped = 0;
+
+function _startCollabSync(shareId) {
+  if (_collabUnsub) _collabUnsub();
+  if (!_fbDb) return;
+  _collabUnsub = _fbDb.collection('shared_notes').doc(shareId).onSnapshot(snap => {
+    if (!snap.exists || !activeId) return;
+    const d = snap.data();
+    if (!d.collaborative) return;
+    const note = notes.find(n => n.id === activeId);
+    if (!note || note.shareId !== shareId) return;
+    const remoteContent = d.content || '';
+    if (remoteContent === note.content) return;
+    // Only apply if user hasn't typed in the last 2s
+    if (Date.now() - _collabLastTyped > 2000) {
+      note.content = remoteContent;
+      saveNotes();
+      const editor = document.getElementById('editor');
+      if (editor && editor.innerHTML !== remoteContent) {
+        editor.innerHTML = remoteContent;
+        setSaved();
+      }
+    }
+  });
+}
+
+// Track local typing to avoid overwriting mid-edit
+document.addEventListener('keydown', () => { _collabLastTyped = Date.now(); }, true);
+
+function _saveReturnNote() {
+  if (activeId) localStorage.setItem('gn-notepad-return', activeId);
+}
+
+const _DEMO_NOTE_ID = '__demo_commands__';
+const _DEMO_NOTE = {
+  id: _DEMO_NOTE_ID,
+  _isDemo: true,
+  title: 'Prompt Guide',
+  content: `<h1>Prompt Guide</h1><p style="color:#8888aa;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
+  created: Date.now(),
+  updated: Date.now()
+};
+
 loadNotes();
 loadFolders();
+
+// Inject demo note for users with no notes (signed-out or brand new)
+if (notes.length === 0) notes.push(_DEMO_NOTE);
+
 renderSidebar();
+
+// ── WORD-LIKE INIT ──
+(function() {
+  buildRuler();
+  if (_zoomLevel !== 100) setZoom(_zoomLevel);
+  _applyMarginsToEditor(); // restore saved margins
+  const wrap = document.getElementById('editor-wrap-left');
+  if (wrap) wrap.addEventListener('scroll', updatePageCounter, { passive: true });
+})();
 
 // Auto-load transcript sent from floating recorder or meetings Save
 (function() {
@@ -3862,13 +4632,19 @@ renderSidebar();
       }
     }
     openNote(_openId);
-  } else if (notes.length > 0) {
-    openNote(notes.sort((a,b) => {
-      const as = a.sortOrder ?? null, bs = b.sortOrder ?? null;
-      if (as !== null && bs !== null) return as - bs;
-      if (as !== null) return 1; if (bs !== null) return -1;
-      return b.updated - a.updated;
-    })[0].id);
+  } else {
+    // Check if returning from dashboard
+    const _returnId = localStorage.getItem('gn-notepad-return');
+    if (_returnId && notes.find(n => n.id === _returnId)) {
+      openNote(_returnId);
+      } else if (notes.length > 0) {
+      openNote(notes.sort((a,b) => {
+        const as = a.sortOrder ?? null, bs = b.sortOrder ?? null;
+        if (as !== null && bs !== null) return as - bs;
+        if (as !== null) return 1; if (bs !== null) return -1;
+        return b.updated - a.updated;
+      })[0].id);
+    }
   }
 })();
 
@@ -3888,14 +4664,27 @@ function enterSplitMode(noteId) {
   document.getElementById('right-pane').classList.add('visible');
   document.getElementById('split-divider').style.display = 'block';
   const leftNote = notes.find(n => n.id === activeId);
-  document.getElementById('right-pane-title').textContent = (leftNote?.title||'Left') + '  ⟺  ' + (note.title||'Untitled');
-  document.getElementById('editor-right').innerHTML = note.content || '<p><br></p>';
+  document.getElementById('left-pane-hd').classList.add('visible');
+  document.getElementById('left-pane-title').textContent = leftNote?.title || 'Untitled';
+  document.getElementById('right-pane-title').textContent = note.title || 'Untitled';
+  document.getElementById('editor-right').innerHTML = _stripImgSelection(note.content) || '<p><br></p>';
 }
 
+let _rightSaveTimer = null;
 document.getElementById('editor-right').addEventListener('input', function() {
   if (!_rightNoteId) return;
   const note = notes.find(n => n.id === _rightNoteId);
-  if (note) { note.content = this.innerHTML; note.updated = Date.now(); saveNotes(); }
+  if (note) { note.content = _stripImgSelection(this.innerHTML); note.updated = Date.now(); }
+  // Debounced save with cloud sync (mirrors left editor behaviour)
+  setSaving();
+  clearTimeout(_rightSaveTimer);
+  const _capturedNote = note;
+  _rightSaveTimer = setTimeout(() => {
+    saveNotes();
+    setSaved();
+    if (_capturedNote) _cloudSaveNote(_capturedNote);
+  }, 500);
+  updateStats();
 });
 
 function swapSplitEditors() {
@@ -3914,9 +4703,10 @@ function swapSplitEditors() {
   // Update title input
   const leftNote = notes.find(n => n.id === activeId);
   if (leftNote) document.getElementById('note-title-input').value = leftNote.title || '';
-  // Update right pane header title
+  // Update pane header titles
   const rightNote = notes.find(n => n.id === _rightNoteId);
-  document.getElementById('right-pane-title').textContent = (leftNote?.title||'Left') + '  ⟺  ' + (rightNote?.title||'Untitled');
+  document.getElementById('left-pane-title').textContent = leftNote?.title || 'Untitled';
+  document.getElementById('right-pane-title').textContent = rightNote?.title || 'Untitled';
   // Persist swapped content to notes
   if (leftNote) { leftNote.content = rightHtml; leftNote.updated = Date.now(); }
   if (rightNote) { rightNote.content = leftHtml; rightNote.updated = Date.now(); }
@@ -3930,6 +4720,7 @@ function exitSplitMode() {
   _rightNoteId = null;
   document.getElementById('right-pane').classList.remove('visible');
   document.getElementById('split-divider').style.display = 'none';
+  document.getElementById('left-pane-hd').classList.remove('visible');
   document.getElementById('editor-right').innerHTML = '';
 }
 
@@ -3990,7 +4781,7 @@ function stopSplitResize() {
       drag.live = true;
       var g = document.createElement('div');
       g.id = 'drag-ghost'; g.style.display = 'block';
-      var titleEl = drag.item.querySelector('.note-item-title');
+      var titleEl = drag.item.querySelector('.ni-title');
       g.textContent = titleEl ? titleEl.textContent : 'Note';
       document.body.appendChild(g);
       drag.ghost = g;
@@ -4087,7 +4878,7 @@ async function runHlSbSplit() {
     _applyDiffHighlightsToEl(d.result, document.getElementById('editor-right'));
     status.textContent = '🟠 Missing content highlighted in right panel';
     const rightNote = notes.find(n => n.id === _rightNoteId);
-    if (rightNote) { rightNote.content = document.getElementById('editor-right').innerHTML; saveNotes(); }
+    if (rightNote) { rightNote.content = _stripImgSelection(document.getElementById('editor-right').innerHTML); saveNotes(); }
   } catch(e) { status.textContent = '⚠ ' + e.message; }
 }
 
@@ -4345,7 +5136,7 @@ function saveRightNote() {
   if (!_rightNoteId) return;
   const note = notes.find(n => n.id === _rightNoteId);
   if (!note) return;
-  const content = document.getElementById('editor-right').innerHTML;
+  const content = _stripImgSelection(document.getElementById('editor-right').innerHTML);
   note.content = content; note.updated = Date.now();
   saveNotes();
   const btn = document.querySelector('.rp-btn[onclick="saveRightNote()"]');
@@ -4362,7 +5153,7 @@ function detachRightPanel() {
   if (!note) return;
   _detachedNoteId = _rightNoteId;
   document.getElementById('detach-title').textContent = note.title || 'Untitled';
-  document.getElementById('detach-body').innerHTML = document.getElementById('editor-right').innerHTML;
+  document.getElementById('detach-body').innerHTML = _stripImgSelection(document.getElementById('editor-right').innerHTML);
   document.getElementById('detach-panel').classList.add('on');
   // Collapse the right pane
   exitSplitMode();
@@ -4386,7 +5177,7 @@ function saveDetachedNote() {
   if (!_detachedNoteId) return;
   const note = notes.find(n => n.id === _detachedNoteId);
   if (!note) return;
-  note.content = document.getElementById('detach-body').innerHTML;
+  note.content = _stripImgSelection(document.getElementById('detach-body').innerHTML);
   note.updated = Date.now();
   saveNotes(); renderSidebar();
 }
@@ -4414,7 +5205,7 @@ document.addEventListener('input', function(e) {
   if (!e.target || e.target.id !== 'detach-body') return;
   if (!_detachedNoteId) return;
   const note = notes.find(n => n.id === _detachedNoteId);
-  if (note) { note.content = e.target.innerHTML; note.updated = Date.now(); saveNotes(); }
+  if (note) { note.content = _stripImgSelection(e.target.innerHTML); note.updated = Date.now(); saveNotes(); }
 });
 
 // ── IMPORT DROPDOWN ──────────────────────────────────────────
@@ -4462,7 +5253,6 @@ async function importVideo(input) {
     const newNote = { id: genId(), title: name + ' — Transcript', content: htmlContent, created: Date.now(), updated: Date.now() };
     notes.unshift(newNote); saveNotes();
     openNote(newNote.id); renderSidebar();
-    if (origNote) setTimeout(() => enterSplitMode(origNote.id), 100);
     status.remove();
   } catch(err) {
     status.remove();
@@ -4605,6 +5395,16 @@ function recSave() {
       h.addEventListener('mousedown', startResize);
       wrap.appendChild(h);
     });
+    const db = document.createElement('button');
+    db.className = 'img-draw-btn'; db.textContent = '✏️'; db.title = 'Draw on image'; db.contentEditable = 'false';
+    db.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+    db.addEventListener('click', e => { e.stopPropagation(); openImgEdit(img, 'pen'); });
+    wrap.appendChild(db);
+    const hb = document.createElement('button');
+    hb.className = 'img-draw-btn img-hl-btn'; hb.textContent = '🖍'; hb.title = 'Highlight'; hb.contentEditable = 'false';
+    hb.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+    hb.addEventListener('click', e => { e.stopPropagation(); openImgEdit(img, 'highlight'); });
+    wrap.appendChild(hb);
     img.addEventListener('mousedown', startDragImg);
   }
 
@@ -4612,6 +5412,7 @@ function recSave() {
     if (!_selWrap) return;
     _selWrap.classList.remove('selected');
     _selWrap.querySelectorAll('.img-handle').forEach(h => h.remove());
+    _selWrap.querySelectorAll('.img-draw-btn').forEach(b => b.remove());
     if (_selImg) _selImg.removeEventListener('mousedown', startDragImg);
     _selImg = null; _selWrap = null;
   }
@@ -4629,10 +5430,16 @@ function recSave() {
   }
 
   // ── DRAG to reposition ──
+  function _getTranslate(el) {
+    const m = (el.style.transform || '').match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+    return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
+  }
+
   function startDragImg(e) {
     if (e.target.classList.contains('img-handle')) return;
-    const img = _selImg;
-    if (!img) return;
+    const wrap = _selWrap;
+    if (!wrap) return;
+    e.preventDefault();
     let lastX = e.clientX, lastY = e.clientY, moved = false;
 
     function onMove(ev) {
@@ -4641,10 +5448,8 @@ function recSave() {
       moved = true;
       ev.preventDefault();
       lastX = ev.clientX; lastY = ev.clientY;
-      const ml = parseFloat(img.style.marginLeft) || 0;
-      const mt = parseFloat(img.style.marginTop) || 0;
-      img.style.marginLeft = (ml + dx) + 'px';
-      img.style.marginTop  = (mt + dy) + 'px';
+      const t = _getTranslate(wrap);
+      wrap.style.transform = `translate(${t.x + dx}px, ${t.y + dy}px)`;
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
@@ -4694,6 +5499,18 @@ function recSave() {
     document.addEventListener('mouseup', onUp);
   }
 
+  // Delete selected image on Backspace/Delete
+  document.addEventListener('keydown', function(e) {
+    if (!_selImg) return;
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const wrap = _selWrap;
+    deselectImage();
+    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    if (typeof scheduleSave === 'function') scheduleSave();
+  }, true); // capture phase so it fires before contenteditable
+
   // Wrap bare images that appear in editors
   function wrapBareImages(root) {
     if (!root) return;
@@ -4712,16 +5529,344 @@ function recSave() {
       obs.observe(el, { childList:true, subtree:true });
     }
   });
+
+  // ── IMAGE EDIT MODAL ──
+  let _ieImg = null, _ieTool = 'pen', _ieColor = '#ff0000', _ieSize = 6;
+  let _ieDrawing = false, _ieLastX = 0, _ieLastY = 0, _ieUndoStack = [];
+  let _ctxMenuImg = null;
+
+  function openImgEdit(img, mode) {
+    _ieImg = img; _ieTool = mode || 'pen';
+    if (!img.dataset.origSrc) img.dataset.origSrc = img.src;
+    const modal = document.getElementById('img-edit-overlay');
+    const preview = document.getElementById('img-edit-preview');
+    const canvas = document.getElementById('img-edit-canvas');
+    if (!modal || !preview || !canvas) return;
+    canvas.style.cssText = 'position:absolute;visibility:hidden;cursor:crosshair;touch-action:none;';
+    preview.style.visibility = 'visible';
+    preview.src = img.src;
+    function init() {
+      const imgW = preview.naturalWidth || 800, imgH = preview.naturalHeight || 600;
+      canvas.width = imgW; canvas.height = imgH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, imgW, imgH);
+      _ieUndoStack = []; _ieSaveSnap();
+      modal.style.display = 'block';
+      document.body.classList.add('ie-modal-open');
+      requestAnimationFrame(() => {
+        const stage = document.getElementById('img-edit-stage');
+        const sW = stage.offsetWidth, sH = stage.offsetHeight;
+        const scale = Math.min(sW / imgW, sH / imgH);
+        const dW = Math.round(imgW * scale), dH = Math.round(imgH * scale);
+        const ox = Math.round((sW - dW) / 2), oy = Math.round((sH - dH) / 2);
+        canvas.style.cssText = `position:absolute;left:${ox}px;top:${oy}px;width:${dW}px;height:${dH}px;cursor:crosshair;touch-action:none;`;
+        preview.style.visibility = 'hidden';
+        _ieColorWheelDot(0);
+        _ieUpdateToolUI();
+      });
+    }
+    if (preview.complete && preview.naturalWidth > 0) init();
+    else preview.onload = init;
+  }
+
+  function _ieSaveSnap() {
+    const c = document.getElementById('img-edit-canvas');
+    if (!c) return;
+    const s = document.createElement('canvas');
+    s.width = c.width; s.height = c.height;
+    s.getContext('2d').drawImage(c, 0, 0);
+    _ieUndoStack.push(s);
+    if (_ieUndoStack.length > 30) _ieUndoStack.shift();
+  }
+
+  function _ieScaled(e) {
+    const c = document.getElementById('img-edit-canvas');
+    const r = c.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
+  }
+
+  function _ieDown(e) { e.preventDefault(); _ieDrawing = true; const p = _ieScaled(e); _ieLastX = p.x; _ieLastY = p.y; }
+
+  function _ieMove(e) {
+    if (!_ieDrawing) return;
+    e.preventDefault();
+    const c = document.getElementById('img-edit-canvas');
+    const ctx = c.getContext('2d');
+    const p = _ieScaled(e);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.globalAlpha = 1;
+    if (_ieTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = _ieSize * 4;
+    } else if (_ieTool === 'highlight') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.38;
+      ctx.strokeStyle = _ieColor;
+      ctx.lineWidth = _ieSize * 3;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = _ieColor;
+      ctx.lineWidth = _ieSize;
+    }
+    ctx.beginPath(); ctx.moveTo(_ieLastX, _ieLastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    _ieLastX = p.x; _ieLastY = p.y;
+  }
+
+  function _ieUp() { if (!_ieDrawing) return; _ieDrawing = false; _ieSaveSnap(); }
+
+  function _ieTouchStart(e) { e.preventDefault(); if (e.touches.length) { const t=e.touches[0]; _ieDown({clientX:t.clientX,clientY:t.clientY,preventDefault:()=>{}}); } }
+  function _ieTouchMove(e) { e.preventDefault(); if (e.touches.length) { const t=e.touches[0]; _ieMove({clientX:t.clientX,clientY:t.clientY,preventDefault:()=>{}}); } }
+  function _ieTouchEnd() { _ieUp(); }
+
+  function ieTool(t) { _ieTool = t; _ieUpdateToolUI(); }
+
+  function ieColor(c) { _ieColor = c; if (_ieTool==='eraser') _ieTool='pen'; _ieUpdateToolUI(); }
+
+  function ieSize(v) { _ieSize = v; }
+
+  function ieUndo() {
+    const c = document.getElementById('img-edit-canvas');
+    if (!c) return;
+    if (_ieUndoStack.length <= 1) { c.getContext('2d').clearRect(0, 0, c.width, c.height); return; }
+    _ieUndoStack.pop();
+    const prev = _ieUndoStack[_ieUndoStack.length-1];
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(prev, 0, 0);
+  }
+
+  function ieDone(save) {
+    const modal = document.getElementById('img-edit-overlay');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('ie-modal-open');
+    const preview = document.getElementById('img-edit-preview');
+    if (preview) { preview.style.visibility = 'visible'; preview.src = ''; }
+    const imgEl = _ieImg;
+    _ieImg = null; _ieDrawing = false;
+    if (!save || !imgEl) return;
+    const canvas = document.getElementById('img-edit-canvas');
+    if (!canvas) return;
+    const snap = document.createElement('canvas');
+    snap.width = canvas.width; snap.height = canvas.height;
+    snap.getContext('2d').drawImage(canvas, 0, 0);
+    const origSrc = imgEl.dataset.origSrc || imgEl.src;
+    const base = new Image();
+    base.onload = function() {
+      try {
+        const fc = document.createElement('canvas');
+        fc.width = base.naturalWidth; fc.height = base.naturalHeight;
+        const fx = fc.getContext('2d');
+        fx.drawImage(base, 0, 0);
+        fx.drawImage(snap, 0, 0, fc.width, fc.height);
+        imgEl.src = fc.toDataURL('image/png');
+        if (typeof scheduleSave === 'function') scheduleSave();
+      } catch(err) { console.warn('Edit save error:', err); }
+    };
+    base.src = origSrc;
+  }
+
+  function _ieUpdateToolUI() {
+    const map = { pen:'ie-btn-pen', highlight:'ie-btn-hl', eraser:'ie-btn-era' };
+    Object.entries(map).forEach(([t,id]) => {
+      const el = document.getElementById(id);
+      if (el) { el.style.background = _ieTool===t?'rgba(255,255,255,0.28)':'rgba(0,0,0,0.5)'; el.style.borderColor = _ieTool===t?'#fff':'rgba(255,255,255,0.35)'; }
+    });
+  }
+
+  function _ieDrawColorWheel(canvas) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const cx = W/2, cy = H/2, r = Math.min(cx,cy)-1;
+    for (let h = 0; h < 360; h++) {
+      const a1 = (h - 0.5) * Math.PI / 180;
+      const a2 = (h + 1.5) * Math.PI / 180;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a1,a2); ctx.closePath();
+      ctx.fillStyle = `hsl(${h},100%,50%)`; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(cx,cy,r*0.42,0,2*Math.PI); ctx.fillStyle='#111'; ctx.fill();
+  }
+
+  function _ieColorWheelDot(hue) {
+    const wheel = document.getElementById('ie-color-wheel');
+    const dot = document.getElementById('ie-color-dot');
+    const swatch = document.getElementById('ie-color-swatch');
+    if (!wheel || !dot) return;
+    const ang = ((hue - 90 + 360) % 360) * Math.PI / 180;
+    const r = (wheel.offsetWidth/2) * 0.71;
+    const cx = wheel.offsetWidth/2, cy = wheel.offsetHeight/2;
+    dot.style.left = (cx + r*Math.cos(ang))+'px';
+    dot.style.top  = (cy + r*Math.sin(ang))+'px';
+    dot.style.background = `hsl(${hue},100%,50%)`;
+    if (swatch) swatch.style.background = _ieColor;
+  }
+
+  function _ieInitColorWheel() {
+    const wheel = document.getElementById('ie-color-wheel');
+    if (!wheel) return;
+    _ieDrawColorWheel(wheel);
+    let dragging = false;
+    function pick(e) {
+      const rect = wheel.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width/2;
+      const y = e.clientY - rect.top - rect.height/2;
+      const hue = Math.round(((Math.atan2(y,x)*180/Math.PI)+90+360)%360);
+      _ieColor = `hsl(${hue},100%,50%)`;
+      if (_ieTool === 'eraser') _ieTool = 'pen';
+      _ieUpdateToolUI();
+      _ieColorWheelDot(hue);
+    }
+    wheel.addEventListener('pointerdown', e => { e.preventDefault(); dragging=true; wheel.setPointerCapture(e.pointerId); pick(e); });
+    wheel.addEventListener('pointermove', e => { if (!dragging) return; e.preventDefault(); pick(e); });
+    wheel.addEventListener('pointerup', () => dragging=false);
+    wheel.addEventListener('pointercancel', () => dragging=false);
+  }
+
+  function revertCtxImg() {
+    const img = _ctxMenuImg; hideImgCtxMenu();
+    if (!img || !img.dataset.origSrc) return;
+    img.src = img.dataset.origSrc;
+    delete img.dataset.origSrc;
+    if (typeof scheduleSave === 'function') scheduleSave();
+  }
+
+  // ── CONTEXT MENU ──
+  function showImgCtxMenu(x, y, img) {
+    _ctxMenuImg = img;
+    const menu = document.getElementById('img-ctx-menu');
+    if (!menu) return;
+    const rev = document.getElementById('img-ctx-revert');
+    if (rev) rev.style.display = img.dataset.origSrc ? 'block' : 'none';
+    menu.style.display = 'block';
+    menu.style.left = x+'px'; menu.style.top = y+'px';
+    requestAnimationFrame(() => {
+      const r = menu.getBoundingClientRect();
+      if (r.right > window.innerWidth) menu.style.left = (window.innerWidth - r.width - 8)+'px';
+      if (r.bottom > window.innerHeight) menu.style.top = (window.innerHeight - r.height - 8)+'px';
+    });
+  }
+
+  function hideImgCtxMenu() {
+    const m = document.getElementById('img-ctx-menu');
+    if (m) m.style.display = 'none';
+    _ctxMenuImg = null;
+  }
+
+  function openCtxImgEdit() { const img = _ctxMenuImg; hideImgCtxMenu(); if (img) openImgEdit(img); }
+
+  function deleteCtxImg() {
+    const img = _ctxMenuImg; hideImgCtxMenu();
+    if (!img) return;
+    const wrap = img.closest('.img-wrap');
+    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    else if (img.parentNode) img.parentNode.removeChild(img);
+    if (typeof scheduleSave === 'function') scheduleSave();
+  }
+
+  document.addEventListener('contextmenu', function(e) {
+    const img = e.target.tagName === 'IMG' ? e.target : (e.target.closest && e.target.closest('img'));
+    const inEditor = img && (img.closest('#editor') || img.closest('#editor-right'));
+    if (inEditor) { e.preventDefault(); showImgCtxMenu(e.clientX, e.clientY, img); }
+    else { hideImgCtxMenu(); }
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (!e.target.closest || (!e.target.closest('#img-ctx-menu') && !e.target.closest('#img-edit-overlay'))) hideImgCtxMenu();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('img-edit-overlay');
+    if (modal && modal.style.display === 'block') { e.stopPropagation(); ieDone(false); return; }
+    const ctxMenu = document.getElementById('img-ctx-menu');
+    if (ctxMenu && ctxMenu.style.display === 'block') hideImgCtxMenu();
+  }, true);
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const c = document.getElementById('img-edit-canvas');
+    if (c) {
+      c.addEventListener('mousedown', _ieDown);
+      c.addEventListener('mousemove', _ieMove);
+      c.addEventListener('mouseup', _ieUp);
+      c.addEventListener('mouseleave', _ieUp);
+      c.addEventListener('touchstart', _ieTouchStart, {passive:false});
+      c.addEventListener('touchmove', _ieTouchMove, {passive:false});
+      c.addEventListener('touchend', _ieTouchEnd);
+    }
+    _ieInitColorWheel();
+  });
+
+  window.openImgEdit = openImgEdit;
+  window.openCtxImgEdit = openCtxImgEdit;
+  window.deleteCtxImg = deleteCtxImg;
+  window.revertCtxImg = revertCtxImg;
+  window.ieTool = ieTool;
+  window.ieToggleHL = function() { ieTool(_ieTool === 'highlight' ? 'pen' : 'highlight'); };
+  window.ieColor = ieColor;
+  window.ieSize = ieSize;
+  window.ieUndo = ieUndo;
+  window.ieDone = ieDone;
 })();</script>
+
 <script src="js/recorder.js"></script>
 
-<!-- Add Note dropdown — lives outside sidebar so overflow:hidden doesn't clip it -->
-<div id="new-note-menu" style="display:none;position:fixed;width:238px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);max-height:440px;overflow-y:auto;">
-  <button onclick="newNote();document.getElementById('new-note-menu').style.display='none';" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:none;background:none;color:var(--purple2);font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:1px solid rgba(139,92,246,0.15);margin-bottom:2px;">✏️ Blank note</button>
-  <div id="new-note-recents"></div>
+<!-- Folder-area + dropdown -->
+<div id="folder-area-menu" style="display:none;position:fixed;width:180px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
+  <button onclick="document.getElementById('folder-area-menu').style.display='none';newNoteWithName();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    New Note
+  </button>
+  <button onclick="document.getElementById('folder-area-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    New Folder
+  </button>
+</div>
+
+<!-- Add Note/Folder dropdown — lives outside sidebar so overflow:hidden doesn't clip it -->
+<div id="new-note-menu" style="display:none;position:fixed;width:200px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
+  <button onclick="newNoteWithName()" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    Add New Note
+  </button>
+  <button onclick="document.getElementById('new-note-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    Add New Folder
+  </button>
 </div>
 <canvas id="draw-overlay"></canvas>
 
+<!-- IMG EDIT MODAL -->
+<div id="img-edit-overlay" style="display:none;position:fixed;inset:0;z-index:9500;background:#000;">
+  <div id="img-edit-stage" style="position:absolute;inset:0;">
+    <img id="img-edit-preview" alt="" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;display:block;">
+    <canvas id="img-edit-canvas" style="position:absolute;cursor:crosshair;touch-action:none;"></canvas>
+  </div>
+  <button onclick="ieDone(false)" style="position:absolute;top:14px;left:14px;width:38px;height:38px;background:rgba(0,0,0,0.55);border:none;border-radius:50%;color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;line-height:1;">‹</button>
+  <button onclick="ieDone(true)" style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,0.55);border:1.5px solid rgba(255,255,255,0.75);border-radius:20px;color:#fff;font-size:0.82rem;font-weight:700;padding:7px 18px;cursor:pointer;z-index:20;font-family:inherit;">✓ Save</button>
+  <div style="position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <div style="position:relative;width:80px;height:80px;">
+      <canvas id="ie-color-wheel" width="80" height="80" style="border-radius:50%;cursor:pointer;touch-action:none;box-shadow:0 2px 14px rgba(0,0,0,0.7);display:block;"></canvas>
+      <div id="ie-color-dot" style="position:absolute;width:14px;height:14px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.7);pointer-events:none;transform:translate(-50%,-50%);background:#ff0000;top:14%;left:50%;"></div>
+    </div>
+    <div id="ie-color-swatch" style="width:30px;height:30px;border-radius:50%;background:#ff0000;border:3px solid #fff;box-shadow:0 1px 8px rgba(0,0,0,0.5);cursor:pointer;" onclick="ieTool('pen')" title="Active color"></div>
+    <button onclick="ieToggleHL()" title="Highlighter" style="width:36px;height:36px;background:rgba(0,0,0,0.55);border:2px solid rgba(255,255,255,0.4);border-radius:50%;color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">🖍</button>
+  </div>
+  <div style="position:absolute;bottom:22px;left:0;right:50px;display:flex;align-items:center;gap:10px;padding:0 16px;z-index:20;">
+    <button onclick="ieUndo()" title="Undo" style="flex-shrink:0;width:42px;height:42px;background:rgba(0,0,0,0.55);border:none;border-radius:50%;color:#fff;font-size:1.15rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">↩</button>
+    <button id="ie-btn-pen" onclick="ieTool('pen')" title="Draw" style="flex-shrink:0;width:42px;height:42px;background:rgba(255,255,255,0.28);border:2px solid #fff;border-radius:50%;color:#fff;font-size:1.05rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏️</button>
+    <button id="ie-btn-hl" onclick="ieTool('highlight')" title="Highlight" style="flex-shrink:0;width:42px;height:42px;background:rgba(0,0,0,0.55);border:2px solid rgba(255,255,255,0.35);border-radius:50%;color:#fff;font-size:1.05rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">🖍</button>
+    <button id="ie-btn-era" onclick="ieTool('eraser')" title="Eraser" style="flex-shrink:0;width:42px;height:42px;background:rgba(0,0,0,0.55);border:2px solid rgba(255,255,255,0.35);border-radius:50%;color:#fff;font-size:1.05rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">⬜</button>
+    <input type="range" min="2" max="30" value="6" oninput="ieSize(+this.value)" style="flex:1;accent-color:#fff;opacity:0.85;cursor:pointer;">
+  </div>
+</div>
+
+<!-- IMG CONTEXT MENU -->
+<div id="img-ctx-menu" style="display:none;position:fixed;z-index:9900;background:#12121e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px 0;box-shadow:0 8px 28px rgba(0,0,0,0.65);min-width:150px;">
+  <button class="img-ctx-item" onclick="openCtxImgEdit()">✏️ Edit Photo</button>
+  <button class="img-ctx-item" id="img-ctx-revert" onclick="revertCtxImg()" style="display:none;">↩ Revert to Original</button>
+  <button class="img-ctx-item" onclick="deleteCtxImg()" style="color:#f87171;">🗑️ Delete</button>
+</div>
 <!-- AI Inline Prompt popup -->
 <div id="ai-inline-popup">
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
@@ -4769,6 +5914,27 @@ function recSave() {
       <button id="rec-cancel-btn" onclick="closeRecModal()">✕</button>
     </div>
   </div>
+</div>
+
+<!-- Margin panel -->
+<div id="margin-panel">
+  <h4>📐 Page Margins</h4>
+  <div class="mg-row"><span class="mg-label">Top</span><input class="mg-input" id="mg-top" type="number" min="0" max="300" value="136"><span class="mg-unit">px</span></div>
+  <div class="mg-row"><span class="mg-label">Bottom</span><input class="mg-input" id="mg-bottom" type="number" min="0" max="300" value="136"><span class="mg-unit">px</span></div>
+  <div class="mg-row"><span class="mg-label">Left</span><input class="mg-input" id="mg-left" type="number" min="0" max="300" value="96"><span class="mg-unit">px</span></div>
+  <div class="mg-row"><span class="mg-label">Right</span><input class="mg-input" id="mg-right" type="number" min="0" max="300" value="96"><span class="mg-unit">px</span></div>
+  <button class="mg-apply" onclick="applyMargins()">Apply</button>
+  <button class="mg-reset" onclick="resetMargins()">Reset to default</button>
+</div>
+
+<!-- Status bar: page counter + zoom + margin -->
+<div id="doc-statusbar">
+  <span id="page-counter">Page 1 of 1</span>
+  <div class="zoom-sep"></div>
+  <button class="zoom-btn" onclick="zoomOut()" title="Zoom out">−</button>
+  <span id="zoom-label">100%</span>
+  <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
+  <button class="zoom-btn" onclick="setZoom(100)" title="Reset zoom" style="font-size:0.65rem;padding:0 5px;">↺</button>
 </div>
 </body>
 </html>

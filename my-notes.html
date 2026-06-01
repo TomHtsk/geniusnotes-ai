@@ -89,7 +89,7 @@
     .note-row.drag-above{border-top:3px solid #8B5CF6!important;background:rgba(139,92,246,0.05);}
     .note-row.drag-below{border-bottom:3px solid #8B5CF6!important;background:rgba(139,92,246,0.05);}
     .note-row.drag-merge{background:rgba(139,92,246,0.13)!important;outline:2px solid #8B5CF6;outline-offset:-2px;border-radius:8px;}
-    .note-tag{font-size:0.67rem;font-weight:700;padding:3px 9px;border-radius:6px;background:rgba(16,185,129,0.12);color:#059669;white-space:nowrap;flex-shrink:0;}
+    .note-tag{font-size:0.67rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.12);color:#059669;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;}
     .note-title{font-size:0.86rem;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .note-date{font-size:0.72rem;color:var(--muted);flex-shrink:0;white-space:nowrap;}
     .note-open{font-size:0.75rem;font-weight:700;color:#8B5CF6;text-decoration:none;flex-shrink:0;white-space:nowrap;}
@@ -102,7 +102,7 @@
     .empty-page{text-align:center;padding:60px 20px;color:var(--muted);}
     .empty-page .ei{font-size:2.5rem;margin-bottom:12px;}
   </style>
-  <script>if(localStorage.getItem('gn-theme')==='light'){document.documentElement.classList.add('light');}</script>
+  <script>if(localStorage.getItem('gn-theme')==='light'){document.documentElement.classList.add('light');document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mn-theme-btn');if(b)b.textContent='🌙 Dark';});}</script>
 </head>
 <body>
 <nav>
@@ -112,6 +112,7 @@
     <span class="nav-center-text">GeniusNotes <span class="ai">AI</span></span>
   </a>
   <button class="nav-theme" id="mn-theme-btn" onclick="(function(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');document.getElementById('mn-theme-btn').textContent=l?'🌙 Dark':'☀️ Light';})()">☀️ Light</button>
+<script>window.addEventListener('storage',e=>{if(e.key==='gn-theme'){document.documentElement.classList.toggle('light',e.newValue==='light');var b=document.getElementById('mn-theme-btn');if(b)b.textContent=e.newValue==='light'?'🌙 Dark':'☀️ Light';}});</script>
 </nav>
 
 <div class="page">
@@ -199,10 +200,31 @@ function fmtDate(ts){
 
 function getFolders(){
   if (!_uid) return [];
-  try { return JSON.parse(localStorage.getItem('gn-folders-' + _uid) || '[]'); } catch { return []; }
+  try {
+    const a = JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]');
+    const b = JSON.parse(localStorage.getItem('gn-folders-' + _uid) || '[]');
+    const map = {};
+    b.forEach(f => { if (f && f.id) map[f.id] = f; });
+    a.forEach(f => { if (f && f.id) map[f.id] = f; });
+    return Object.values(map);
+  } catch { return []; }
 }
+const _MN_DEMO_FOLDER = { id: '__demo_folder__', name: 'Prompt Guide', _isDemo: true };
+const _MN_DEMO_NOTE = {
+  id: '__demo_commands__',
+  _isDemo: true,
+  folderId: '__demo_folder__',
+  title: 'Prompt Guide',
+  content: '<p>Type <strong>/command</strong> in any note to run AI tools instantly. See the note for the full list.</p>',
+  created: Date.now(),
+  updated: Date.now()
+};
 function getNotes(){
-  try { return JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]'); } catch { return []; }
+  try {
+    const arr = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
+    if (!arr.length && !_uid) return [_MN_DEMO_NOTE];
+    return arr;
+  } catch { return []; }
 }
 function getHistory(){
   if (!_uid) return [];
@@ -310,10 +332,12 @@ function render(){
     return;
   }
 
-  const folders = getFolders();
+  let folders = getFolders();
   const notes = getNotes();
+  if (!_uid && notes.some(n => n._isDemo)) folders = [_MN_DEMO_FOLDER, ...folders];
 
-  if (!notes.length && !folders.length) {
+  const realNotes = notes.filter(n => !n._isDemo);
+  if (!realNotes.length && !folders.length && !notes.length) {
     area.innerHTML = '<div class="empty-page"><div class="ei">📭</div><p>No notes yet.<br>Open the Notepad and save a note to see it here.</p></div>';
     return;
   }
@@ -374,6 +398,14 @@ function render(){
 }
 
 function noteRowHtml(n, folderName){
+  if (n._isDemo) {
+    return `<div class="note-row">
+      <span class="note-tag" style="background:rgba(139,92,246,0.12);color:#a78bfa;">Guide</span>
+      <span class="note-title">${esc(n.title||'Command Guide')}</span>
+      <span class="note-date">Pinned</span>
+      <a class="note-open" href="notepad.html">Open →</a>
+    </div>`;
+  }
   const tag = `My Note${folderName ? ' · ' + folderName : ''}`;
   const tagColor = folderName === 'Unfiled' ? 'background:rgba(107,114,128,0.12);color:#6B7280;' : 'background:rgba(16,185,129,0.12);color:#059669;';
   return `<div class="note-row" draggable="true" data-nid="${esc(n.id)}">

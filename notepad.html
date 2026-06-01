@@ -551,6 +551,31 @@
     .hl-color-dot:hover { transform:scale(1.3); border-color:rgba(255,255,255,0.5); }
     .hl-color-erase { width:20px; height:20px; border-radius:50%; border:1px solid rgba(255,255,255,0.15); cursor:pointer; background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.45); font-size:0.58rem; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; transition:background 0.12s; font-family:inherit; }
     .hl-color-erase:hover { background:rgba(255,80,80,0.22); color:#ff5f57; border-color:rgba(255,80,80,0.5); }
+    .sel-btn-sticky { background:rgba(255,214,0,0.1); color:#FFD600; }
+    .sel-btn-sticky:hover { background:rgba(255,214,0,0.22); }
+    mark.tts-word { background:rgba(96,165,250,0.45); color:inherit; border-radius:3px; padding:0 1px; }
+    /* Sticky note anchors in editor */
+    .gn-sticky { border-bottom:2px dashed #b8860b; cursor:pointer; position:relative; }
+    .gn-sticky::after { content:'📌'; font-size:0.62em; vertical-align:super; margin-left:1px; }
+    /* Sticky note card */
+    #sticky-drop { display:none; position:fixed; z-index:1100; width:220px; background:#FFD600; border-radius:3px 14px 14px 14px; box-shadow:4px 6px 20px rgba(0,0,0,0.35),0 1px 3px rgba(0,0,0,0.2); padding:14px 14px 12px; flex-direction:column; gap:10px; font-family:inherit; }
+    #sticky-drop::before { content:''; position:absolute; top:-10px; left:0; width:0; height:0; border-right:18px solid transparent; border-bottom:10px solid var(--sticky-color,#FFD600); }
+    #sticky-drop-view { font-size:0.85rem; color:#1a1208; line-height:1.55; min-height:44px; white-space:pre-wrap; word-break:break-word; font-weight:500; }
+    #sticky-drop textarea { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.06); border:none; border-radius:6px; color:#1a1208; font-family:inherit; font-size:0.85rem; font-weight:500; padding:7px 9px; resize:vertical; min-height:72px; outline:none; }
+    #sticky-drop textarea::placeholder { color:rgba(0,0,0,0.35); }
+    #sticky-drop textarea:focus { background:rgba(0,0,0,0.1); }
+    /* Color picker */
+    #sticky-colors { display:flex; gap:7px; align-items:center; }
+    .sticky-color-dot { width:18px; height:18px; border-radius:50%; border:2px solid rgba(0,0,0,0.15); cursor:pointer; padding:0; flex-shrink:0; transition:transform 0.12s,border-color 0.12s; }
+    .sticky-color-dot:hover,.sticky-color-dot.active { transform:scale(1.3); border-color:rgba(0,0,0,0.5); }
+    /* Action buttons */
+    #sticky-drop-actions { display:flex; gap:6px; }
+    #sticky-drop-edit { flex:1; padding:6px; border:none; border-radius:7px; background:rgba(0,0,0,0.12); color:#1a1208; font-size:0.77rem; font-weight:800; cursor:pointer; font-family:inherit; letter-spacing:0.02em; }
+    #sticky-drop-edit:hover { background:rgba(0,0,0,0.2); }
+    #sticky-drop-save { flex:1; padding:6px; border:none; border-radius:7px; background:rgba(0,0,0,0.18); color:#1a1208; font-size:0.77rem; font-weight:800; cursor:pointer; font-family:inherit; }
+    #sticky-drop-save:hover { background:rgba(0,0,0,0.28); }
+    #sticky-drop-del { padding:6px 10px; border:none; border-radius:7px; background:rgba(180,0,0,0.12); color:#8b0000; font-size:0.77rem; font-weight:800; cursor:pointer; font-family:inherit; }
+    #sticky-drop-del:hover { background:rgba(180,0,0,0.22); }
     /* Result card */
     #interp-card { display:none; position:fixed; z-index:950; width:min(400px,90vw); background:#12121e; border:1px solid rgba(139,92,246,0.4); border-radius:14px; box-shadow:0 16px 48px rgba(0,0,0,0.7); overflow:hidden; }
     .ic-header { display:flex; align-items:center; gap:8px; padding:10px 14px 8px; border-bottom:1px solid rgba(255,255,255,0.06); }
@@ -704,6 +729,7 @@
     <button id="save-btn" onclick="manualSave()" class="np-btn np-btn-primary">💾 <span class="np-btn-label">Save</span></button>
     <button onclick="copyNote()" class="np-btn" id="copy-btn">📋 <span class="np-btn-label">Copy</span></button>
     <button onclick="openShareModal()" class="np-btn" title="Share note" style="color:#34d399;">🔗 <span class="np-btn-label">Share</span></button>
+    <button id="tts-btn" onclick="toggleTTS()" class="np-btn" title="Read aloud" style="color:#60a5fa;">🔊 <span class="np-btn-label">Read</span></button>
     <button class="np-close-btn" onclick="window.location.href='my-notes.html'" title="My Notes">📂</button>
   </div>
 </div>
@@ -727,6 +753,15 @@
         <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search by title" oninput="filterNotes(this.value)" />
       </div>
+    </div>
+    <!-- Quick nav -->
+    <div style="display:flex;gap:5px;padding:6px 10px 2px;flex-shrink:0;">
+      <a href="index.html" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;font-size:0.78rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
+      </a>
+      <a href="my-notes.html" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;font-size:0.78rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>My Notes
+      </a>
     </div>
     <!-- Notes section -->
     <div class="sb-section-hd">
@@ -1167,9 +1202,11 @@
     <button class="sel-btn sel-btn-define" onclick="runInterpret('define')">📖 Define</button>
     <button class="sel-btn sel-btn-comprehend" onclick="runInterpret('comprehend')">💡 Comprehend</button>
     <button class="sel-btn sel-btn-grammar" onclick="runInterpret('grammar')">✏️ Grammar</button>
+    <button class="sel-btn sel-btn-sticky" onclick="addStickyNote()">📌 Sticky Note</button>
   </div>
   <div id="sel-single-row" style="display:none;gap:4px;align-items:center;">
     <button class="sel-btn sel-btn-grammar" onclick="runInterpret('spelling')">🔤 Spelling</button>
+    <button class="sel-btn sel-btn-sticky" onclick="addStickyNote()">📌 Sticky Note</button>
   </div>
   <div style="height:1px;background:rgba(255,255,255,0.07);margin:4px 0;"></div>
   <div style="display:flex;align-items:center;gap:7px;padding:2px 4px;">
@@ -1181,6 +1218,24 @@
     <button class="hl-color-dot" style="background:#EA80FC;" title="Purple"  onclick="applyManualHighlight('rgba(234,128,252,0.4)')"></button>
     <button class="hl-color-dot" style="background:#FF6E40;" title="Orange"  onclick="applyManualHighlight('rgba(255,110,64,0.4)')"></button>
     <button class="hl-color-erase" title="Remove highlight" onclick="removeManualHighlight()">✕</button>
+  </div>
+</div>
+
+<!-- Sticky Note Dropdown -->
+<div id="sticky-drop">
+  <div id="sticky-colors">
+    <button class="sticky-color-dot" style="background:#FFD600;" data-color="#FFD600" onclick="setStickyColor('#FFD600',this)"></button>
+    <button class="sticky-color-dot" style="background:#69F0AE;" data-color="#69F0AE" onclick="setStickyColor('#69F0AE',this)"></button>
+    <button class="sticky-color-dot" style="background:#80D8FF;" data-color="#80D8FF" onclick="setStickyColor('#80D8FF',this)"></button>
+    <button class="sticky-color-dot" style="background:#FF80AB;" data-color="#FF80AB" onclick="setStickyColor('#FF80AB',this)"></button>
+    <button class="sticky-color-dot" style="background:#FF6E40;" data-color="#FF6E40" onclick="setStickyColor('#FF6E40',this)"></button>
+  </div>
+  <div id="sticky-drop-view"></div>
+  <textarea id="sticky-drop-text" placeholder="Write your note…" style="display:none;"></textarea>
+  <div id="sticky-drop-actions">
+    <button id="sticky-drop-edit" onclick="editStickyDrop()">Edit</button>
+    <button id="sticky-drop-save" onclick="saveStickyDrop()" style="display:none;">Save</button>
+    <button id="sticky-drop-del" onclick="deleteStickyDrop()">Remove</button>
   </div>
 </div>
 
@@ -1903,6 +1958,7 @@ function newNote() {
 }
 
 function openNote(id) {
+  if (typeof _ttsStop === 'function') { window.speechSynthesis.cancel(); _ttsStop(); }
   activeId = id;
   const note = notes.find(n => n.id === id);
   if (!note) return;
@@ -2998,6 +3054,95 @@ function copyNote() {
   });
 }
 
+// ── TEXT TO SPEECH ────────────────────────────────────────────
+let _ttsActive = false, _ttsHighlightEl = null, _ttsEditorEl = null;
+
+function _ttsBuildMap(root) {
+  // Walk DOM building {node, start, end} aligned with innerText offsets
+  const map = [];
+  let offset = 0;
+  const BLOCK = new Set(['P','DIV','H1','H2','H3','H4','H5','H6','LI','TD','TH','BLOCKQUOTE','PRE']);
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent.length;
+      if (len) { map.push({ node, start: offset, end: offset + len }); offset += len; }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.tagName === 'BR') { offset += 1; return; }
+      const pre = offset;
+      for (const c of node.childNodes) walk(c);
+      if (BLOCK.has(node.tagName) && offset > pre && offset > 0) offset += 1;
+    }
+  }
+  walk(root);
+  return map;
+}
+
+function _ttsWordLen(text, idx) {
+  const m = text.slice(idx).match(/^\S+/);
+  return m ? m[0].length : 1;
+}
+
+function _ttsRemoveHighlight() {
+  if (_ttsHighlightEl && _ttsHighlightEl.parentNode) {
+    const p = _ttsHighlightEl.parentNode;
+    while (_ttsHighlightEl.firstChild) p.insertBefore(_ttsHighlightEl.firstChild, _ttsHighlightEl);
+    p.removeChild(_ttsHighlightEl);
+    p.normalize();
+  }
+  _ttsHighlightEl = null;
+}
+
+function _ttsHighlightWord(el, charIndex, charLen) {
+  const map = _ttsBuildMap(el);
+  for (const e of map) {
+    if (charIndex >= e.start && charIndex < e.end) {
+      const ls = charIndex - e.start;
+      const le = Math.min(ls + charLen, e.node.textContent.length);
+      const range = document.createRange();
+      range.setStart(e.node, ls);
+      range.setEnd(e.node, le);
+      const mark = document.createElement('mark');
+      mark.className = 'tts-word';
+      try {
+        range.surroundContents(mark);
+        _ttsHighlightEl = mark;
+        mark.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch(_) {}
+      break;
+    }
+  }
+}
+
+function toggleTTS() {
+  if (_ttsActive) { window.speechSynthesis.cancel(); _ttsStop(); return; }
+  const el = _getActiveEditorEl();
+  if (!el) return;
+  const text = el.innerText;
+  if (!text.trim()) return;
+  _ttsEditorEl = el;
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 0.95;
+  utt.onboundary = e => {
+    if (e.name !== 'word') return;
+    _ttsRemoveHighlight();
+    _ttsHighlightWord(el, e.charIndex, e.charLength || _ttsWordLen(text, e.charIndex));
+  };
+  utt.onend = _ttsStop;
+  utt.onerror = _ttsStop;
+  _ttsActive = true;
+  const btn = document.getElementById('tts-btn');
+  if (btn) btn.innerHTML = '⏹ <span class="np-btn-label">Stop</span>';
+  window.speechSynthesis.speak(utt);
+}
+
+function _ttsStop() {
+  _ttsRemoveHighlight();
+  _ttsActive = false;
+  _ttsEditorEl = null;
+  const btn = document.getElementById('tts-btn');
+  if (btn) btn.innerHTML = '🔊 <span class="np-btn-label">Read</span>';
+}
+
 // ── SELECTION INTERPRET ──
 let _selText = '', _selRange = null;
 
@@ -3036,6 +3181,119 @@ function showSelectionPopup() {
 function hideSelectionPopup() {
   document.getElementById('sel-popup').style.display = 'none';
 }
+
+// ── STICKY NOTES ──────────────────────────────────────────────
+let _stickyTarget = null;
+
+function addStickyNote() {
+  hideSelectionPopup();
+  if (!_selRange) return;
+  const span = document.createElement('span');
+  span.className = 'gn-sticky';
+  span.dataset.note = '';
+  span.dataset.color = _STICKY_DEFAULT_COLOR;
+  try {
+    _selRange.surroundContents(span);
+  } catch(e) {
+    const frag = _selRange.extractContents();
+    span.appendChild(frag);
+    _selRange.insertNode(span);
+  }
+  window.getSelection().removeAllRanges();
+  scheduleSave();
+  openStickyDrop(span);
+}
+
+const _STICKY_DEFAULT_COLOR = '#FFD600';
+
+function _applyStickyColor(color) {
+  const drop = document.getElementById('sticky-drop');
+  drop.style.background = color;
+  drop.style.setProperty('--sticky-color', color);
+  // Update active dot
+  document.querySelectorAll('.sticky-color-dot').forEach(d => d.classList.toggle('active', d.dataset.color === color));
+}
+
+function setStickyColor(color, btn) {
+  if (_stickyTarget) _stickyTarget.dataset.color = color;
+  _applyStickyColor(color);
+  scheduleSave();
+}
+
+function openStickyDrop(span) {
+  _stickyTarget = span;
+  const note = span.dataset.note || '';
+  const color = span.dataset.color || _STICKY_DEFAULT_COLOR;
+  const drop = document.getElementById('sticky-drop');
+  _applyStickyColor(color);
+  // Show read-only view
+  document.getElementById('sticky-drop-view').textContent = note || '(no note yet)';
+  document.getElementById('sticky-drop-view').style.display = '';
+  document.getElementById('sticky-drop-text').style.display = 'none';
+  document.getElementById('sticky-drop-edit').style.display = '';
+  document.getElementById('sticky-drop-save').style.display = 'none';
+  drop.style.display = 'flex';
+  const rect = span.getBoundingClientRect();
+  let top = rect.bottom + 10;
+  let left = rect.left;
+  if (left + 230 > window.innerWidth) left = window.innerWidth - 234;
+  if (top + 180 > window.innerHeight) top = rect.top - 188;
+  drop.style.top = top + 'px';
+  drop.style.left = left + 'px';
+  if (!note) editStickyDrop();
+}
+
+function editStickyDrop() {
+  const ta = document.getElementById('sticky-drop-text');
+  ta.value = _stickyTarget ? (_stickyTarget.dataset.note || '') : '';
+  document.getElementById('sticky-drop-view').style.display = 'none';
+  ta.style.display = '';
+  document.getElementById('sticky-drop-edit').style.display = 'none';
+  document.getElementById('sticky-drop-save').style.display = '';
+  setTimeout(() => ta.focus(), 30);
+}
+
+function saveStickyDrop() {
+  if (!_stickyTarget) return;
+  const val = document.getElementById('sticky-drop-text').value.trim();
+  _stickyTarget.dataset.note = val;
+  document.getElementById('sticky-drop-view').textContent = val || '(no note yet)';
+  document.getElementById('sticky-drop-view').style.display = '';
+  document.getElementById('sticky-drop-text').style.display = 'none';
+  document.getElementById('sticky-drop-edit').style.display = '';
+  document.getElementById('sticky-drop-save').style.display = 'none';
+  scheduleSave();
+}
+
+function deleteStickyDrop() {
+  if (!_stickyTarget) return;
+  const parent = _stickyTarget.parentNode;
+  while (_stickyTarget.firstChild) parent.insertBefore(_stickyTarget.firstChild, _stickyTarget);
+  parent.removeChild(_stickyTarget);
+  closeStickyDrop();
+  scheduleSave();
+}
+
+function closeStickyDrop() {
+  document.getElementById('sticky-drop').style.display = 'none';
+  _stickyTarget = null;
+}
+
+// Click on a sticky span in either editor
+['editor','editor-right'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', e => {
+    const sticky = e.target.closest('.gn-sticky');
+    if (sticky) { e.preventDefault(); openStickyDrop(sticky); }
+    else closeStickyDrop();
+  });
+});
+
+// Close on outside click
+document.addEventListener('mousedown', e => {
+  const drop = document.getElementById('sticky-drop');
+  if (drop.style.display !== 'none' && !drop.contains(e.target) && !e.target.closest('.gn-sticky')) closeStickyDrop();
+});
 
 function closeInterpCard() {
   document.getElementById('interp-card').style.display = 'none';
@@ -3533,36 +3791,55 @@ document.addEventListener('mousedown', e => {
 // ── MANUAL COLOR HIGHLIGHT ────────────────────────────────────
 function applyManualHighlight(color) {
   if (!_selRange || _selRange.collapsed) return;
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(_selRange);
-  const text = _selRange.toString();
-  if (!text) return;
-  const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  document.execCommand('insertHTML', false, `<mark style="background:${color};border-radius:2px;padding:0 2px;">${safe}</mark>`);
+  if (!_selRange.toString()) return;
+  // If selection is fully inside a mark of the same color, remove it instead
+  const container = _selRange.commonAncestorContainer;
+  const existingMark = (container.nodeType === Node.TEXT_NODE ? container.parentElement : container).closest('mark');
+  if (existingMark && existingMark.style.background === color) {
+    const p = existingMark.parentNode;
+    while (existingMark.firstChild) p.insertBefore(existingMark.firstChild, existingMark);
+    p.removeChild(existingMark);
+    p.normalize();
+    window.getSelection().removeAllRanges();
+    hideSelectionPopup();
+    scheduleSave();
+    return;
+  }
+  const mark = document.createElement('mark');
+  mark.style.cssText = `background:${color};border-radius:2px;padding:0 2px;`;
+  try {
+    const frag = _selRange.extractContents();
+    mark.appendChild(frag);
+    _selRange.insertNode(mark);
+  } catch(e) {
+    const safe = _selRange.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    document.execCommand('insertHTML', false, `<mark style="background:${color};border-radius:2px;padding:0 2px;">${safe}</mark>`);
+  }
+  window.getSelection().removeAllRanges();
   hideSelectionPopup();
   scheduleSave();
 }
 
 function removeManualHighlight() {
   if (!_selRange) return;
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(_selRange);
-  const activeEditorEl = _getActiveEditorEl();
-  let node = _selRange.commonAncestorContainer;
-  while (node && node !== activeEditorEl) {
-    if (node.nodeName === 'MARK') {
-      const txt = document.createTextNode(node.textContent);
-      node.parentNode.replaceChild(txt, node);
-      activeEditorEl.normalize();
-      hideSelectionPopup();
-      scheduleSave();
-      return;
+  const editor = _getActiveEditorEl();
+  if (!editor) return;
+  // Find all <mark> elements that intersect the selection
+  const marks = Array.from(editor.querySelectorAll('mark'));
+  let removed = false;
+  marks.forEach(mark => {
+    const markRange = document.createRange();
+    markRange.selectNode(mark);
+    if (_selRange.compareBoundaryPoints(Range.END_TO_START, markRange) <= 0 &&
+        _selRange.compareBoundaryPoints(Range.START_TO_END, markRange) >= 0) {
+      const p = mark.parentNode;
+      while (mark.firstChild) p.insertBefore(mark.firstChild, mark);
+      p.removeChild(mark);
+      removed = true;
     }
-    node = node.parentNode;
-  }
-  document.execCommand('removeFormat', false, null);
+  });
+  if (removed) editor.normalize();
+  window.getSelection().removeAllRanges();
   hideSelectionPopup();
   scheduleSave();
 }

@@ -74,12 +74,12 @@
     .np-close-btn {
       background: none; border: 1px solid var(--border);
       color: var(--muted); border-radius: 8px;
-      width: 32px; height: 32px; display: flex;
-      align-items: center; justify-content: center;
-      cursor: pointer; font-size: 0.9rem; flex-shrink: 0;
-      transition: all 0.15s; font-family: inherit;
+      height: 32px; padding: 0 10px; display: flex;
+      align-items: center; justify-content: center; gap: 5px;
+      cursor: pointer; font-size: 0.78rem; font-weight: 600; flex-shrink: 0;
+      transition: all 0.15s; font-family: inherit; white-space: nowrap;
     }
-    .np-close-btn:hover { border-color: #ff5555; color: #ff5555; }
+    .np-close-btn:hover { border-color: var(--purple2); color: var(--purple2); background: rgba(139,92,246,0.08); }
     .np-btn-label { }
     @media (max-width: 580px) { .np-btn-label { display: none; } .si-label { display: none; } }
 
@@ -131,14 +131,15 @@
     .ni-title { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .note-item.active .ni-title { font-weight:600; color:var(--purple2); }
     .ni-date { font-size:0.66rem; color:var(--muted); margin-top:1px; }
-    .note-rename-btn { flex-shrink:0; background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 3px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
+    .ni-folder { font-size:0.62rem; color:var(--muted); margin-top:1px; opacity:0.7; }
+    .note-rename-btn { flex-shrink:0; background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 5px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
     .note-item:hover .note-rename-btn { opacity:0.6; }
-    .note-rename-btn:hover { opacity:1!important; color:var(--purple2); }
-    .note-delete { position:absolute; right:7px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:0.85rem; opacity:0; transition:opacity 0.15s; padding:2px 4px; }
-    .note-item:hover .note-delete { opacity:0.6; }
+    .note-rename-btn:hover { opacity:1!important; color:var(--purple2); background:rgba(139,92,246,0.08); }
+    .note-delete { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; border-left:1px solid rgba(255,255,255,0.07); color:var(--muted); cursor:pointer; font-size:0.8rem; opacity:0; transition:opacity 0.15s; padding:3px 6px 3px 8px; }
+    .note-item:hover .note-delete { opacity:0.55; }
     .note-delete:hover { color:#ff5555; opacity:1!important; }
     .note-compare-btn { display:none; }
-    .note-move-btn { position:absolute;right:28px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
+    .note-move-btn { position:absolute;right:34px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
     .note-item:hover .note-move-btn { opacity:0.7; }
     .note-move-btn:hover { opacity:1!important; color:var(--purple2); }
     .note-item-preview,.note-item-date,.note-item-title-row,.note-item-title,.df-chip,.df-chip-active { display:none; }
@@ -532,6 +533,29 @@
     .fp-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;color:var(--text);font-size:0.78rem;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:background 0.12s;}
     .fp-opt:hover{background:rgba(139,92,246,0.1);}
     .fp-opt.fp-current{color:var(--purple2);}
+    /* ── FOLDER TREE ── */
+    .ftree-row{display:flex;align-items:center;gap:2px;padding:4px 6px;border-radius:7px;cursor:pointer;transition:background 0.12s;user-select:none;}
+    .ftree-row:hover{background:rgba(255,255,255,0.05);}
+    .ftree-row.active{background:rgba(139,92,246,0.15);}
+    .ftree-row.drop-over{background:rgba(139,92,246,0.18);outline:1.5px dashed rgba(139,92,246,0.55);outline-offset:-1px;}
+    .ftree-chev{width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.5rem;transition:transform 0.15s;border-radius:3px;}
+    .ftree-chev:hover{background:rgba(255,255,255,0.1);}
+    .ftree-chev.open{transform:rotate(90deg);}
+    .ftree-chev.leaf{visibility:hidden;pointer-events:none;}
+    .ftree-icon{font-size:0.82rem;flex-shrink:0;line-height:1;}
+    .ftree-name{font-size:0.81rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ftree-row.active .ftree-name{color:var(--purple2);}
+    .ftree-count{font-size:0.62rem;color:var(--muted);flex-shrink:0;}
+    .ftree-btn{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:0.72rem;flex-shrink:0;transition:opacity 0.12s,color 0.12s,background 0.12s;}
+    .ftree-row:hover .ftree-btn{opacity:1;}
+    .ftree-btn:hover{background:rgba(255,255,255,0.08);color:var(--text);}
+    .ftree-btn.del:hover{color:#ff5555;}
+    .ftree-note{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background 0.12s;}
+    .ftree-note:hover{background:rgba(255,255,255,0.04);}
+    .ftree-note.active{background:rgba(139,92,246,0.1);}
+    .ftree-note-title{font-size:0.77rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ftree-note.active .ftree-note-title{color:var(--purple2);}
+    .ftree-empty{font-size:0.75rem;color:var(--muted);padding:6px 10px;}
     .note-folder-tag{font-size:0.6rem;color:var(--purple2);background:rgba(139,92,246,0.1);padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
     /* ── SELECTION POPUP ── */
@@ -730,7 +754,7 @@
     <button onclick="copyNote()" class="np-btn" id="copy-btn">📋 <span class="np-btn-label">Copy</span></button>
     <button onclick="openShareModal()" class="np-btn" title="Share note" style="color:#34d399;">🔗 <span class="np-btn-label">Share</span></button>
     <button id="tts-btn" onclick="toggleTTS()" class="np-btn" title="Read aloud" style="color:#60a5fa;">🔊 <span class="np-btn-label">Read</span></button>
-    <button class="np-close-btn" onclick="window.location.href='my-notes.html'" title="My Notes">📂</button>
+    <button class="np-close-btn" onclick="window.location.href='my-notes.html'" title="My Notes">📂 <span class="np-btn-label">My Notes</span></button>
   </div>
 </div>
 
@@ -797,10 +821,6 @@
       <button class="sb-bot-btn" onclick="toggleNpTheme()" id="np-theme-btn" title="Toggle theme">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         Theme
-      </button>
-      <button class="sb-bot-btn" onclick="window.open('dashboard.html','_blank')" title="Dashboard">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Dashboard
       </button>
     </div>
   </div>
@@ -1706,26 +1726,32 @@ function saveFolders() {
   localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
 }
 
-function newFolder() {
+function newFolder(parentId) {
   showCustomPrompt('New Folder', 'Enter a name for your folder', '', function(name) {
     if (!name || !name.trim()) return;
-    const folder = { id: genId(), name: name.trim() };
+    const folder = { id: genId(), name: name.trim(), parentId: parentId || null };
     folders.push(folder);
+    if (parentId) collapsedFolders.delete(parentId);
     saveFolders();
     _cloudSaveFolder(folder);
     renderSidebar();
-    renderSbFolders();
   });
+}
+
+function _deleteFolderTree(folderId) {
+  folders.filter(f => f.parentId === folderId).forEach(c => _deleteFolderTree(c.id));
+  folders = folders.filter(f => f.id !== folderId);
+  if (_folderFilter === folderId) _folderFilter = null;
+  _cloudDeleteFolder(folderId);
+  notes.forEach(n => { if (n.folderId === folderId) { delete n.folderId; _cloudSaveNote(n); } });
 }
 
 function deleteFolder(e, folderId) {
   e.stopPropagation();
-  if (!confirm('Delete folder? Notes inside will become unfiled.')) return;
-  folders = folders.filter(f => f.id !== folderId);
-  if (_folderFilter === folderId) _folderFilter = null;
+  const hasSub = folders.some(f => f.parentId === folderId);
+  if (!confirm(hasSub ? 'Delete folder and all subfolders? Notes will become unfiled.' : 'Delete folder? Notes inside will become unfiled.')) return;
+  _deleteFolderTree(folderId);
   saveFolders();
-  _cloudDeleteFolder(folderId);
-  notes.forEach(n => { if (n.folderId === folderId) { delete n.folderId; _cloudSaveNote(n); } });
   saveNotes();
   renderSidebar();
 }
@@ -1870,25 +1896,185 @@ function _sortFolders(arr) {
   return arr;
 }
 
+// ── FOLDER TREE ──
+let _ftreeDragging = null; // { type:'note'|'folder', id }
+let _ftreeAddTarget = null;
+
+function _ftreeCountAll(fid) {
+  return notes.filter(n => n.folderId === fid).length +
+    folders.filter(f => f.parentId === fid).reduce((s, f) => s + _ftreeCountAll(f.id), 0);
+}
+
+function _ftreeIsDescendant(id, ancestorId) {
+  if (!id) return false;
+  if (id === ancestorId) return true;
+  const f = folders.find(f => f.id === id);
+  return f && f.parentId ? _ftreeIsDescendant(f.parentId, ancestorId) : false;
+}
+
+function _renderFolderTree(parentId, depth) {
+  const indent = depth * 14;
+  const children = _sortFolders(folders.filter(f => (f.parentId || null) === (parentId || null)));
+  let html = '';
+  children.forEach(f => {
+    const isOpen = !collapsedFolders.has(f.id);
+    const subFolders = folders.filter(sf => sf.parentId === f.id);
+    const fNotes = notes.filter(n => n.folderId === f.id);
+    const hasKids = subFolders.length > 0 || fNotes.length > 0;
+    const isActive = _folderFilter === f.id;
+    const total = _ftreeCountAll(f.id);
+    html += `<div class="ftree-row${isActive?' active':''}"
+      style="padding-left:${8+indent}px;"
+      onclick="setFolderFilter('${f.id}')"
+      draggable="true"
+      ondragstart="_ftreeDragFolderStart(event,'${f.id}')"
+      ondragover="_ftreeDragOver(event)"
+      ondragleave="_ftreeDragLeave(event)"
+      ondrop="_ftreeDrop(event,'${f.id}')">
+      <span class="ftree-chev${hasKids?(isOpen?' open':''):' leaf'}" onclick="event.stopPropagation();toggleFolderCollapse('${f.id}')">▶</span>
+      <span class="ftree-icon">📁</span>
+      <span class="ftree-name">${escHtml(f.name)}</span>
+      ${total?`<span class="ftree-count">${total}</span>`:''}
+      <button class="ftree-btn" onclick="event.stopPropagation();_ftreeShowAdd(event,'${f.id}')" title="New note or subfolder">+</button>
+      <button class="ftree-btn del" onclick="deleteFolder(event,'${f.id}')" title="Delete">✕</button>
+    </div>`;
+    if (isOpen) {
+      html += _renderFolderTree(f.id, depth + 1);
+      if (fNotes.length) {
+        [...fNotes].sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(n => {
+          html += `<div class="ftree-note${n.id===activeId?' active':''}"
+            style="padding-left:${22+indent}px;"
+            onclick="openNote('${n.id}')"
+            draggable="true"
+            ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
+            <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
+            <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
+          </div>`;
+        });
+      }
+    }
+  });
+  return html;
+}
+
 function renderSbFolders() {
   const el = document.getElementById('sb-folder-list');
   if (!el) return;
-  const sorted = _sortFolders(folders);
-  let html = `<div class="sb-folder-item" onclick="setFolderFilter(null)">
+  let html = `<div class="sb-folder-item" onclick="setFolderFilter(null)"
+    ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
     <span class="sb-fdot" style="background:rgba(139,92,246,0.35);border:1.5px solid rgba(139,92,246,0.5);"></span>
     <span class="sb-fname" style="${!_folderFilter?'color:var(--purple2);font-weight:600;':''}">All Notes</span>
     <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;padding-right:4px;">${notes.length}</span>
   </div>`;
-  sorted.forEach(f => {
-    const count = notes.filter(n=>n.folderId===f.id).length;
-    html += `<div class="sb-folder-item" onclick="setFolderFilter('${f.id}')">
-      <span class="sb-fdot" style="background:var(--purple2);opacity:${_folderFilter===f.id?'1':'0.55'};"></span>
-      <span class="sb-fname" style="${_folderFilter===f.id?'color:var(--purple2);font-weight:600;':''}">${escHtml(f.name)}</span>
-      <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;">${count||''}</span>
-      <button class="sb-fdel" onclick="deleteFolder(event,'${f.id}')" title="Delete folder">✕</button>
+  html += _renderFolderTree(null, 0);
+  if (!folders.length) html += '<div class="ftree-empty">No folders yet. Click + to create one.</div>';
+
+  // Unfiled notes section
+  const unfiledNotes = notes.filter(n => !n.folderId || !folders.find(f => f.id === n.folderId));
+  if (unfiledNotes.length) {
+    const unfiledOpen = !collapsedFolders.has('__unfiled__');
+    html += `<div class="ftree-row${_folderFilter==='__unfiled__'?' active':''}"
+      style="padding-left:8px;margin-top:4px;"
+      onclick="setFolderFilter('__unfiled__')"
+      ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
+      <span class="ftree-chev${unfiledOpen?' open':''}" onclick="event.stopPropagation();toggleFolderCollapse('__unfiled__')">▶</span>
+      <span class="ftree-icon">📄</span>
+      <span class="ftree-name" style="${_folderFilter==='__unfiled__'?'color:var(--purple2);':''}">Unfiled</span>
+      <span class="ftree-count">${unfiledNotes.length}</span>
     </div>`;
-  });
+    if (unfiledOpen) {
+      [...unfiledNotes].sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(n => {
+        html += `<div class="ftree-note${n.id===activeId?' active':''}"
+          style="padding-left:22px;"
+          onclick="openNote('${n.id}')"
+          draggable="true"
+          ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
+          <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
+          <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
+        </div>`;
+      });
+    }
+  }
   el.innerHTML = html;
+}
+
+// ── TREE ADD MENU ──
+function _ftreeShowAdd(event, folderId) {
+  _ftreeAddTarget = folderId;
+  const menu = document.getElementById('ftree-add-menu');
+  if (!menu) return;
+  const rect = event.currentTarget.getBoundingClientRect();
+  let left = rect.left, top = rect.bottom + 4;
+  if (left + 160 > window.innerWidth) left = window.innerWidth - 164;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', _ftreeHideAdd, { once: true }), 10);
+}
+function _ftreeHideAdd() {
+  const m = document.getElementById('ftree-add-menu');
+  if (m) m.style.display = 'none';
+}
+function _ftreeAddNote() {
+  _ftreeHideAdd();
+  const fid = _ftreeAddTarget;
+  const note = { id: genId(), title: '', content: '', created: Date.now(), updated: Date.now() };
+  if (fid) { note.folderId = fid; collapsedFolders.delete(fid); }
+  notes.unshift(note);
+  saveNotes();
+  openNote(note.id);
+  renderSidebar();
+  setTimeout(() => document.getElementById('note-title-input')?.focus(), 50);
+}
+function _ftreeAddSubfolder() {
+  _ftreeHideAdd();
+  newFolder(_ftreeAddTarget);
+}
+
+// ── TREE DRAG & DROP ──
+function _ftreeDragFolderStart(event, folderId) {
+  _ftreeDragging = { type: 'folder', id: folderId };
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', folderId);
+}
+function _ftreeDragNoteStart(event, noteId) {
+  _ftreeDragging = { type: 'note', id: noteId };
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', noteId);
+}
+function _ftreeDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('drop-over');
+}
+function _ftreeDragLeave(event) {
+  event.currentTarget.classList.remove('drop-over');
+}
+function _ftreeDrop(event, targetFolderId) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.currentTarget.classList.remove('drop-over');
+  if (!_ftreeDragging) return;
+  if (_ftreeDragging.type === 'note') {
+    const note = notes.find(n => n.id === _ftreeDragging.id);
+    if (!note) return;
+    if (targetFolderId) note.folderId = targetFolderId;
+    else delete note.folderId;
+    saveNotes();
+    _cloudSaveNote(note);
+    if (targetFolderId) collapsedFolders.delete(targetFolderId);
+  } else if (_ftreeDragging.type === 'folder') {
+    const fid = _ftreeDragging.id;
+    if (fid === targetFolderId) return;
+    if (_ftreeIsDescendant(targetFolderId, fid)) return; // no circular
+    const folder = folders.find(f => f.id === fid);
+    if (!folder) return;
+    folder.parentId = targetFolderId || null;
+    saveFolders();
+    _cloudSaveFolder(folder);
+    if (targetFolderId) collapsedFolders.delete(targetFolderId);
+  }
+  _ftreeDragging = null;
+  renderSidebar();
 }
 
 let _folderFilter = null;
@@ -1906,6 +2092,7 @@ function renderNoteItem(n) {
     <div class="ni-text">
       <div class="ni-title">${escHtml(n.title || 'Untitled')}</div>
       <div class="ni-date">${fmtDate(n.updated)}</div>
+      ${folders.length > 0 ? `<div class="ni-folder">${(()=>{ const f=folders.find(f=>f.id===n.folderId); return f?'📁 '+escHtml(f.name):'📄 Unfiled'; })()}</div>` : ''}
     </div>
     <button class="note-rename-btn" onclick="renameNoteInline(event,'${n.id}')" title="Rename">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1928,7 +2115,9 @@ function renderSidebar() {
   const q = searchQuery.toLowerCase();
   const filtered = _sortNotes(
     notes.filter(n => {
-      if (_folderFilter && n.folderId !== _folderFilter) return false;
+      if (_folderFilter === '__unfiled__') {
+        if (n.folderId && folders.find(f => f.id === n.folderId)) return false;
+      } else if (_folderFilter && n.folderId !== _folderFilter) return false;
       return !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q);
     })
   );
@@ -1982,6 +2171,15 @@ function openNote(id) {
   setTimeout(buildRuler, 100);
   renderSidebar();
   document.getElementById('editor').focus();
+  // Resume live-collab listener if this note has an active share link
+  if (note.shareId && _fbDb) {
+    _fbDb.collection('shared_notes').doc(note.shareId).get().then(doc => {
+      if (doc.exists && doc.data().collaborative) _startCollabSync(note.shareId);
+    }).catch(() => {});
+  } else if (_collabUnsub) {
+    _collabUnsub();
+    _collabUnsub = null;
+  }
 }
 
 function deleteNote(e, id) {
@@ -3536,6 +3734,9 @@ const _CMD_INFO = {
   convert_cornell: { icon:'📋', title:'Cornell Notes',     desc:'Convert note into cue → key answer · notes · summary format' },
   format_default:  { icon:'⚡', title:'/format …',         desc:'Available: code · flashcards · academic · bullets · outline · studyguide' },
   format_academic: { icon:'🎓', title:'Academic Essay',    desc:'Format as structured APA / MLA / Chicago essay' },
+  format_apa:      { icon:'🎓', title:'APA Essay',          desc:'Format as structured APA 7th edition essay' },
+  format_mla:      { icon:'🎓', title:'MLA Essay',          desc:'Format as structured MLA 9th edition essay' },
+  format_chicago:  { icon:'🎓', title:'Chicago Essay',      desc:'Format as structured Chicago 17th edition essay' },
   format_flash:    { icon:'🃏', title:'Flashcards',        desc:'Create a flashcard deck from this note' },
   format_code:     { icon:'🍪', title:'Format Code',       desc:'Clean and format code with syntax highlighting' },
   format_bullets:  { icon:'•',  title:'Bullet Points',     desc:'Convert note into organized bullet point summary' },
@@ -3562,6 +3763,9 @@ function _cmdFamily(verb) {
   if (v === 'cornellnotes' || (v.length >= 4 && 'cornellnotes'.startsWith(v))) return 'cornellnotes';
   if (v === 'homeworksolver' || (v.length >= 2 && 'homeworksolver'.startsWith(v))) return 'homeworksolver';
   if ('solve'.startsWith(v)   && v.length > 0) return 'solve';
+  if (v === 'formatapa'     || (v.length >= 7 && 'formatapa'.startsWith(v)))     return 'apa';
+  if (v === 'formatmla'     || (v.length >= 7 && 'formatmla'.startsWith(v)))     return 'mla';
+  if (v === 'formatchicago' || (v.length >= 7 && 'formatchicago'.startsWith(v))) return 'chicago';
   if ('format'.startsWith(v)  && v.length > 0) return 'format';
   if ('convert'.startsWith(v) && v.length > 0) return 'convert';
   return null;
@@ -3585,6 +3789,9 @@ function _getSlashAction(family, sub) {
   if (family === 'share') return openShareModal;
   if (family === 'convert' && /cornell/.test(s)) return () => openDocFormat('cornell');
   if (family === 'format') {
+    if (/^apa$/i.test(s))     return () => { _dfStyle = 'APA';     openDocFormat('academic'); };
+    if (/^mla$/i.test(s))     return () => { _dfStyle = 'MLA';     openDocFormat('academic'); };
+    if (/^chicago$/i.test(s)) return () => { _dfStyle = 'Chicago'; openDocFormat('academic'); };
     if (/academic|apa|mla|chicago/.test(s)) return () => openDocFormat('academic');
     if (/flash/.test(s)) return sendNoteToFlashcards;
     if (/code/.test(s)) return openCodeConvert;
@@ -3621,10 +3828,19 @@ function _updateCmdPanel(text) {
     key = 'format_study';
   } else if (fam === 'share') {
     key = 'share';
-  } else if (fam === 'academic' || fam === 'apa' || fam === 'mla' || fam === 'chicago') {
+  } else if (fam === 'academic') {
     key = 'format_academic';
+  } else if (fam === 'apa') {
+    key = 'format_apa';
+  } else if (fam === 'mla') {
+    key = 'format_mla';
+  } else if (fam === 'chicago') {
+    key = 'format_chicago';
   } else if (fam === 'format') {
     if (/flash/.test(sub) || (sub && 'flashcards'.startsWith(sub))) key = 'format_flash';
+    else if (/^apa$/i.test(sub)) key = 'format_apa';
+    else if (/^mla$/i.test(sub)) key = 'format_mla';
+    else if (/^chicago$/i.test(sub)) key = 'format_chicago';
     else if (/academic|apa|mla|chicago/.test(sub) || (sub && 'academic'.startsWith(sub))) key = 'format_academic';
     else if (/code/.test(sub) || (sub && 'code'.startsWith(sub))) key = 'format_code';
     else if (/bullet/.test(sub) || (sub && 'bullets'.startsWith(sub))) key = 'format_bullets';
@@ -4557,6 +4773,13 @@ function initCloudSync() {
       });
     }
     _fbDb = firebase.firestore();
+    // Start collab listener for any shared note that was already open before _fbDb was ready
+    const _activeSharedNote = notes.find(n => n.id === activeId && n.shareId);
+    if (_activeSharedNote) {
+      _fbDb.collection('shared_notes').doc(_activeSharedNote.shareId).get().then(doc => {
+        if (doc.exists && doc.data().collaborative) _startCollabSync(_activeSharedNote.shareId);
+      }).catch(() => {});
+    }
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         _fbUid = user.uid;
@@ -4680,6 +4903,14 @@ function _cloudSaveNote(note) {
   _setCloudIcon('🔄');
   _fbDb.doc(`users/${_fbUid}/notepad_notes/${note.id}`).set(note, { merge: true })
     .then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
+  // Push to shared_notes so share.html sees changes in real-time
+  if (note.shareId && _fbDb) {
+    _fbDb.collection('shared_notes').doc(note.shareId).get().then(doc => {
+      if (doc.exists && doc.data().collaborative) {
+        doc.ref.update({ content: note.content || '', title: note.title || 'Untitled', lastEditedAt: Date.now() }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
 }
 
 function _cloudDeleteNote(id) {
@@ -6088,6 +6319,12 @@ function recSave() {
 
 <script src="js/recorder.js"></script>
 
+<!-- Folder tree add-menu -->
+<div id="ftree-add-menu" style="display:none;position:fixed;z-index:5000;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:158px;box-shadow:0 8px 28px rgba(0,0,0,0.5);">
+  <button class="fp-opt" onclick="_ftreeAddNote()">📄 New Note here</button>
+  <button class="fp-opt" onclick="_ftreeAddSubfolder()">📁 New Subfolder</button>
+</div>
+
 <!-- Folder-area + dropdown -->
 <div id="folder-area-menu" style="display:none;position:fixed;width:180px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
   <button onclick="document.getElementById('folder-area-menu').style.display='none';newNoteWithName();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
@@ -6204,14 +6441,6 @@ function recSave() {
   <button class="mg-reset" onclick="resetMargins()">Reset to default</button>
 </div>
 
-<!-- Status bar: page counter + zoom + margin -->
-<div id="doc-statusbar">
-  <span id="page-counter">Page 1 of 1</span>
-  <div class="zoom-sep"></div>
-  <button class="zoom-btn" onclick="zoomOut()" title="Zoom out">−</button>
-  <span id="zoom-label">100%</span>
-  <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
-  <button class="zoom-btn" onclick="setZoom(100)" title="Reset zoom" style="font-size:0.65rem;padding:0 5px;">↺</button>
-</div>
+<span id="page-counter" style="display:none">Page 1 of 1</span>
 </body>
 </html>

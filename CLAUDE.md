@@ -12,8 +12,8 @@
 - Authorized domains: `geniusnotes-ai.vercel.app`, `geniusnotes.ai`, `www.geniusnotes.ai`
 
 ## Stripe (test mode)
-- Test secret: `sk_test_…` (stored in Vercel env var `STRIPE_SECRET_KEY` — do not commit)
-- Monthly: `price_1TZMytFzUKNvR71hbVBxf0Lc` ($12.99/mo) | Yearly: `price_1TZMytFzUKNvR71hXvErlp8s` ($99.99/yr)
+- Test secret: stored in Vercel env var `STRIPE_SECRET_KEY` — do not commit
+- Monthly: `price_1TZMytFzUKNvR71hbVBxf0Lc` | Yearly: `price_1TZMytFzUKNvR71hXvErlp8s`
 
 ## Vercel Env Vars
 `GROQ_API_KEY`, `SUPADATA_API_KEY` (`sd_c660106aa59694f231f3a315b20e6777`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
@@ -23,167 +23,235 @@ Remote: `https://github.com/TomHtsk/geniusnotes-ai.git` (branch: `main`)
 
 ---
 
+## dashboard.html — REMOVED (temporary)
+- Backed up at `C:\Users\nmntx\AppData\Local\Temp\dashboard.html.bak`
+- All `dashboard.html` links across pages replaced with `index.html` (Home) or `notepad.html`
+- Pages updated: `index.html`, `notepad.html`, `signin.html`, `passwords.html`, `history.html`, `create-deck.html`, `my-notes.html`
+
 ## study.html — REMOVED
-`study.html` now contains a meta-redirect to `notepad.html`. All internal links updated. Do not restore.
+`study.html` redirects to `notepad.html`. Do not restore.
 
 ---
 
-## Standardized Sidebar (all pages)
-Applied to: `index.html`, `dashboard.html`, `passwords.html`, `meetings.html`
+## Navigation — Standardized Sidebar
+Sidebar added to: `my-notes.html`, `flashcards.html` (newly added this session)
+Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 
-**Structure:** flat list, 3 items only — no section labels, no extra pages
-- Home → `index.html`
-- My Notes → `my-notes.html`
-- Notepad → `notepad.html`
+**Sidebar items (all pages):**
+- 🏠 Home → `index.html`
+- 📝 Notepad → `notepad.html`
+- 🗂 My Notes → `my-notes.html`
+- 🃏 Flashcards → `flashcards.html`
 
-**CSS classes:** `.sidebar` (fixed, 240px, `#12121e`), `.sidebar-item` (hover/active), `.sb-hd`, `.sb-close`, `.sb-footer`
-**JS:** `toggleSidebar()` / `closeSidebar()` — overlay id is `sidebarOverlay`
-**Active item:** `.sidebar-item.active { background:#6d28d9 }` — set per-page
+**CSS classes:** `.sidebar-overlay`, `.sidebar`, `.sb-hd`, `.sb-items`, `.sb-item`, `.sb-item.active`, `.sb-footer`, `.nav-hamburger`
+**JS:** `toggleSidebar()` / `closeSidebar()` — overlay id: `sidebarOverlay`
+**Active item:** `.sb-item.active { background:#6d28d9 }` — set per-page
 
 ---
 
 ## index.html — Homepage
 
 ### Hero
-- **Video background:** `images/hero-bg.mp4` (rough seas), loops/muted/autoplay
-- **Gradient overlay:** `::before` at z-index:1, text at z-index:2
-- **Title:** "Your AI study co-captain." (no badge)
-- **Buttons:** Take Notes | Upload | Record Lecture | and more → dashboard.html
+- Video background: `images/hero-bg.mp4`, autoplay/loop/muted
+- Title: "Your AI study co-captain." (no badge)
+- Buttons: Take Notes | Upload | Record Lecture (no "More Study Tools" — removed)
+
+### Nav (signed-in state)
+- Right: theme toggle | **My Notepad** (→ notepad.html) | Sign Out
+- No Dashboard link anywhere on the site
+
+### Footer links
+- Notepad | My Notes | Sign In | Sign Up (no Dashboard)
 
 ### YouTube bar
-- Button: **Transcribe** → `goYtTranscribe()` → `/api/summarize` `mode:'transcribe'`
-- Opens `#yt-modal` with transcript result + Import/Download/Convert options
+- **Transcribe** → `goYtTranscribe()` → `/api/summarize` `mode:'transcribe'` → `#yt-modal`
 
-### Upload modal (`#upload-modal`)
-- Supports: PDF, DOCX, PPTX, TXT, JPG/PNG/GIF/WEBP, MP4/MOV/WEBM
-- PDF → PDF.js → `/api/extract` with `ocrImages`
-- PPTX → `/api/extract` with `fileType:'pptx'`
-- Images → `/api/extract` with `ocrImages`
-- Video → `/api/transcribe` with base64
-
-### Record modal (`#record-modal`)
-- Web Speech API live transcript
-
-### Recent notes — REMOVED
-- `_renderRecentNotes`, `#home-notes-grid`, `hsRender()`, `#hs-notes-list`, `#hs-folders-list` all removed
-- Sidebar shows only 3 nav items; no note history anywhere
-
-### Informational section
-- Demo video placeholder (`#demo-wrap`)
-- "Study smarter in three steps" — 3 feature cards
-- Feature pills row (all 12 commands)
-- CTA → signup.html
-
-### Nav
-- Left: sidebar toggle + logo
-- Right: theme toggle | Get Started / Sign In | Dashboard | Sign Out
+### Upload / Record modals — unchanged
 
 ---
 
 ## notepad.html
 
-### Sidebar quick-nav (above Notes list)
-Two pill buttons added between search bar and Notes section header:
-- **Home** → `index.html` (same tab)
-- **My Notes** → `my-notes.html` (same tab)
+### Status bar — REMOVED
+- Zoom controls (−, 100%, +, ↺) removed
+- Page counter ("Page 1 of 2") hidden (`display:none`) — element kept for JS refs
+
+### Header buttons
+- **My Notes** button (📂): `.np-close-btn` → `my-notes.html`
+  - Fixed width (was 32×32px fixed, caused text wrap) → now `height:32px; padding:0 10px; white-space:nowrap`
+  - Hover: purple highlight (not red)
+- Rename (✏️) and Delete (✕) buttons visually separated by `border-left` on the delete button
+
+### Slash commands — all working
+| Command | Action |
+|---|---|
+| `/format code` | `openCodeConvert()` |
+| `/flashcards` | `sendNoteToFlashcards()` |
+| `/academic` | `openDocFormat('academic')` |
+| `/cornellnotes` | `openDocFormat('cornell')` |
+| `/bullets` | `openDocFormat('bullets')` |
+| `/outline` | `openDocFormat('outline')` |
+| `/studyguide` | `openDocFormat('studyguide')` |
+| `/solve` | `openHomeworkSolver()` |
+| `/format APA` or `/formatAPA` | APA essay (style pre-selected) |
+| `/format MLA` or `/formatMLA` | MLA essay (style pre-selected) |
+| `/format Chicago` or `/formatChicago` | Chicago essay (style pre-selected) |
+
+**`_cmdFamily` order matters** — `formatapa`/`formatmla`/`formatchicago` checked BEFORE the `format` catch-all.
+
+### api/writing.js — academic mode
+- **Changed:** no longer rewrites content; preserves original text
+- Prompt: "DO NOT add, invent, or fabricate any information… PRESERVE all original ideas"
+- No fake citations added; References section only if sources mentioned in original
+- `bullets`, `outline`, `studyguide` now use `llama-3.3-70b-versatile` (was 8b) with 3000 max tokens
+
+### Folder tree (redesigned this session)
+- **Unlimited nesting** — folders can contain sub-folders to any depth
+- **`parentId`** field on folder objects (null = root level); backward compatible
+- **Tree renderer:** `_renderFolderTree(parentId, depth)` — recursive
+- **Unfiled section** at bottom of folder tree — collapsible, shows notes with no `folderId`
+- **`+` button** on each folder row → `_ftreeShowAdd(event, folderId)` → dropdown: "New Note here" / "New Subfolder"
+- **Drag & drop:**
+  - Drag 📁 folder onto another folder → becomes subfolder (`folder.parentId` updated)
+  - Drag 📄 note in tree → drop on folder → `note.folderId` updated
+  - Drop on "All Notes" → removes from folder (unfiled)
+  - Circular nesting prevented via `_ftreeIsDescendant()`
+- **Delete cascade:** `_deleteFolderTree(folderId)` — deletes all children recursively
+- **Folder filter:** clicking a folder name sets `_folderFilter` → filters flat Notes list above
+- **`__unfiled__`** is a special filter ID for notes with no valid folder
+- CSS classes: `.ftree-row`, `.ftree-chev`, `.ftree-name`, `.ftree-count`, `.ftree-btn`, `.ftree-note`, `.ftree-note-title`, `.drop-over`
+
+### Note items (flat Notes list)
+- **Folder label** shown below date: `📁 FolderName` or `📄 Unfiled` (only when folders exist)
+- CSS: `.ni-folder { font-size:0.62rem; color:var(--muted); }`
+
+### Collab sync (notepad ↔ share.html)
+- **`_cloudSaveNote(note)`** — if `note.shareId` exists, also writes `content`+`title` to `shared_notes/{shareId}` in Firestore
+- **`openNote(id)`** — if note has `shareId`, starts `_startCollabSync(shareId)` (checks Firestore for `collaborative:true`)
+- **`initCloudSync()`** — immediately after `_fbDb` is set, checks if the currently active note has a `shareId` and starts the listener (fixes timing: `openNote` runs before `_fbDb` is ready)
+- **`_startCollabSync(shareId)`** — `onSnapshot` on `shared_notes/{shareId}` → applies remote content to editor if `_collabLastTyped > 2000ms`
+- Full two-way sync: notepad.html ↔ shared_notes ↔ share.html and notepad.html ↔ shared_notes ↔ other notepad.html
 
 ### Bottom bar
-- Study | Theme | Dashboard (unchanged)
+- Study | Theme (no Dashboard)
 
-### Tab bar — REMOVED
-No `_tabs`, `_renderTabs`, `_initTabs`, `_switchToIframe`, `_switchToNotepad`, `#iframe-panel`.
-
-### Sidebar + button
-- `+` button (`#add-note-btn`) → dropdown: **Add New Note** | **Add New Folder**
-- Folder `+` button (`#folder-add-btn`) → dropdown: **New Note** | **New Folder**
-- `newNoteWithName()` — prompts for name via `showCustomPrompt`, creates note
-
-### Demo note (Prompt Guide)
+### Demo note
 - `_DEMO_NOTE_ID = '__demo_commands__'`
-- Injected into `notes[]` when `notes.length === 0`
+- Injected when `notes.length === 0`
 - Cannot be deleted
 
-### Selection popup
-- **1 word** → Spelling + 📌 Sticky Note
-- **Multiple words** → Define | Comprehend | Grammar | 📌 Sticky Note
-- `sel-multi-row` / `sel-single-row` toggled in `showSelectionPopup()`
-
-### Sticky Notes
-- Button: **📌 Sticky Note** in selection popup (both single and multi-word rows)
-- `addStickyNote()` → wraps selection in `<span class="gn-sticky" data-note="" data-color="#FFD600">`
-- Visual: dashed gold underline + 📌 superscript icon
-- Clicking a sticky span → `openStickyDrop(span)` → `#sticky-drop` dropdown
-- **Dropdown modes:**
-  - Read-only (default): shows note text + **Edit** + **Remove**
-  - Edit mode: shows textarea + **Save** + **Remove**
-- **Color picker:** 5 dots (yellow/green/blue/pink/orange) — `setStickyColor(color, btn)` sets `data-color` on span
-- `deleteStickyDrop()` → unwraps the span, restores plain text
-- Sticky data stored inline in note HTML → auto-saves with note
-- **Only Remove button removes the sticky** — closing dropdown never removes it
-- CSS: `.gn-sticky`, `#sticky-drop`, `.sticky-color-dot`, `#sticky-drop-edit/save/del`
-
-### Highlights (manual color)
-- `applyManualHighlight(color)` — uses Range `extractContents` + `insertNode` (NOT `insertHTML`)
-  - Preserves `.gn-sticky` span wrappers when highlighting inside a sticky
-  - **Toggle:** clicking same color on already-highlighted text removes the highlight
-- `removeManualHighlight()` — finds ALL `<mark>` elements intersecting the selection and unwraps them
-  - ✕ button removes highlight from entire selected sentence, not just inner word
-- Colors: Yellow | Green | Blue | Pink | Purple | Orange
-
-### Text-to-Speech (TTS)
-- Button: **🔊 Read** in the header toolbar (`#tts-btn`)
-- `toggleTTS()` → reads active editor's `innerText` via Web Speech API (`SpeechSynthesisUtterance`)
-- **Word-by-word highlighting:** `utt.onboundary` fires per word
-  - `_ttsBuildMap(root)` — walks DOM (text nodes + block newlines) to build `{node, start, end}` offset map
-  - `_ttsHighlightWord(el, charIndex, charLen)` — wraps current word in `<mark class="tts-word">` (blue highlight)
-  - `_ttsRemoveHighlight()` — unwraps mark + `normalize()` before next word
-- Button toggles to **⏹ Stop** while active
-- Auto-stops and clears highlight on note switch (`openNote` calls `_ttsStop`)
-- CSS: `mark.tts-word { background:rgba(96,165,250,0.45) }`
-
-### Welcome note seeding (`_seedWelcomeNote`)
-- Fires on every login, checks `users/{uid}/meta/welcome` Firestore doc
-- New users get folder `Prompt Guide` + note `Prompt Guide`
-
-### Page breaks
-- `.pg-sep { display:block; background:transparent }` — spacers take up layout space
-- `_applyPageBreaks` pushes elements crossing `gapStart` to next page
-- `gapOff = _PG_H - bottomMargin` (920px default)
+### Other features (unchanged)
+- Selection popup: 1 word → Spelling; multiple words → Define/Comprehend/Grammar
+- Sticky Notes: `.gn-sticky` spans, inline HTML storage
+- Highlights: Range API (not insertHTML), toggleable per color
+- TTS: word-by-word highlighting via `_ttsBuildMap`
+- Page breaks: `.pg-sep { display:block }`, `_applyPageBreaks`
+- Math: KaTeX, `/math` command
+- Split screen, detach panel, drag-to-reorder notes
 
 ---
 
 ## my-notes.html
 
-### getFolders()
-Merges both localStorage keys:
-```javascript
-const a = JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]'); // cloud sync
-const b = JSON.parse(localStorage.getItem('gn-folders-' + _uid) || '[]'); // my-notes
-// cloud-synced takes precedence
-```
+### Guest (logged-out) users
+- `getNotes()` always returns `[_MN_DEMO_NOTE]` — ignores localStorage
+- Only one note shown: Prompt Guide with full command list
+- "New Folder" button hidden (`display:none`) for guests
+- `_MN_DEMO_NOTE` content: full `/command` list with descriptions
 
-### Demo note for signed-out users
-- `_MN_DEMO_NOTE` / `_MN_DEMO_FOLDER` injected when `!_uid && notes.length === 0`
+### Logged-in users
+- Notes loaded from `gn-notepad-notes` localStorage (synced from cloud via `GNSync`)
+- `getFolders()` merges `gn-notepad-folders` + `gn-folders-{uid}`
+
+### Nav
+- "← Home" (was "← Dashboard") → `index.html`
 
 ---
 
-## api/extract.js
-- **PPTX support:** `fileType:'pptx'` → JSZip parses `ppt/slides/slideN.xml`, extracts `<a:t>` text
-- **Image OCR:** `ocrImages` → Groq vision `meta-llama/llama-4-scout-17b-16e-instruct`
-- **DOCX:** mammoth → fallback OCR images in `word/media/`
+## flashcards.html
+- Sidebar added (hamburger + overlay + tree: Home/Notepad/My Notes/Flashcards active)
+- Sidebar JS: `toggleSidebar()` / `closeSidebar()` inline at bottom of file
 
-## api/writing.js
-- `grammar` mode: **no minimum character length** (minLen = 1)
+---
 
-## api/summarize.js
-- `mode:'transcribe'` → returns raw transcript from Supadata without AI summarization
+## share.html
+
+### "Open Notepad" button
+- Was: `<a href="notepad.html">` — just navigated, no content transfer
+- Now: `<button onclick="importToNotepad()">` — imports live note content into notepad
+- `importToNotepad()` reads from `#note-editor` (live DOM, updated by Firestore listener) not stale `_noteData`
+- Creates new note: `{ id: 'imp_...', title, content, shareId: id }` — **`shareId` preserved** so collab sync works from User B's notepad
+- Saves to `gn-notepad-notes` localStorage, sets `gn-notepad-open`, navigates to `notepad.html`
+
+### Collab sync
+- `_noteData` set on Firestore load
+- `setupRealtime(ref, data)` — `onSnapshot` on `shared_notes/{id}` → updates `#note-editor` live
+- Pushes local edits back to `shared_notes/{id}` on editor `input` event (debounced 500ms)
+
+---
+
+## passwords.html
+- Sidebar "DASHBOARD" footer link → now "HOME" → `index.html`
+- "← Back to Dashboard" → "← Back to Home" → `index.html`
+
+---
+
+## history.html
+- "← Dashboard" → "← Home" → `index.html`
+
+## create-deck.html
+- "🏠 Dashboard" tab → "🏠 Home" → `index.html`
+
+## signin.html
+- "Go to Dashboard →" → "Go to Notepad →" → `notepad.html`
+
+---
+
+## API Files
+
+### Deployed (12 functions — Hobby plan limit)
+`writing.js`, `summarize.js`, `interpret.js`, `lyrics.js`, `extract.js`, `transcribe.js`, `homework.js`, `checker.js`, `translate.js`, `checkout.js`, `webhook.js`, `subscription.js`
+
+### Merged (skip in deploy — handled via Vercel rewrites)
+`api/ytsearch.js` → `summarize.js` | `api/musicnotes.js` → `lyrics.js` | `api/chat.js` → `interpret.js` | `api/citation.js` → `writing.js` | `api/textbook.js` → `writing.js`
+
+### api/writing.js key modes
+- `grammar`: minLen = 1 (no minimum)
+- `academic`: preserves original content, no fabricated citations, ~same length as input
+- `bullets`, `outline`, `studyguide`: use 70b model, 3000 max tokens (was 8b/2000)
+- `cornell`: 4000 max tokens, returns JSON `{topic, rows[], summary}`
+
+### api/summarize.js
+- `mode:'transcribe'` → raw transcript (no AI summarization)
+
+### api/extract.js
+- PPTX: `fileType:'pptx'` → JSZip → `<a:t>` XML extraction
+- Image OCR: Groq vision `meta-llama/llama-4-scout-17b-16e-instruct`
 
 ---
 
 ## Known Architecture Notes
-- **Auth-gated notes:** `saveNotes()` no-op if `_fbUid === null`
-- **Cloud sync layers:** `initCloudSync()` in notepad.html (onSnapshot); `GNSync` in `js/cloud-sync.js`
-- **localStorage keys:** `gn-notepad-notes`, `gn-notepad-folders`, `gn-notepad-open`, `gn-theme`, `gn-margins`, `gn-zoom`
-- **applyManualHighlight uses Range API** (not `insertHTML`) to preserve sticky note spans
-- **Sticky note data is inline HTML** — no separate storage, auto-saved with note content
-- **TTS offset mapping:** `_ttsBuildMap` accounts for block-element newlines to align with `innerText` offsets
+
+### Critical invariants
+- **Full deploy always required** — partial deploy = 404 everywhere
+- **API function limit = 12** — always skip the 5 merged files in deploy
+- **`var _noteSort` / `var _folderSort`** — must be `var` not `let` (TDZ crash before `renderSidebar`)
+- **`#editor` position:relative** — required for `_applyPageBreaks` offsetTop calculations
+- **Toolbar mousedown → preventDefault()** — required for execCommand to work on selections
+- **Folder picker** — `<div class="folder-pick">` must be SIBLING of button (not inside)
+- **Folder dropdown clipping** — uses `position:fixed` + `getBoundingClientRect()` to escape overflow:hidden
+
+### Cloud sync
+- `initCloudSync()` sets `_fbDb` synchronously, then starts auth listener
+- `_fbDb` is available for unauthenticated users (needed for collab sync)
+- `_cloudSaveNote` writes to both `users/{uid}/notepad_notes/{id}` AND `shared_notes/{shareId}` if applicable
+- `openNote` starts collab listener — but called BEFORE `initCloudSync`, so `initCloudSync` re-checks active note on `_fbDb` ready
+
+### localStorage keys
+`gn-notepad-notes`, `gn-notepad-folders`, `gn-notepad-open`, `gn-theme`, `gn-margins`, `gn-zoom`
+
+### Firestore collections
+- `users/{uid}/notepad_notes/{noteId}` — user's notes
+- `users/{uid}/notepad_folders/{folderId}` — user's folders (now with `parentId` for nesting)
+- `users/{uid}/meta/welcome` — welcome note seeding flag
+- `shared_notes/{shareId}` — collaborative/shared notes (public read, no auth required)

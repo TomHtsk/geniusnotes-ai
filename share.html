@@ -67,7 +67,7 @@
   </a>
   <div class="nav-right">
     <span class="nav-badge" id="mode-badge">Shared Note</span>
-    <a class="open-btn" href="notepad.html">Open Notepad</a>
+    <button class="open-btn" onclick="importToNotepad()">Open Notepad</button>
   </div>
 </nav>
 
@@ -100,6 +100,24 @@
   let _saveTimer = null;
   let _lastRemote = '';
   let _lastTyped = 0;
+  let _noteData = null;
+
+  window.importToNotepad = function() {
+    // Always read from the live editor — it's kept up-to-date by the real-time listener
+    const editor = document.getElementById('note-editor');
+    const titleEl = document.getElementById('note-title-el');
+    const title = (titleEl ? titleEl.textContent : null) || (_noteData ? _noteData.title : 'Shared Note') || 'Shared Note';
+    const content = (editor ? editor.innerHTML : null) || (_noteData ? _noteData.content : '') || '';
+    const newId = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const note = { id: newId, title: title, content: content, created: Date.now(), updated: Date.now(), shareId: id };
+    try {
+      const existing = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
+      existing.unshift(note);
+      localStorage.setItem('gn-notepad-notes', JSON.stringify(existing));
+      localStorage.setItem('gn-notepad-open', newId);
+    } catch(e) {}
+    window.location.href = 'notepad.html';
+  };
 
   // Presence / cursor
   const _uid = Math.random().toString(36).slice(2, 9);
@@ -110,6 +128,7 @@
   db.collection('shared_notes').doc(id).get().then(doc => {
     if (!doc.exists) { showError('This note has been deleted or the link is invalid.'); return; }
     const data = doc.data();
+    _noteData = data;
     _isCollab = !!data.collaborative;
     _lastRemote = data.content || '';
     renderNote(data);

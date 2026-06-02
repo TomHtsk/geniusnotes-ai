@@ -21,6 +21,27 @@
     .nav-center-text .ai{color:#8B5CF6;}
     .nav-theme{margin-left:auto;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:0.8rem;padding:5px 10px;cursor:pointer;font-family:inherit;}
     .nav-theme:hover{color:var(--text);}
+    /* SIDEBAR */
+    .sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:190;opacity:0;pointer-events:none;transition:opacity 0.22s;backdrop-filter:blur(3px);}
+    .sidebar-overlay.open{opacity:1;pointer-events:all;}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:200;background:#12121e;border-right:1px solid rgba(139,92,246,0.15);display:flex;flex-direction:column;transform:translateX(-100%);pointer-events:none;transition:transform 0.24s cubic-bezier(0.4,0,0.2,1);box-shadow:8px 0 40px rgba(0,0,0,0.6);}
+    .sidebar.open{transform:translateX(0);pointer-events:all;}
+    .sb-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
+    .sb-logo-row{display:flex;align-items:center;gap:8px;}
+    .sb-logo-row img{width:26px;height:26px;border-radius:7px;}
+    .sb-logo-row span{font-size:0.88rem;font-weight:800;color:#f0f0ff;}
+    .sb-close{background:none;border:none;color:rgba(255,255,255,0.35);cursor:pointer;padding:4px 7px;border-radius:7px;font-size:1rem;transition:color 0.12s,background 0.12s;}
+    .sb-close:hover{color:#fff;background:rgba(255,255,255,0.08);}
+    .sb-items{flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
+    .sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;text-decoration:none;font-size:0.85rem;font-weight:600;color:rgba(255,255,255,0.55);transition:background 0.12s,color 0.12s;}
+    .sb-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+    .sb-item.active{background:#6d28d9;color:#fff;}
+    .sb-footer{border-top:1px solid rgba(255,255,255,0.07);padding:10px;}
+    .sb-theme{width:100%;display:flex;align-items:center;gap:10px;padding:9px 12px;border:none;background:none;color:rgba(255,255,255,0.4);font-size:0.83rem;font-weight:600;cursor:pointer;font-family:inherit;border-radius:10px;transition:background 0.12s;}
+    .sb-theme:hover{background:rgba(139,92,246,0.1);color:#fff;}
+    .nav-hamburger{background:none;border:none;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background 0.15s;}
+    .nav-hamburger:hover{background:rgba(139,92,246,0.12);}
+    .nav-hamburger span{display:block;width:20px;height:2px;background:var(--text);border-radius:2px;}
 
     /* PAGE */
     .page{max-width:800px;margin:0 auto;padding:28px 16px 80px;}
@@ -105,8 +126,27 @@
   <script>if(localStorage.getItem('gn-theme')==='light'){document.documentElement.classList.add('light');document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mn-theme-btn');if(b)b.textContent='🌙 Dark';});}</script>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-hd">
+    <div class="sb-logo-row"><img src="images/logo.png" alt="GN"><span>GeniusNotes <span style="color:#a78bfa;">AI</span></span></div>
+    <button class="sb-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="sb-items">
+    <a href="index.html" class="sb-item">🏠 Home</a>
+    <a href="notepad.html" class="sb-item">📝 Notepad</a>
+    <a href="my-notes.html" class="sb-item active">🗂 My Notes</a>
+    <a href="flashcards.html" class="sb-item">🃏 Flashcards</a>
+  </div>
+  <div class="sb-footer">
+    <button class="sb-theme" onclick="(function(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');})()">🌙 Toggle Theme</button>
+  </div>
+</aside>
+
 <nav>
-  <a class="nav-back" href="dashboard.html">← Dashboard</a>
+  <button class="nav-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
   <a class="nav-center" href="index.html">
     <img src="images/logo.png" alt="">
     <span class="nav-center-text">GeniusNotes <span class="ai">AI</span></span>
@@ -161,7 +201,7 @@
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <button class="btn-new-folder" onclick="newFolder()">🗂 New Folder</button>
+    <button class="btn-new-folder" id="btn-new-folder" onclick="newFolder()">🗂 New Folder</button>
   </div>
 
   <!-- Content -->
@@ -215,15 +255,14 @@ const _MN_DEMO_NOTE = {
   _isDemo: true,
   folderId: '__demo_folder__',
   title: 'Prompt Guide',
-  content: '<p>Type <strong>/command</strong> in any note to run AI tools instantly. See the note for the full list.</p>',
+  content: '<p>Type a <strong>/command</strong> anywhere in a note to run AI tools instantly:</p><ul><li><strong>/cornellnotes</strong> — reformat note into Cornell layout</li><li><strong>/bullets</strong> — convert to clean bullet points</li><li><strong>/outline</strong> — build a structured outline</li><li><strong>/studyguide</strong> — generate a study guide</li><li><strong>/flashcards</strong> — create flashcard deck</li><li><strong>/format</strong> — clean up and format the note</li><li><strong>/highlight</strong> — highlight key terms</li><li><strong>/prompt</strong> — open the AI prompt box</li><li><strong>/share</strong> — share or export your note</li></ul><p>Sign in to save your notes to the cloud.</p>',
   created: Date.now(),
   updated: Date.now()
 };
 function getNotes(){
+  if (!_uid) return [_MN_DEMO_NOTE];
   try {
-    const arr = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
-    if (!arr.length && !_uid) return [_MN_DEMO_NOTE];
-    return arr;
+    return JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
   } catch { return []; }
 }
 function getHistory(){
@@ -528,9 +567,19 @@ function saveNotesLocal(notesArr) {
   localStorage.setItem('gn-notepad-notes', JSON.stringify(notesArr));
 }
 
+// ── SIDEBAR ──
+function toggleSidebar(){const sb=document.getElementById('sidebar'),ov=document.getElementById('sidebarOverlay'),o=sb.classList.toggle('open');ov.classList.toggle('open',o);}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
+
 // ── Firebase + GNSync init ──
 firebase.auth().onAuthStateChanged(function(user) {
-  if (!user) { render(); return; }
+  const folderBtn = document.getElementById('btn-new-folder');
+  if (!user) {
+    if (folderBtn) folderBtn.style.display = 'none';
+    render();
+    return;
+  }
+  if (folderBtn) folderBtn.style.display = '';
   _uid = user.uid;
   _db = firebase.firestore();
   GNSync.init(_uid, _db, {

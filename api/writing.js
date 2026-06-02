@@ -20,7 +20,7 @@ function getPrompt(mode, text, tone) {
         CHICAGO: `Citation style: Chicago 17th edition (Notes-Bibliography).\n- If sources are mentioned, use superscript footnote numbers in the text and list full citations in a "Bibliography" section at the end\n- Bibliography format: Author Last, First. Title. City: Publisher, Year.\n- Use section headings where appropriate`
       };
       const rules = styleRules[style] || styleRules.APA;
-      return `You are an academic writing assistant. Transform the following notes into a well-structured academic essay formatted in ${style} style.\n\n${rules}\n\nGeneral requirements:\n- Write a clear thesis statement in the introduction\n- Organize body paragraphs with strong topic sentences and supporting detail\n- Formal academic language — no contractions\n- Smooth transitions between paragraphs\n- Conclusion that restates the thesis and synthesizes key points\n- Output ONLY the formatted essay — no meta-commentary\n\nNotes to transform:\n\n${t}`;
+      return `You are an academic writing assistant. Reformat the following text into ${style} style. You MUST follow these strict rules:\n\nCRITICAL RULES — DO NOT BREAK THESE:\n- DO NOT add, invent, or fabricate any information, facts, arguments, or citations that are not in the original text\n- DO NOT invent fake author names, years, or sources — only format citations that already exist in the text\n- PRESERVE all original ideas, sentences, and content — you may reword slightly for academic tone but never add new content\n- If no sources are mentioned in the original, do NOT add a References/Works Cited/Bibliography section\n- Keep the output roughly the same length as the input\n\n${rules}\n\nFormatting tasks (do these only):\n- Add an appropriate title\n- Add section headings (Introduction, body sections, Conclusion) that reflect the actual content\n- Fix grammar and adjust tone to be formal and academic — no contractions\n- Add smooth transitions between existing paragraphs\n- Output ONLY the formatted text — no meta-commentary\n\nOriginal text to reformat:\n\n${t}`;
     })(),
     cornell:    `You are an expert academic note-taker. Your job is to produce A+ Cornell Notes that a top student would use to ace their exam. Return ONLY a valid JSON object — no markdown, no code fences, no commentary.
 
@@ -167,8 +167,8 @@ Output ONLY the marked original text, nothing else.`;
       return res.status(200).json({ result });
     }
 
-    const isLargeMode = mode === 'code' || mode === 'format' || mode === 'docformat' || mode === 'academic' || mode === 'email' || mode === 'highlight' || mode === 'cornell' || mode === 'inline';
-    const maxTok = mode === 'cornell' ? 4000 : mode === 'docformat' ? 4000 : mode === 'highlight' ? 4000 : mode === 'academic' ? 3000 : mode === 'inline' ? 2500 : isLargeMode ? 3000 : 2000;
+    const isLargeMode = mode === 'code' || mode === 'format' || mode === 'docformat' || mode === 'academic' || mode === 'email' || mode === 'highlight' || mode === 'cornell' || mode === 'inline' || mode === 'bullets' || mode === 'outline' || mode === 'studyguide';
+    const maxTok = mode === 'cornell' ? 4000 : mode === 'docformat' ? 4000 : mode === 'highlight' ? 4000 : mode === 'academic' ? 3000 : mode === 'studyguide' ? 3000 : mode === 'inline' ? 2500 : isLargeMode ? 3000 : 2000;
     const r = await groqFetch({
       model: isLargeMode ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: getPrompt(mode, text.trim(), tone) }],

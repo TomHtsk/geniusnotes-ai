@@ -22,10 +22,12 @@
       --border: rgba(255,255,255,0.08); --text: #E8E8F0; --muted: #6B6B80;
       --purple: #8B5CF6; --purple2: #A78BFA; --cyan: #4FC3F7;
       --save: #28c840;
+      color-scheme: dark;
     }
     :root.light {
       --bg: #F5F5FA; --surface: #FFFFFF; --surface2: #EEEEF6;
       --border: rgba(0,0,0,0.08); --text: #111120; --muted: #666688;
+      color-scheme: light;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -132,14 +134,14 @@
     .note-item.active .ni-title { font-weight:600; color:var(--purple2); }
     .ni-date { font-size:0.66rem; color:var(--muted); margin-top:1px; }
     .ni-folder { font-size:0.62rem; color:var(--muted); margin-top:1px; opacity:0.7; }
-    .note-rename-btn { flex-shrink:0; background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 5px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
+    .note-rename-btn { position:absolute; right:30px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 5px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
     .note-item:hover .note-rename-btn { opacity:0.6; }
     .note-rename-btn:hover { opacity:1!important; color:var(--purple2); background:rgba(139,92,246,0.08); }
     .note-delete { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; border-left:1px solid rgba(255,255,255,0.07); color:var(--muted); cursor:pointer; font-size:0.8rem; opacity:0; transition:opacity 0.15s; padding:3px 6px 3px 8px; }
     .note-item:hover .note-delete { opacity:0.55; }
     .note-delete:hover { color:#ff5555; opacity:1!important; }
     .note-compare-btn { display:none; }
-    .note-move-btn { position:absolute;right:34px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
+    .note-move-btn { position:absolute;right:56px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
     .note-item:hover .note-move-btn { opacity:0.7; }
     .note-move-btn:hover { opacity:1!important; color:var(--purple2); }
     .note-item-preview,.note-item-date,.note-item-title-row,.note-item-title,.df-chip,.df-chip-active { display:none; }
@@ -211,7 +213,7 @@
     :root.light .right-editor-wrap { background: #b0b0b0; }
     #editor-right {
       font-family:'Inter',system-ui,sans-serif; font-size:1rem; line-height:1.8; color:var(--text);
-      outline:none; cursor:text; border-radius:0; position:relative;
+      outline:none; cursor:text; caret-color:var(--text); border-radius:0; position:relative;
       min-height:1056px; max-width:816px; margin:0 auto; padding:136px 96px;
       background-color:var(--surface);
       background-image: repeating-linear-gradient(
@@ -271,6 +273,10 @@
     .cornell-block:hover { outline:1px dashed rgba(139,92,246,0.3); border-radius:11px; }
     .cn-cell[contenteditable="true"]:focus { outline:none; background:rgba(139,92,246,0.08); border-radius:3px; }
     .cn-cell[contenteditable="true"] { min-height:1em; }
+    .rc{position:absolute;pointer-events:none;z-index:100;}
+    .rc-caret{display:inline-block;width:2px;height:1.2em;border-radius:1px;position:relative;animation:rc-blink 1.2s infinite;}
+    @keyframes rc-blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+    .rc-label{position:absolute;top:-20px;left:0;font-size:10px;font-family:'Courier New',monospace;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;color:#fff;}
     .cn-recall-btn { border-radius:7px; padding:5px 12px; font-size:0.72rem; font-weight:700; cursor:pointer; font-family:inherit; flex-shrink:0; transition:background 0.15s; }
     .cn-recall-btn:hover { opacity:0.85; }
     .cn-recall-btn.active { opacity:1; font-style:italic; }
@@ -307,6 +313,7 @@
       min-height: 1056px; outline: none; font-size: 1rem; line-height: 1.8; color: var(--text);
       max-width: 816px; margin: 0 auto; padding: 136px 96px;
       position: relative; border-radius: 0;
+      cursor: text; caret-color: var(--text);
       /* 1056px page + 32px gray gap, repeating.
          background-position shifts gradient so gap falls at page_height - bottom_margin.
          falls at y=920 (inside the bottom margin zone, not over content). */
@@ -550,11 +557,15 @@
     .ftree-row:hover .ftree-btn{opacity:1;}
     .ftree-btn:hover{background:rgba(255,255,255,0.08);color:var(--text);}
     .ftree-btn.del:hover{color:#ff5555;}
-    .ftree-note{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background 0.12s;}
+    .ftree-note{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background 0.12s;position:relative;}
     .ftree-note:hover{background:rgba(255,255,255,0.04);}
     .ftree-note.active{background:rgba(139,92,246,0.1);}
     .ftree-note-title{font-size:0.77rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .ftree-note.active .ftree-note-title{color:var(--purple2);}
+    .ftree-note-btn{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:4px;font-size:0.68rem;flex-shrink:0;transition:opacity 0.12s,color 0.12s;}
+    .ftree-note:hover .ftree-note-btn{opacity:1;}
+    .ftree-note-btn:hover{background:rgba(255,255,255,0.08);color:var(--text);}
+    .ftree-note-btn.del:hover{color:#ff5555;}
     .ftree-empty{font-size:0.75rem;color:var(--muted);padding:6px 10px;}
     .note-folder-tag{font-size:0.6rem;color:var(--purple2);background:rgba(139,92,246,0.1);padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
@@ -1515,14 +1526,15 @@ function loadNotes() {
 
 function _stripImgSelection(html) {
   if (!html) return html;
-  const needsClean = html.includes('img-handle') || html.includes('pg-sep');
+  const needsClean = html.includes('img-handle') || html.includes('pg-sep') || html.includes(' rc"') || html.includes('"rc ') || html.includes('id="rc-');
   if (!needsClean) return html;
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
   tmp.querySelectorAll('.img-handle').forEach(h => h.remove());
   tmp.querySelectorAll('.img-draw-btn').forEach(b => b.remove());
   tmp.querySelectorAll('.img-wrap').forEach(w => w.classList.remove('selected'));
-  tmp.querySelectorAll('.pg-sep').forEach(e => e.remove()); // clean stale pg-sep from old saved notes
+  tmp.querySelectorAll('.pg-sep').forEach(e => e.remove());
+  tmp.querySelectorAll('.rc').forEach(e => e.remove());
   return tmp.innerHTML;
 }
 
@@ -1562,7 +1574,7 @@ function _applyPageBreaks(ed) {
     const gapStart = (page - 1) * cycle + gapOff;
     const gapEnd   = gapStart + _GAP_H;
 
-    if (childBottom > gapStart) {
+    if (childBottom > gapStart - 2) {
       // Element bottom crosses into or past the gray band — push entire element to next page
       const sepH = gapEnd - childTop;
       if (sepH > 0) {
@@ -1598,7 +1610,7 @@ function refreshPageLines() {
 
 function schedulePageLines() {
   clearTimeout(_pgTimer);
-  _pgTimer = setTimeout(refreshPageLines, 200);
+  _pgTimer = setTimeout(refreshPageLines, 80);
 }
 
 // ── RULER ────────────────────────────────────────────────────────────
@@ -1949,6 +1961,8 @@ function _renderFolderTree(parentId, depth) {
             ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
             <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
             <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
+            <button class="ftree-note-btn" onclick="event.stopPropagation();renameNoteInline(event,'${n.id}')" title="Rename">✏</button>
+            <button class="ftree-note-btn del" onclick="event.stopPropagation();deleteNote(event,'${n.id}')" title="Delete">✕</button>
           </div>`;
         });
       }
@@ -1991,6 +2005,8 @@ function renderSbFolders() {
           ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
           <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
           <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
+          <button class="ftree-note-btn" onclick="event.stopPropagation();renameNoteInline(event,'${n.id}')" title="Rename">✏</button>
+          <button class="ftree-note-btn del" onclick="event.stopPropagation();deleteNote(event,'${n.id}')" title="Delete">✕</button>
         </div>`;
       });
     }
@@ -2177,8 +2193,13 @@ function openNote(id) {
       if (doc.exists && doc.data().collaborative) _startCollabSync(note.shareId);
     }).catch(() => {});
   } else if (_collabUnsub) {
+    _collabRemoveCursor();
+    document.removeEventListener('selectionchange', _collabBroadcastCursor);
+    window.removeEventListener('beforeunload', _collabRemoveCursor);
     _collabUnsub();
     _collabUnsub = null;
+    _collabRef = null;
+    _clearRemoteCursors();
   }
 }
 
@@ -2278,6 +2299,57 @@ function onTitleChange() {
   note.updated = Date.now();
   scheduleSave();
 }
+
+// Backspace at the start of an element that follows a pg-sep: skip the sep and merge properly
+['editor','editor-right'].forEach(function(edId) {
+  document.getElementById(edId).addEventListener('keydown', function(e) {
+    if (e.key !== 'Backspace') return;
+    const ed = this;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    if (range.startOffset !== 0) return;
+
+    // Walk up to the direct child of the editor
+    let block = range.startContainer;
+    while (block.parentNode && block.parentNode !== ed) {
+      // Ensure no preceding siblings have text (cursor really is at block start)
+      let sib = block.previousSibling;
+      while (sib) { if (sib.textContent) return; sib = sib.previousSibling; }
+      block = block.parentNode;
+    }
+    if (!block || block.parentNode !== ed || block.classList?.contains('pg-sep')) return;
+
+    // Collect any pg-sep(s) immediately before this block
+    const seps = [];
+    let prev = block.previousSibling;
+    while (prev && prev.classList?.contains('pg-sep')) { seps.push(prev); prev = prev.previousSibling; }
+    if (!seps.length) return;
+
+    e.preventDefault();
+    seps.forEach(s => s.remove());
+
+    if (!prev) { refreshPageLines(); return; }
+
+    // Place cursor at end of the real previous element
+    const r = document.createRange();
+    r.selectNodeContents(prev);
+    r.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(r);
+
+    // Merge block into prev (or just delete it if empty)
+    if (!block.textContent && (block.innerHTML === '' || block.innerHTML === '<br>')) {
+      block.remove();
+    } else {
+      while (block.firstChild) prev.appendChild(block.firstChild);
+      block.remove();
+    }
+
+    refreshPageLines();
+    scheduleSave();
+  });
+});
 
 document.getElementById('editor').addEventListener('input', () => {
   if (!activeId) return;
@@ -4783,6 +4855,8 @@ function initCloudSync() {
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         _fbUid = user.uid;
+        const _raw = user.displayName || user.email || '';
+        _collabLabel = _raw.replace(/@.*/, '') || 'User';
         _setCloudIcon('☁️');
         _seedWelcomeNote(user.uid);
         _startCloudListeners();
@@ -5027,20 +5101,102 @@ function copyShareLink() {
 
 let _collabUnsub = null;
 let _collabLastTyped = 0;
+const _collabUid = Math.random().toString(36).slice(2, 9);
+const _collabColors = ['#e05252','#e08c52','#b5c916','#34c98b','#4fc3f7','#a78bfa','#f472b6'];
+const _collabColor = _collabColors[Math.floor(Math.random() * _collabColors.length)];
+let _collabLabel = 'User';
+let _collabRef = null;
+let _collabCursorTimer = null;
+
+function _collabGetTextOffset(root, node, off) {
+  let count = 0;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) {
+    if (w.currentNode.parentElement?.closest('.rc')) continue;
+    if (w.currentNode === node) return count + off;
+    count += w.currentNode.length;
+  }
+  return count;
+}
+
+function _collabGetRangeFromOffset(root, offset) {
+  let count = 0;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let lastNode = null, lastLen = 0;
+  while (w.nextNode()) {
+    // Skip text inside .rc cursor elements
+    if (w.currentNode.parentElement?.closest('.rc')) continue;
+    const len = w.currentNode.length;
+    if (count + len >= offset) {
+      const r = document.createRange();
+      r.setStart(w.currentNode, Math.min(offset - count, len));
+      r.collapse(true);
+      return r;
+    }
+    count += len;
+    lastNode = w.currentNode;
+    lastLen = len;
+  }
+  // Offset beyond content — clamp to end so cursor still shows
+  if (lastNode) {
+    const r = document.createRange();
+    r.setStart(lastNode, lastLen);
+    r.collapse(true);
+    return r;
+  }
+  return null;
+}
+
+function _renderRemoteCursor(uid, offset, color, label) {
+  const editor = document.getElementById('editor');
+  if (!editor) return;
+  document.getElementById('rc-' + uid)?.remove();
+  const range = _collabGetRangeFromOffset(editor, offset);
+  if (!range) return;
+  const eRect = editor.getBoundingClientRect();
+  // getClientRects() handles collapsed (caret) ranges; getBoundingClientRect() can return 0 for them
+  const rects = range.getClientRects();
+  const rRect = rects.length ? rects[0] : range.getBoundingClientRect();
+  if (!rRect) return;
+  const el = document.createElement('div');
+  el.id = 'rc-' + uid;
+  el.className = 'rc';
+  el.style.top = (rRect.top - eRect.top) + 'px';
+  el.style.left = (rRect.left - eRect.left) + 'px';
+  el.innerHTML = `<div class="rc-caret" style="background:${color};"></div><div class="rc-label" style="background:${color};">${label}</div>`;
+  editor.appendChild(el);
+}
+
+function _clearRemoteCursors() {
+  document.getElementById('editor')?.querySelectorAll('.rc').forEach(el => el.remove());
+}
 
 function _startCollabSync(shareId) {
-  if (_collabUnsub) _collabUnsub();
+  if (_collabUnsub) { _collabUnsub(); _collabUnsub = null; }
+  _clearRemoteCursors();
   if (!_fbDb) return;
-  _collabUnsub = _fbDb.collection('shared_notes').doc(shareId).onSnapshot(snap => {
+  _collabRef = _fbDb.collection('shared_notes').doc(shareId);
+
+  // Refresh label in case auth resolved since page load
+  const _cu = firebase.auth().currentUser;
+  if (_cu) _collabLabel = (_cu.displayName || _cu.email || '').replace(/@.*/, '') || 'User';
+
+  // Broadcast own cursor on selection change (remove first to avoid duplicates)
+  document.removeEventListener('selectionchange', _collabBroadcastCursor);
+  document.addEventListener('selectionchange', _collabBroadcastCursor);
+  window.removeEventListener('beforeunload', _collabRemoveCursor);
+  window.addEventListener('beforeunload', _collabRemoveCursor);
+
+  _collabUnsub = _collabRef.onSnapshot(snap => {
     if (!snap.exists || !activeId) return;
     const d = snap.data();
     if (!d.collaborative) return;
     const note = notes.find(n => n.id === activeId);
     if (!note || note.shareId !== shareId) return;
+
+    // Sync remote content
     const remoteContent = d.content || '';
-    if (remoteContent === note.content) return;
-    // Only apply if user hasn't typed in the last 2s
-    if (Date.now() - _collabLastTyped > 2000) {
+    if (remoteContent !== note.content && Date.now() - _collabLastTyped > 2000) {
       note.content = remoteContent;
       saveNotes();
       const editor = document.getElementById('editor');
@@ -5049,7 +5205,43 @@ function _startCollabSync(shareId) {
         setSaved();
       }
     }
+
+    // Render remote cursors
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+    const cursors = d.cursors || {};
+    editor.querySelectorAll('.rc').forEach(el => {
+      const uid = el.id.replace('rc-', '');
+      if (!cursors[uid] || uid === _collabUid) el.remove();
+    });
+    Object.entries(cursors).forEach(([uid, c]) => {
+      if (uid === _collabUid) return;
+      if (Date.now() - c.t > 30000) return;
+      _renderRemoteCursor(uid, c.offset, c.color, c.label);
+    });
   });
+}
+
+function _collabBroadcastCursor() {
+  if (!_collabRef) return;
+  const editor = document.getElementById('editor');
+  if (!editor) return;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+  clearTimeout(_collabCursorTimer);
+  _collabCursorTimer = setTimeout(() => {
+    const offset = _collabGetTextOffset(editor, sel.anchorNode, sel.anchorOffset);
+    const update = {};
+    update[`cursors.${_collabUid}`] = { offset, color: _collabColor, label: _collabLabel, t: Date.now() };
+    _collabRef.update(update).catch(() => {});
+  }, 80);
+}
+
+function _collabRemoveCursor() {
+  if (!_collabRef) return;
+  const update = {};
+  update[`cursors.${_collabUid}`] = firebase.firestore.FieldValue.delete();
+  _collabRef.update(update).catch(() => {});
 }
 
 // Track local typing to avoid overwriting mid-edit

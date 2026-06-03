@@ -32,7 +32,7 @@
     .rc{position:absolute;pointer-events:none;z-index:100;}
     .rc-caret{display:inline-block;width:2px;height:1.2em;border-radius:1px;position:relative;animation:rc-blink 1.2s infinite;}
     @keyframes rc-blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
-    .rc-label{position:absolute;top:-20px;left:0;font-size:10px;font-family:'Inter',sans-serif;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;color:#fff;}
+    .rc-label{position:absolute;top:-20px;left:0;font-size:10px;font-family:'Courier New',monospace;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;color:#fff;}
     #note-editor[contenteditable=true]{border:none;caret-color:#a78bfa;}
     #note-editor[contenteditable=true]:focus{outline:none;}
     #note-editor h1,#note-editor h2,#note-editor h3{color:#f0f0ff;margin:18px 0 8px;}
@@ -79,6 +79,7 @@
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
@@ -123,7 +124,31 @@
   const _uid = Math.random().toString(36).slice(2, 9);
   const _colors = ['#e05252','#e08c52','#b5c916','#34c98b','#4fc3f7','#a78bfa','#f472b6'];
   const _color = _colors[Math.floor(Math.random() * _colors.length)];
-  const _label = 'User ' + _uid.slice(0, 4);
+  let _label = 'User';
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      const raw = user.displayName || user.email || '';
+      _label = raw.replace(/@.*/, '') || 'User';
+    } else {
+      const key = 'gn-guest-num-' + id;
+      const stored = sessionStorage.getItem(key);
+      if (stored) {
+        _label = 'User #' + stored;
+      } else {
+        db.runTransaction(async t => {
+          const docRef = db.collection('shared_notes').doc(id);
+          const snap = await t.get(docRef);
+          const n = (snap.exists ? (snap.data().guestCount || 0) : 0) + 1;
+          t.update(docRef, { guestCount: n });
+          return n;
+        }).then(n => {
+          sessionStorage.setItem(key, String(n));
+          _label = 'User #' + n;
+        }).catch(() => { _label = 'User #1'; });
+      }
+    }
+  });
 
   db.collection('shared_notes').doc(id).get().then(doc => {
     if (!doc.exists) { showError('This note has been deleted or the link is invalid.'); return; }
@@ -180,6 +205,7 @@
       let count = 0;
       const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       while (w.nextNode()) {
+        if (w.currentNode.parentElement?.closest('.rc')) continue;
         if (w.currentNode === node) return count + off;
         count += w.currentNode.length;
       }
@@ -189,7 +215,9 @@
     function getRangeFromOffset(root, offset) {
       let count = 0;
       const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let lastNode = null, lastLen = 0;
       while (w.nextNode()) {
+        if (w.currentNode.parentElement?.closest('.rc')) continue;
         const len = w.currentNode.length;
         if (count + len >= offset) {
           const r = document.createRange();
@@ -198,6 +226,14 @@
           return r;
         }
         count += len;
+        lastNode = w.currentNode;
+        lastLen = len;
+      }
+      if (lastNode) {
+        const r = document.createRange();
+        r.setStart(lastNode, lastLen);
+        r.collapse(true);
+        return r;
       }
       return null;
     }
@@ -206,9 +242,10 @@
       document.getElementById('rc-' + uid)?.remove();
       const range = getRangeFromOffset(editor, offset);
       if (!range) return;
-      const rRect = range.getBoundingClientRect();
       const eRect = editor.getBoundingClientRect();
-      if (!rRect.width && !rRect.height) return;
+      const rects = range.getClientRects();
+      const rRect = rects.length ? rects[0] : range.getBoundingClientRect();
+      if (!rRect) return;
       const el = document.createElement('div');
       el.id = 'rc-' + uid;
       el.className = 'rc';

@@ -1,15 +1,70 @@
 # GeniusNotes.ai — Project Context
 
-## notebook.html — Unified Notes & File Explorer (built June 2026)
-- Replaces `notepad.html` (which now redirects here)
-- **Left sidebar**: file explorer tree with expand/collapse, drag & drop to reorganize
-- **Data**: `gn-nb-folders` (folders with `parentId` for nesting) + `gn-notebooks` (notes with `folderId`)
-- **Single-page notes**: click opens directly to editor (no pages grid)
-- **Multi-page notebooks**: click shows pages grid; tree shows ▶ to expand individual pages
-- **Migration**: `migrateNotepad()` imports `gn-notepad-notes` + `gn-notepad-folders` into folder structure under "My Notepad" (flag: `gn-nb-v2-imported`)
-- **Theme**: light mode default (`:root`), dark via `:root.dark` class — no purple
-- **AI**: floating ✨ button bottom-right opens Convert menu (bullets, outline, cornell, etc.)
-- **Draw pages**: canvas with pen/highlighter/eraser, ruled/grid/dots/blank templates
+## notebook.html — 10-Feature Notebooks App (built June 2026)
+
+### Architecture
+- **Data**: `gn-nb-folders` (folders) + `gn-notebooks` (notebooks, each has `pages[]` of notes)
+- **Terminology**: "pages" renamed to "notes" throughout UI — internally still `pages[]`
+- **Views**: shelf → pages grid → editor (3-view stack via `switchView()`)
+- **Single-note notebooks**: open directly to editor (`pages.length <= 1`)
+- **Theme**: light default (`:root`), dark via `:root.dark`; editor bg is always white/dark per mode
+- **Migration**: `migrateNotepad()` imports notepad notes (flag: `gn-nb-v2-imported`)
+- **Demo**: `_seedDemoNotebook()` creates "Prompt Guide" 2-note notebook for new users (flag: `gn-nb-demo-seeded`)
+
+### 10 Tasks — All Implemented
+| Task | Features |
+|------|----------|
+| 1 | Rich toolbar: B/I/U, font family, font size, H1/H2/¶, lists, blockquote/HR, clear, text/highlight color, undo/redo |
+| 2 | A4 paginated layout (`_PG_H=1056`, `_GAP_H=32`), adjustable margins panel (`applyMargins`), pg-sep page breaks |
+| 3 | Selection popup: 1 word→Spelling, multi-word→Define/Comprehend/Grammar (calls `/api/interpret`) |
+| 4 | Photo insert, draw overlay (annotation canvas over text), Math/KaTeX panel with 24 symbols |
+| 5 | Slash commands: /bullets /outline /cornellnotes /studyguide /flashcards /format /highlight /prompt /share /summarize /translate |
+| 6 | Cornell Notes template (blank table insert), Homework Solver modal (`/api/homework`) |
+| 7 | Split screen (notepad.html style: divider + ⇄ swap + picker), Detach floating window |
+| 8 | Firebase cloud sync (Firestore `users/{uid}/nb_store/main`), 500ms autosave, collab presence dots |
+| 9 | YouTube transcript import + File upload (PDF/DOCX/PPTX/image/video) via existing APIs |
+| 10 | Full-text search across notebooks+notes, Prompt Guide demo notebook |
+
+### Split Screen (Task 7 — notepad.html style)
+- **⊞ Split** button → `toggleSplitPicker()` → dropdown of all other notes to compare
+- Click note in picker → `enterSplitMode(idx)` → shows right panel + divider
+- **⇄ swap button** centered on divider → `swapSplitEditors()` swaps content + IDs between panels
+- Divider is **drag-to-resize** (`startSplitResize` / `onSplitResize` / `stopSplitResize`)
+- Right panel: ◀ ▶ to navigate notes, ✕ to close → `exitSplitMode()`
+- Left pane shows header with current note title when split is active
+- `exitSplitMode()` called from `closeEditor()` and `openNotebook()`
+
+### A4 Page Breaks (Task 2)
+- `_PG_H=1056`, `_GAP_H=32`, `_CYCLE=1088`
+- `refreshPageLines()` → `_applyPageBreaks(ed)` inserts `.pg-sep` divs at overflow points
+- `schedulePageLines()` debounced 80ms; called from `onTextInput()`, `acceptAI()`, photo insert, etc.
+- `saveCurPage()` clones editor and strips `.pg-sep` before saving — stored HTML is always clean
+- `loadPage()` saves overlay to OLD page BEFORE changing `_curPageIdx`, then restores new page
+- `_setPgCssVars()` sets `--pg-top/right/bottom/left` on `#text-editor`
+- `_updateEditorBg(ed)` applies repeating gradient (white page / grey gap) — called on theme toggle too
+
+### Draw Overlay (Task 4)
+- `toggleDrawOverlay()` activates/deactivates canvas over text page
+- State: `_overlayActive`, `_overlayCanvas`, `_overlayCtx`, `_ovTool`, `_ovColor`, `_ovSize`
+- Saved as `pg.overlayDataURL` (stripped from cloud sync to save space)
+- Deactivation from `loadPage()` uses UI-only path (saves to old page BEFORE `_curPageIdx` changes)
+
+### Firebase Cloud Sync (Task 8)
+- Firestore path: `users/{uid}/nb_store/main` → `{ notebooks, folders, updatedAt }`
+- Draw page `dataURL` and `overlayDataURL` stripped before cloud save (localStorage only)
+- `scheduleCloudSave()` debounces 3s; skips if `_fbUid` is null
+- `initFirebase()` retries on `typeof firebase==='undefined'` (defer script race)
+- Presence: `nb_presence/{nbId}` → renders colored dots on page thumbnails for collaborators
+
+### Key Bug Fixes Applied
+- `acceptAI()` and `aiAction()` use `_getActiveEditorEl()` (not hardcoded `#text-editor`)
+- `applyFont('')` always runs `execCommand('fontName', false, 'inherit')` — fixes Default reset
+- `discardAI()` null-guards `#ai-result` elements
+- `addPageFromShelf()` / `addPageInEditor()` call `saveCurPage()` + `clearTimeout(_saveTimer)` before creating new note
+- `openPage()` used by search results (not manual `switchView+loadPage`) — initializes canvas
+- Selection popup works on both left and right editors in split mode
+- FileReader has `onerror` handler in `importFile()` — no frozen UI on failure
+- `insertImport('current')` guards against being called from shelf view
 
 ## Live URLs
 - https://geniusnotes.ai / https://www.geniusnotes.ai

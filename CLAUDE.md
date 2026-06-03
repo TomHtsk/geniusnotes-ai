@@ -1,5 +1,16 @@
 # GeniusNotes.ai — Project Context
 
+## notebook.html — Unified Notes & File Explorer (built June 2026)
+- Replaces `notepad.html` (which now redirects here)
+- **Left sidebar**: file explorer tree with expand/collapse, drag & drop to reorganize
+- **Data**: `gn-nb-folders` (folders with `parentId` for nesting) + `gn-notebooks` (notes with `folderId`)
+- **Single-page notes**: click opens directly to editor (no pages grid)
+- **Multi-page notebooks**: click shows pages grid; tree shows ▶ to expand individual pages
+- **Migration**: `migrateNotepad()` imports `gn-notepad-notes` + `gn-notepad-folders` into folder structure under "My Notepad" (flag: `gn-nb-v2-imported`)
+- **Theme**: light mode default (`:root`), dark via `:root.dark` class — no purple
+- **AI**: floating ✨ button bottom-right opens Convert menu (bullets, outline, cornell, etc.)
+- **Draw pages**: canvas with pen/highlighter/eraser, ruled/grid/dots/blank templates
+
 ## Live URLs
 - https://geniusnotes.ai / https://www.geniusnotes.ai
 - https://geniusnotes-ai.vercel.app

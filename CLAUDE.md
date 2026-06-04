@@ -1,38 +1,48 @@
 # GeniusNotes.ai — Project Context
 
-## notebook.html — 10-Feature Notebooks App (built June 2026)
+## notebook.html — Notebooks App (updated June 2026)
 
 ### Architecture
-- **Data**: `gn-nb-folders` (folders) + `gn-notebooks` (notebooks, each has `pages[]` of notes)
-- **Terminology**: "pages" renamed to "notes" throughout UI — internally still `pages[]`
-- **Views**: shelf → pages grid → editor (3-view stack via `switchView()`)
-- **Single-note notebooks**: open directly to editor (`pages.length <= 1`)
+- **Data**: `gn-nb-folders` (folders) + `gn-notebooks` (notebooks, each has `pages[]` of internal pages)
+- **Hierarchy**: Folders → Notebooks (independent documents) → Pages (within one notebook)
+- **Views**: shelf → editor (2-view stack; page shelf removed)
+- **openNotebook(id)**: always opens editor directly (`openPage(lastPage||0)`) — no intermediate page shelf
+- **closeEditor()**: calls `goHome()` → main shelf. `goHome()` fixes: uses `lp-starred/recent/trash` IDs (no `lp-all`)
 - **Theme**: light default (`:root`), dark via `:root.dark`; editor bg is always white/dark per mode
 - **Migration**: `migrateNotepad()` imports notepad notes (flag: `gn-nb-v2-imported`)
-- **Demo**: `_seedDemoNotebook()` creates "Prompt Guide" 2-note notebook for new users (flag: `gn-nb-demo-seeded`)
+- **Demo**: `_seedDemoNotebook()` creates "Prompt Guide" notebook for new users (flag: `gn-nb-demo-seeded`)
 
-### 10 Tasks — All Implemented
-| Task | Features |
-|------|----------|
-| 1 | Rich toolbar: B/I/U, font family, font size, H1/H2/¶, lists, blockquote/HR, clear, text/highlight color, undo/redo |
-| 2 | A4 paginated layout (`_PG_H=1056`, `_GAP_H=32`), adjustable margins panel (`applyMargins`), pg-sep page breaks |
-| 3 | Selection popup: 1 word→Spelling, multi-word→Define/Comprehend/Grammar (calls `/api/interpret`) |
-| 4 | Photo insert, draw overlay (annotation canvas over text), Math/KaTeX panel with 24 symbols |
-| 5 | Slash commands: /bullets /outline /cornellnotes /studyguide /flashcards /format /highlight /prompt /share /summarize /translate |
-| 6 | Cornell Notes template (blank table insert), Homework Solver modal (`/api/homework`) |
-| 7 | Split screen (notepad.html style: divider + ⇄ swap + picker), Detach floating window |
-| 8 | Firebase cloud sync (Firestore `users/{uid}/nb_store/main`), 500ms autosave, collab presence dots |
-| 9 | YouTube transcript import + File upload (PDF/DOCX/PPTX/image/video) via existing APIs |
-| 10 | Full-text search across notebooks+notes, Prompt Guide demo notebook |
+### Notes vs Pages terminology
+- A **Notebook** = an independent document (on the All Notebooks shelf)
+- A **Page** = a page within that notebook (navigated via left panel thumbnails, `+ Add Page ▾`)
+- Internal page titles default to "Page 1", "Page 2", etc.
+- Old `addPageFromShelf('type')` now creates a **new standalone notebook** (not a page within current)
+- `extractAndOpenPage(i)`: extracts a page from `_curNb.pages` → new standalone notebook, opens it; deletes `_curNb` if empty
 
-### Split Screen (Task 7 — notepad.html style)
-- **⊞ Split** button → `toggleSplitPicker()` → dropdown of all other notes to compare
-- Click note in picker → `enterSplitMode(idx)` → shows right panel + divider
-- **⇄ swap button** centered on divider → `swapSplitEditors()` swaps content + IDs between panels
-- Divider is **drag-to-resize** (`startSplitResize` / `onSplitResize` / `stopSplitResize`)
-- Right panel: ◀ ▶ to navigate notes, ✕ to close → `exitSplitMode()`
-- Left pane shows header with current note title when split is active
-- `exitSplitMode()` called from `closeEditor()` and `openNotebook()`
+### Color Picker
+- `COLORS[]` = 10 solid colors (purple, blue, teal, green, red, pink, amber, orange, dark, slate)
+- `GRADIENTS[]` = 6 gradient strings (`linear-gradient(135deg,...)`)
+- `colorWithAlpha(c, hexAlpha)`: returns `c+hexAlpha` for solid colors, `c` unchanged for gradients
+- `buildColorModalRow(rowId, inputId, hexId, curColor, onPick)`: shared builder showing COLORS + "Gradients" label + GRADIENTS swatches
+- Folder cards use `colorWithAlpha(f.color, '22'/'33')` for tinted backgrounds — gradient-safe
+- Both notebook and folder right-click menus have "🎨 Change Color" → `modal-nb-color` / `modal-folder-color`
+
+### Split Screen — Cross-Notebook Drag-and-Drop
+- **Drag** any notebook card (shelf or left panel tree) → **drop onto another notebook** → opens both side-by-side
+- Visual: drag source dims to 60% opacity; drop target shows purple "⊞ Open Split" overlay (`:after` with `pointer-events:none`)
+- `dragleave` uses `contains(e.relatedTarget)` to avoid flickering on child elements
+- `dragstart` stores ID in both `_dragItem` and `e.dataTransfer.setData('text/plain', id)`; `drop` reads both as fallback
+- `openCrossNbSplit(id1, id2)`: sets `_splitNb2`, `_splitNb2PageIdx`, `_crossNbSplit=true` BEFORE calling `openPage()`
+- State: `_crossNbSplit` (bool), `_splitNb2` (notebook object), `_splitNb2PageIdx` (int)
+- `saveRightPage()`, `saveRightTitle()`, `prevRightPage()`, `nextRightPage()`, `swapSplitEditors()` all branch on `_crossNbSplit`
+- `exitSplitMode()` resets all three cross-nb state vars
+
+### In-editor Split Screen (same notebook)
+- **⊞ Split** button → `toggleSplitPicker()` → dropdown of other pages in same notebook
+- Click page → `enterSplitMode(idx)` → shows right panel + divider
+- **⇄ swap** centered on divider → `swapSplitEditors()` swaps content between panels
+- Divider drag-to-resize: `startSplitResize` / `onSplitResize` / `stopSplitResize`
+- Right panel: ◀ ▶ navigate pages, ✕ close → `exitSplitMode()`
 
 ### A4 Page Breaks (Task 2)
 - `_PG_H=1056`, `_GAP_H=32`, `_CYCLE=1088`
@@ -65,6 +75,9 @@
 - Selection popup works on both left and right editors in split mode
 - FileReader has `onerror` handler in `importFile()` — no frozen UI on failure
 - `insertImport('current')` guards against being called from shelf view
+- `goHome()` uses `lp-starred/recent/trash` IDs + `tree-root` — NOT `lp-all` (does not exist); was crashing before `renderShelf()`
+- `closeEditor()` wraps all steps in try/catch so `goHome()` always runs even if canvas/presence errors
+- `colorWithAlpha()` guards gradient strings from having hex alpha appended (would produce invalid CSS)
 
 ## Live URLs
 - https://geniusnotes.ai / https://www.geniusnotes.ai

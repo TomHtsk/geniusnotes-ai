@@ -118,6 +118,9 @@
     :root.dark .nb-pg-badge{background:rgba(255,255,255,.15);color:var(--text);}
     .nb-star{position:absolute;top:8px;left:8px;font-size:.75rem;z-index:3;opacity:0;}
     .nb-card.starred .nb-star{opacity:1;}
+    .nb-card.split-target .nb-cover{box-shadow:0 0 0 3px #a78bfa,0 0 24px rgba(139,92,246,.45)!important;transition:box-shadow .1s;}
+    .nb-card.split-target .nb-cover::after{content:'⊞ Open Split';position:absolute;inset:0;background:rgba(109,40,217,.78);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;border-radius:inherit;z-index:6;letter-spacing:.03em;pointer-events:none;}
+    .tree-row.split-target{background:rgba(139,92,246,.18);outline:1.5px solid rgba(139,92,246,.5);border-radius:7px;}
     .nb-info{padding:7px 3px 2px;}
     .nb-name{font-size:.81rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .nb-meta{font-size:.68rem;color:var(--muted);margin-top:2px;}
@@ -484,10 +487,10 @@
       <button class="tb-btn" id="split-btn" onclick="toggleSplitPicker()" title="Split screen" style="font-size:.72rem">⊞ Split</button>
       <button class="tb-btn" onclick="detachPage()" title="Detach to floating window" style="font-size:.72rem">↗ Detach</button>
       <div style="position:relative">
-        <button class="add-pg-btn" id="add-pg-btn" onclick="toggleAddPgMenu()">+ Add Note ▾</button>
+        <button class="add-pg-btn" id="add-pg-btn" onclick="toggleAddPgMenu()">+ Add Page ▾</button>
         <div class="add-pg-menu" id="add-pg-menu">
-          <div class="apm-item" onclick="addPageInEditor('text')">📝 Text Note</div>
-          <div class="apm-item" onclick="addPageInEditor('draw')">✏️ Drawing Note</div>
+          <div class="apm-item" onclick="addPageInEditor('text')">📝 Text Page</div>
+          <div class="apm-item" onclick="addPageInEditor('draw')">✏️ Draw Page</div>
         </div>
       </div>
     </div>
@@ -496,7 +499,7 @@
     <div class="pages-panel"><div class="pages-list" id="pages-list"></div></div>
     <div class="page-editor" id="page-editor">
       <div class="left-pane-hd" id="left-pane-hd">
-        <span class="split-pane-title" id="left-pane-title">Current Note</span>
+        <span class="split-pane-title" id="left-pane-title">Current Page</span>
       </div>
       <div id="text-toolbar">
         <div class="text-tb" onmousedown="event.preventDefault()">
@@ -804,6 +807,7 @@
   <div class="ctx-item" onclick="folderCtx('open')">📂 Open</div>
   <div class="ctx-item" onclick="folderCtx('rename')">✏️ Rename</div>
   <div class="ctx-item" onclick="folderCtx('move')">📁 Move to…</div>
+  <div class="ctx-item" onclick="folderCtx('color')">🎨 Change Color</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item red" onclick="folderCtx('delete')">🗑️ Delete Folder</div>
 </div>
@@ -813,9 +817,34 @@
   <div class="ctx-item" onclick="nbCtx('rename')">✏️ Rename</div>
   <div class="ctx-item" onclick="nbCtx('move')">📁 Move to…</div>
   <div class="ctx-item" onclick="nbCtx('duplicate')">📋 Duplicate</div>
+  <div class="ctx-item" onclick="nbCtx('color')">🎨 Change Color</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item red" onclick="nbCtx('trash')"><span id="ctx-trash-lbl">🗑️ Move to Trash</span></div>
 </div>
+
+<!-- CHANGE COLOR MODAL -->
+<div class="modal-bg" id="modal-nb-color"><div class="modal" style="width:320px">
+  <h3>Change Notebook Color</h3>
+  <div class="color-row" id="nb-change-color-row"></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <label style="font-size:.82rem;color:var(--muted)">Custom:</label>
+    <input type="color" id="nb-custom-color" style="width:42px;height:30px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;padding:2px;" oninput="onNbCustomColor(this.value)">
+    <span id="nb-custom-color-hex" style="font-size:.78rem;color:var(--muted);font-family:monospace"></span>
+  </div>
+  <div class="modal-acts"><button class="btn-cancel" onclick="closeModal('modal-nb-color')">Cancel</button><button class="btn-ok" onclick="confirmNbColor()">Apply</button></div>
+</div></div>
+
+<!-- CHANGE FOLDER COLOR MODAL -->
+<div class="modal-bg" id="modal-folder-color"><div class="modal" style="width:320px">
+  <h3>Change Folder Color</h3>
+  <div class="color-row" id="folder-change-color-row"></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <label style="font-size:.82rem;color:var(--muted)">Custom:</label>
+    <input type="color" id="folder-custom-color" style="width:42px;height:30px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;padding:2px;" oninput="onFolderCustomColor(this.value)">
+    <span id="folder-custom-color-hex" style="font-size:.78rem;color:var(--muted);font-family:monospace"></span>
+  </div>
+  <div class="modal-acts"><button class="btn-cancel" onclick="closeModal('modal-folder-color')">Cancel</button><button class="btn-ok" onclick="confirmFolderColor()">Apply</button></div>
+</div></div>
 
 <!-- MOVE TO MODAL -->
 <div class="modal-bg" id="modal-move"><div class="modal" style="width:340px">
@@ -829,7 +858,9 @@
 const NB_STORE='gn-notebooks', FL_STORE='gn-nb-folders';
 const CW=794,CH=1123;
 const _PG_H=1056,_GAP_H=32,_CYCLE=_PG_H+_GAP_H;
-const COLORS=['#6D28D9','#2563EB','#0891B2','#059669','#DC2626','#DB2777','#D97706','#1E293B','#374151','#7C3AED'];
+const COLORS=['#6D28D9','#2563EB','#0891B2','#059669','#DC2626','#DB2777','#D97706','#F97316','#1E293B','#374151'];
+const GRADIENTS=['linear-gradient(135deg,#667eea,#764ba2)','linear-gradient(135deg,#f093fb,#f5576c)','linear-gradient(135deg,#4facfe,#00f2fe)','linear-gradient(135deg,#43e97b,#38f9d7)','linear-gradient(135deg,#fa709a,#fee140)','linear-gradient(135deg,#a18cd1,#fbc2eb)'];
+function colorWithAlpha(c,a){return(!c||c.includes('gradient'))?c||'':c+a;}
 const SLASH_CMDS=[
   {cmd:'bullets',icon:'📌',title:'Bullet Points',desc:'Convert to bullets'},
   {cmd:'outline',icon:'📋',title:'Outline',desc:'Structured outline'},
@@ -902,7 +933,7 @@ function migrateNotepad(){
       starred:false,deleted:false,createdAt:f.createdAt||Date.now(),updatedAt:f.updatedAt||Date.now(),
       pages:folderNotes.length
         ?folderNotes.map(n=>({id:uid(),type:'text',title:n.title||'Untitled',html:n.content||n.html||'<p></p>',dataURL:null,template:'ruled'}))
-        :[{id:uid(),type:'text',title:'Note 1',html:'<p></p>',dataURL:null,template:'ruled'}]};
+        :[{id:uid(),type:'text',title:'Page 1',html:'<p></p>',dataURL:null,template:'ruled'}]};
     _nbs.push(nb);
     folderNbMap[f.id]=nb.id;
   });
@@ -923,7 +954,7 @@ function migrateNotepad(){
 // ══ NAVIGATION STACK ══
 function navigate(folderId){_navStack.push(folderId);renderShelf();}
 function goBack(){if(_navStack.length)_navStack.pop();renderShelf();}
-function goHome(){_navStack=[];_filter='all';['all','recent','starred','trash'].forEach(x=>document.getElementById('lp-'+x).classList.toggle('active',x==='all'));renderShelf();}
+function goHome(){_navStack=[];_filter='all';['starred','recent','trash'].forEach(x=>document.getElementById('lp-'+x)?.classList.remove('active'));document.getElementById('tree-root')?.classList.add('active');renderShelf();}
 
 function setFilter(f){
   _filter=f;_navStack=[];
@@ -1161,8 +1192,11 @@ function buildTreeNb(nb,depth){
 
   row.addEventListener('click',e=>{if(e.target.classList.contains('tree-arrow'))return;openNotebook(nb.id);});
   row.addEventListener('contextmenu',e=>{e.preventDefault();openNbCtx(e,nb.id);});
-  row.addEventListener('dragstart',e=>{_dragItem={type:'nb',id:nb.id};e.dataTransfer.effectAllowed='move';});
-  row.addEventListener('dragend',()=>_dragItem=null);
+  row.addEventListener('dragstart',e=>{_dragItem={type:'nb',id:nb.id};e.dataTransfer.setData('text/plain',nb.id);e.dataTransfer.effectAllowed='copy';row.style.opacity='.6';});
+  row.addEventListener('dragend',()=>{_dragItem=null;row.style.opacity='';document.querySelectorAll('.nb-card.split-target,.tree-row.split-target').forEach(x=>x.classList.remove('split-target'));});
+  row.addEventListener('dragover',e=>{if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';row.classList.add('split-target');}});
+  row.addEventListener('dragleave',e=>{if(!row.contains(e.relatedTarget))row.classList.remove('split-target');});
+  row.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const srcId=e.dataTransfer.getData('text/plain');row.classList.remove('split-target');if(srcId&&srcId!==nb.id){openCrossNbSplit(srcId,nb.id);}else if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){openCrossNbSplit(_dragItem.id,nb.id);}_dragItem=null;});
   wrap.appendChild(row);
 
   // Show pages as sub-items for multi-page notebooks
@@ -1171,7 +1205,7 @@ function buildTreeNb(nb,depth){
       const pgRow=document.createElement('div');
       pgRow.className='tree-row';
       pgRow.style.paddingLeft=(8+(depth+1)*14)+'px';
-      pgRow.innerHTML=`<span class="tree-arrow leaf">▶</span><span class="tree-icon" style="font-size:.75rem">📝</span><span class="tree-name" style="color:var(--muted);font-size:.76rem">${esc(pg.title||'Note '+(i+1))}</span>`;
+      pgRow.innerHTML=`<span class="tree-arrow leaf">▶</span><span class="tree-icon" style="font-size:.75rem">📝</span><span class="tree-name" style="color:var(--muted);font-size:.76rem">${esc(pg.title||'Page '+(i+1))}</span>`;
       pgRow.addEventListener('click',()=>{_curNb=nb;openPage(i);});
       wrap.appendChild(pgRow);
     });
@@ -1217,7 +1251,7 @@ function buildFolderCard(f){
   const d=document.createElement('div');
   d.className='folder-card';
   d.innerHTML=`
-    <div class="folder-cover" style="background:${f.color||COLORS[1]}22">
+    <div class="folder-cover" style="background:${colorWithAlpha(f.color||COLORS[1],'22')}">
       <div class="folder-cover-bg" style="background:${f.color||COLORS[1]}"></div>
       <div class="folder-cover-icon" style="position:absolute;bottom:0;right:-10px;font-size:5rem;opacity:.25;transform:rotate(-10deg)">📁</div>
       <div class="folder-cover-icon" style="z-index:2;font-size:3rem">📁</div>
@@ -1233,7 +1267,7 @@ function buildFolderCard(f){
 function buildFolderListRow(f,total){
   const d=document.createElement('div');
   d.className='list-row';
-  d.innerHTML=`<div class="list-icon" style="background:${f.color||COLORS[1]}33">📁</div>
+  d.innerHTML=`<div class="list-icon" style="background:${colorWithAlpha(f.color||COLORS[1],'33')}">📁</div>
     <div class="list-info"><div class="list-name">${esc(f.name)}</div><div class="list-meta">${total} item${total!==1?'s':''}</div></div>
     <div class="card-actions" style="position:static;opacity:1"><button class="card-act" onclick="event.stopPropagation();openFolderCtx(event,'${f.id}')" style="background:var(--surface2);color:var(--text)">⋯</button></div>`;
   d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))navigate(f.id);});
@@ -1258,8 +1292,14 @@ function buildNbCard(nb){
     </div>
     <div class="nb-info"><div class="nb-name">${esc(nb.name)}</div><div class="nb-meta">${fmtDate(nb.updatedAt)} · ${pc} note${pc!==1?'s':''}</div></div>
     <div class="card-actions"><button class="card-act" onclick="event.stopPropagation();openNbCtx(event,'${nb.id}')">⋯</button></div>`;
+  d.draggable=true;
   d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))openNotebook(nb.id);});
   d.addEventListener('contextmenu',e=>{e.preventDefault();openNbCtx(e,nb.id);});
+  d.addEventListener('dragstart',e=>{_dragItem={type:'nb',id:nb.id};e.dataTransfer.setData('text/plain',nb.id);e.dataTransfer.effectAllowed='copy';d.style.opacity='.6';});
+  d.addEventListener('dragend',()=>{_dragItem=null;d.style.opacity='';document.querySelectorAll('.nb-card.split-target,.tree-row.split-target').forEach(x=>x.classList.remove('split-target'));});
+  d.addEventListener('dragover',e=>{if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';d.classList.add('split-target');}});
+  d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('split-target');});
+  d.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const srcId=e.dataTransfer.getData('text/plain');d.classList.remove('split-target');if(srcId&&srcId!==nb.id){openCrossNbSplit(srcId,nb.id);}else if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){openCrossNbSplit(_dragItem.id,nb.id);}_dragItem=null;});
   return d;
 }
 
@@ -1314,6 +1354,40 @@ function folderCtx(a){
     document.getElementById('confirm-ok-btn').textContent='Delete';
     openModal('modal-confirm');
   }
+  else if(a==='color'){openFolderColorModal(_ctxTarget.id);}
+}
+
+let _folderColorTarget=null,_folderColorPick=null;
+function buildColorModalRow(rowId,inputId,hexId,curColor,onPick){
+  const row=document.getElementById(rowId);row.innerHTML='';
+  const allColors=[...COLORS,...GRADIENTS];
+  allColors.forEach((c,i)=>{
+    if(i===COLORS.length){const lbl=document.createElement('div');lbl.style.cssText='flex-basis:100%;font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:4px 0 2px;';lbl.textContent='Gradients';row.appendChild(lbl);}
+    const s=document.createElement('div');s.className='cv-sw'+(c===curColor?' active':'');s.style.background=c;
+    s.title=c.includes('gradient')?'Gradient':'';
+    s.onclick=()=>{
+      onPick(c);row.querySelectorAll('.cv-sw').forEach(x=>x.classList.remove('active'));s.classList.add('active');
+      if(!c.includes('gradient')){document.getElementById(inputId).value=c;document.getElementById(hexId).textContent=c;}
+      else{document.getElementById(hexId).textContent='gradient';}
+    };
+    row.appendChild(s);
+  });
+}
+function openFolderColorModal(id){
+  const f=getFolder(id);if(!f)return;
+  _folderColorTarget=id;_folderColorPick=f.color||COLORS[1];
+  buildColorModalRow('folder-change-color-row','folder-custom-color','folder-custom-color-hex',f.color||COLORS[1],c=>{_folderColorPick=c;});
+  const cur=f.color||COLORS[1];if(!cur.includes('gradient')){document.getElementById('folder-custom-color').value=cur;document.getElementById('folder-custom-color-hex').textContent=cur;}
+  openModal('modal-folder-color');
+}
+function onFolderCustomColor(c){
+  _folderColorPick=c;
+  document.getElementById('folder-change-color-row').querySelectorAll('.cv-sw').forEach(x=>x.classList.remove('active'));
+  document.getElementById('folder-custom-color-hex').textContent=c;
+}
+function confirmFolderColor(){
+  const f=getFolder(_folderColorTarget);if(!f||!_folderColorPick)return;
+  f.color=_folderColorPick;saveData();renderShelf();closeModal('modal-folder-color');
 }
 
 // ══ NOTEBOOK CRUD ══
@@ -1326,7 +1400,7 @@ function confirmCreateNb(){
   const name=document.getElementById('inp-nb-name').value.trim()||'Notebook';
   const nb={id:uid(),name,color:_createColor,folderId:curFolderId()||null,starred:false,deleted:false,
     createdAt:Date.now(),updatedAt:Date.now(),
-    pages:[{id:uid(),type:'text',title:'Note 1',html:'<p></p>',dataURL:null,template:'ruled'}]};
+    pages:[{id:uid(),type:'text',title:'Page 1',html:'<p></p>',dataURL:null,template:'ruled'}]};
   _nbs.unshift(nb);saveData();closeModal('modal-create-nb');renderShelf();openNotebook(nb.id);
 }
 
@@ -1346,6 +1420,25 @@ function nbCtx(a){
   else if(a==='duplicate'){const cp={...nb,id:uid(),name:nb.name+' Copy',createdAt:Date.now(),updatedAt:Date.now(),pages:nb.pages.map(p=>({...p,id:uid()}))};_nbs.splice(_nbs.indexOf(nb)+1,0,cp);saveData();renderShelf();}
   else if(a==='trash'){nb.deleted=!nb.deleted;nb.starred=false;saveData();renderShelf();}
   else if(a==='move'){showMoveModal(_ctxTarget.id);}
+  else if(a==='color'){openNbColorModal(_ctxTarget.id);}
+}
+
+let _nbColorTarget=null,_nbColorPick=null;
+function openNbColorModal(id){
+  const nb=getNb(id);if(!nb)return;
+  _nbColorTarget=id;_nbColorPick=nb.color;
+  buildColorModalRow('nb-change-color-row','nb-custom-color','nb-custom-color-hex',nb.color,c=>{_nbColorPick=c;});
+  if(!nb.color.includes('gradient')){document.getElementById('nb-custom-color').value=nb.color;document.getElementById('nb-custom-color-hex').textContent=nb.color;}
+  openModal('modal-nb-color');
+}
+function onNbCustomColor(c){
+  _nbColorPick=c;
+  document.getElementById('nb-change-color-row').querySelectorAll('.cv-sw').forEach(x=>x.classList.remove('active'));
+  document.getElementById('nb-custom-color-hex').textContent=c;
+}
+function confirmNbColor(){
+  const nb=getNb(_nbColorTarget);if(!nb||!_nbColorPick)return;
+  nb.color=_nbColorPick;saveData();renderShelf();closeModal('modal-nb-color');
 }
 
 function showFolderMoveModal(folderId){
@@ -1421,16 +1514,7 @@ function runConfirm(){if(_confirmFn){_confirmFn();_confirmFn=null;}closeModal('m
 function openNotebook(id){
   if(_splitActive)exitSplitMode();
   _curNb=getNb(id);if(!_curNb)return;
-  // Single-page files open directly — no pages grid needed
-  if(_curNb.pages.length<=1){openPage(0);return;}
-  const _pnl=document.getElementById('pages-nb-name-lp');if(_pnl)_pnl.textContent=_curNb.name;
-  const bc=document.getElementById('pages-breadcrumb');
-  const path=getPath(_curNb.folderId||null);
-  let html=`<span class="bc-item" onclick="goHome()">All Notebooks</span>`;
-  path.forEach(f=>{html+=`<span class="bc-sep">›</span><span class="bc-item" onclick="navTo('${f.id}')">${esc(f.name)}</span>`;});
-  html+=`<span class="bc-sep">›</span><span class="bc-item current">${esc(_curNb.name)}</span>`;
-  bc.innerHTML=html;
-  switchView('pages');renderPagesGrid();
+  openPage(_curNb.lastPage||0);
 }
 
 function renderPagesGrid(){
@@ -1458,10 +1542,21 @@ function buildPageCard(pg,i){
     <div class="pg-type">${isText?'📝 Text':'✏️ Draw note'}</div>
     <div class="pg-num">note ${i+1}</div>
   </div>
-  <div class="pg-info"><div class="pg-title">${esc(pg.title||'Note '+(i+1))}</div><div class="pg-meta">${isText?'Text note':'Draw note'}</div></div>
+  <div class="pg-info"><div class="pg-title">${esc(pg.title||'Page '+(i+1))}</div><div class="pg-meta">${isText?'Text note':'Draw note'}</div></div>
   <div class="card-actions"><button class="card-act" onclick="event.stopPropagation();confirmDeletePage(${i})" style="background:rgba(239,68,68,.8)" title="Delete">✕</button></div>`;
-  d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))openPage(i);});
+  d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))extractAndOpenPage(i);});
   return d;
+}
+
+function extractAndOpenPage(i){
+  const pg=_curNb.pages[i];if(!pg)return;
+  const nb={id:uid(),name:pg.title||('Note '+(i+1)),color:_curNb.color||COLORS[0],
+             folderId:_curNb.folderId||null,starred:false,deleted:false,
+             pages:[{...pg,id:uid()}],createdAt:Date.now(),updatedAt:Date.now()};
+  _nbs.unshift(nb);
+  _curNb.pages.splice(i,1);
+  if(_curNb.pages.length===0){_nbs=_nbs.filter(n=>n.id!==_curNb.id);}
+  saveData();openNotebook(nb.id);
 }
 
 function drawPageThumb(i,dataURL,canvasId){
@@ -1470,9 +1565,12 @@ function drawPageThumb(i,dataURL,canvasId){
 }
 
 function addPageFromShelf(type){
-  saveCurPage();clearTimeout(_saveTimer); // flush old note, cancel pending timer
-  const pg={id:uid(),type,title:'Note '+(_curNb.pages.length+1),html:'<p></p>',dataURL:null,template:'ruled'};
-  _curNb.pages.push(pg);_curNb.updatedAt=Date.now();saveData();openPage(_curNb.pages.length-1);
+  const siblings=_nbs.filter(n=>(n.folderId||null)===(_curNb.folderId||null)&&!n.deleted);
+  const nb={id:uid(),name:'Note '+(siblings.length+1),color:_curNb.color||COLORS[0],
+             folderId:_curNb.folderId||null,starred:false,deleted:false,
+             pages:[{id:uid(),type,title:'Page 1',html:'<p></p>',dataURL:null,template:'ruled'}],
+             createdAt:Date.now(),updatedAt:Date.now()};
+  _nbs.unshift(nb);saveData();openNotebook(nb.id);
 }
 
 function confirmDeletePage(i){
@@ -1480,7 +1578,7 @@ function confirmDeletePage(i){
     _curNb.pages.splice(i,1);
     _curNb.updatedAt=Date.now();
     if(_curNb.pages.length===0){
-      _curNb.pages.push({id:uid(),type:'text',title:'Note 1',html:'<p></p>',dataURL:null,template:'ruled'});
+      _curNb.pages.push({id:uid(),type:'text',title:'Page 1',html:'<p></p>',dataURL:null,template:'ruled'});
     }
     saveData();renderPagesGrid();
   };
@@ -1504,12 +1602,11 @@ function openPage(idx){
 }
 
 function closeEditor(){
-  if(_splitActive)exitSplitMode();
-  stopPresence();
-  saveCurPage();_curNb.updatedAt=Date.now();saveData();
-  _canvas.removeEventListener('pointerdown',onPtrDown);_canvas.removeEventListener('pointermove',onPtrMove);
-  _canvas.removeEventListener('pointerup',onPtrUp);_canvas.removeEventListener('pointercancel',onPtrUp);
-  switchView('pages');renderPagesGrid();
+  try{if(_splitActive)exitSplitMode();}catch(e){}
+  try{stopPresence();}catch(e){}
+  try{saveCurPage();if(_curNb)_curNb.updatedAt=Date.now();saveData();}catch(e){}
+  try{if(_canvas){_canvas.removeEventListener('pointerdown',onPtrDown);_canvas.removeEventListener('pointermove',onPtrMove);_canvas.removeEventListener('pointerup',onPtrUp);_canvas.removeEventListener('pointercancel',onPtrUp);}}catch(e){}
+  goHome();
 }
 
 function renameCurrentNb(){
@@ -1602,7 +1699,7 @@ function renderPanelList(){
       ${isText?`<div class="pg-thumb-prev">${(pg.html||'').replace(/<[^>]*>/g,' ').slice(0,100)}</div>`:''}
       <span style="position:relative;z-index:1;opacity:.2;font-size:.8rem">${isText?'📝':'✏️'}</span>
     </div>
-    <div class="pg-thumb-lbl">${esc(pg.title||'Note '+(i+1))}</div>
+    <div class="pg-thumb-lbl">${esc(pg.title||'Page '+(i+1))}</div>
     ${_curNb.pages.length>1?`<button class="pg-del" onclick="event.stopPropagation();delPanelPage(${i})">✕</button>`:''}`;
     d.addEventListener('click',()=>switchPage(i));
     list.appendChild(d);
@@ -1613,14 +1710,14 @@ function renderPanelList(){
 function switchPage(idx){
   saveCurPage();_curPageIdx=idx;renderPanelList();loadPage(idx);
   if(_splitActive){
-    document.getElementById('left-pane-title').textContent=_curNb.pages[idx]?.title||'Note '+(idx+1);
+    document.getElementById('left-pane-title').textContent=_curNb.pages[idx]?.title||'Page '+(idx+1);
   }
 }
 
 function addPageInEditor(type){
   closeAddPgMenu();saveCurPage();clearTimeout(_saveTimer);
   const tmpl=curPage()?.template||'ruled';
-  const pg={id:uid(),type,title:'Note '+(_curNb.pages.length+1),html:'<p></p>',dataURL:null,template:tmpl};
+  const pg={id:uid(),type,title:'Page '+(_curNb.pages.length+1),html:'<p></p>',dataURL:null,template:tmpl};
   _curNb.pages.push(pg);_curPageIdx=_curNb.pages.length-1;
   renderPanelList();loadPage(_curPageIdx);
 }
@@ -1628,7 +1725,7 @@ function addPageInEditor(type){
 function delPanelPage(i){
   _curNb.pages.splice(i,1);
   if(_curNb.pages.length===0){
-    _curNb.pages.push({id:uid(),type:'text',title:'Note 1',html:'<p></p>',dataURL:null,template:'ruled'});
+    _curNb.pages.push({id:uid(),type:'text',title:'Page 1',html:'<p></p>',dataURL:null,template:'ruled'});
   }
   _curPageIdx=Math.min(_curPageIdx,_curNb.pages.length-1);
   saveData();renderPanelList();loadPage(_curPageIdx);
@@ -1649,6 +1746,7 @@ function _getActiveEditorEl(){
 // ══ SPLIT SCREEN ══
 let _splitActive=false,_splitPageIdx=-1,_rightSaveTimer=null;
 let _resizing=false,_resizeStartX=0,_leftStart=0;
+let _crossNbSplit=false,_splitNb2=null,_splitNb2PageIdx=0;
 
 function toggleSplitPicker(){
   if(_splitActive){exitSplitMode();return;}
@@ -1662,11 +1760,30 @@ function toggleSplitPicker(){
   menu.style.cssText=`position:fixed;top:${rect.bottom+5}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:5px;min-width:210px;max-height:280px;overflow-y:auto;z-index:2000;box-shadow:0 8px 28px rgba(0,0,0,.35);`;
   const rows=_curNb.pages.map((pg,i)=>{
     if(i===_curPageIdx)return'';
-    return`<div style="padding:9px 13px;border-radius:8px;cursor:pointer;font-size:.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(139,92,246,.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode(${i});document.getElementById('split-picker-menu')?.remove()">${esc(pg.title||'Note '+(i+1))}</div>`;
+    return`<div style="padding:9px 13px;border-radius:8px;cursor:pointer;font-size:.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(139,92,246,.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode(${i});document.getElementById('split-picker-menu')?.remove()">${esc(pg.title||'Page '+(i+1))}</div>`;
   }).join('');
-  menu.innerHTML='<div style="font-size:.65rem;font-weight:700;color:var(--muted);padding:5px 10px 3px;letter-spacing:.06em;text-transform:uppercase;">Select note to compare</div>'+(rows||'<div style="padding:8px 12px;color:var(--muted);font-size:.8rem;">No other notes</div>');
+  menu.innerHTML='<div style="font-size:.65rem;font-weight:700;color:var(--muted);padding:5px 10px 3px;letter-spacing:.06em;text-transform:uppercase;">Select page to compare</div>'+(rows||'<div style="padding:8px 12px;color:var(--muted);font-size:.8rem;">No other pages</div>');
   document.body.appendChild(menu);
   setTimeout(()=>document.addEventListener('click',function _sp(e){if(!menu.contains(e.target)&&e.target!==btn){menu.remove();document.removeEventListener('click',_sp);}}),10);
+}
+
+function openCrossNbSplit(id1,id2){
+  const nb1=getNb(id1),nb2=getNb(id2);if(!nb1||!nb2)return;
+  if(_splitActive)exitSplitMode();
+  _splitNb2=nb2;_splitNb2PageIdx=nb2.lastPage||0;_crossNbSplit=true;
+  _curNb=nb1;
+  openPage(nb1.lastPage||0); // sets up canvas, switches to editor view, loads left page
+  // openPage is synchronous — now configure split on top of it
+  _splitActive=true;_splitPageIdx=0;
+  document.getElementById('right-panel').style.display='flex';
+  document.getElementById('split-divider').style.display='block';
+  document.getElementById('split-btn').classList.add('active');
+  document.getElementById('left-pane-hd').classList.add('visible');
+  document.getElementById('left-pane-title').textContent=nb1.name;
+  const pg2=nb2.pages[_splitNb2PageIdx]||{};
+  document.getElementById('text-editor-right').innerHTML=pg2.html||'<p></p>';
+  document.getElementById('right-page-title').value=pg2.title||'';
+  document.getElementById('right-page-label').textContent=nb2.name+(nb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');
 }
 
 function enterSplitMode(rightIdx){
@@ -1676,13 +1793,13 @@ function enterSplitMode(rightIdx){
   document.getElementById('split-btn').classList.add('active');
   const leftPg=curPage();
   document.getElementById('left-pane-hd').classList.add('visible');
-  document.getElementById('left-pane-title').textContent=leftPg?.title||'Note '+(_curPageIdx+1);
+  document.getElementById('left-pane-title').textContent=leftPg?.title||'Page '+(_curPageIdx+1);
   loadRightPage(rightIdx);
 }
 
 function exitSplitMode(){
   saveRightPage();
-  _splitActive=false;_splitPageIdx=-1;
+  _splitActive=false;_splitPageIdx=-1;_crossNbSplit=false;_splitNb2=null;_splitNb2PageIdx=0;
   document.getElementById('right-panel').style.display='none';
   document.getElementById('split-divider').style.display='none';
   document.getElementById('split-btn').classList.remove('active');
@@ -1694,6 +1811,20 @@ function exitSplitMode(){
 
 function swapSplitEditors(){
   if(!_splitActive||!_curNb)return;
+  if(_crossNbSplit){
+    saveCurPage();saveRightPage();
+    const tmp=_curNb;_curNb=_splitNb2;_splitNb2=tmp;
+    const tmpIdx=_curPageIdx;_curPageIdx=_splitNb2PageIdx;_splitNb2PageIdx=tmpIdx;
+    document.getElementById('ed-nb-name').textContent=_curNb.name;
+    document.getElementById('text-editor').innerHTML=_curNb.pages[_curPageIdx]?.html||'<p></p>';
+    document.getElementById('page-title-inp').value=_curNb.pages[_curPageIdx]?.title||'';
+    document.getElementById('left-pane-title').textContent=_curNb.name;
+    const pg2=_splitNb2.pages[_splitNb2PageIdx]||{};
+    document.getElementById('text-editor-right').innerHTML=pg2.html||'<p></p>';
+    document.getElementById('right-page-title').value=pg2.title||'';
+    document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');
+    renderPanelList();saveData();schedulePageLines();return;
+  }
   const lc=document.getElementById('text-editor').cloneNode(true);
   lc.querySelectorAll('.pg-sep').forEach(s=>s.remove());
   const leftHtml=lc.innerHTML;
@@ -1707,8 +1838,8 @@ function swapSplitEditors(){
   document.getElementById('text-editor-right').innerHTML=_curNb.pages[_splitPageIdx]?.html||'<p></p>';
   document.getElementById('page-title-inp').value=_curNb.pages[_curPageIdx]?.title||'';
   document.getElementById('right-page-title').value=_curNb.pages[_splitPageIdx]?.title||'';
-  document.getElementById('left-pane-title').textContent=_curNb.pages[_curPageIdx]?.title||'Note '+(_curPageIdx+1);
-  document.getElementById('right-page-label').textContent='Note '+(_splitPageIdx+1)+' of '+_curNb.pages.length;
+  document.getElementById('left-pane-title').textContent=_curNb.pages[_curPageIdx]?.title||'Page '+(_curPageIdx+1);
+  document.getElementById('right-page-label').textContent='Page '+(_splitPageIdx+1)+' of '+_curNb.pages.length;
   renderPanelList();saveData();schedulePageLines();
 }
 
@@ -1739,21 +1870,39 @@ function loadRightPage(idx){
   const pg=_curNb.pages[idx];
   document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';
   document.getElementById('right-page-title').value=pg.title||'';
-  document.getElementById('right-page-label').textContent='Note '+(idx+1)+' of '+_curNb.pages.length;
+  document.getElementById('right-page-label').textContent='Page '+(idx+1)+' of '+_curNb.pages.length;
 }
 function saveRightPage(){
-  if(!_curNb||!_splitActive||_splitPageIdx<0)return;
-  const pg=_curNb.pages[_splitPageIdx];if(!pg)return;
+  if(!_splitActive)return;
   const clone=document.getElementById('text-editor-right').cloneNode(true);
   clone.querySelectorAll('.pg-sep').forEach(s=>s.remove());
-  pg.html=clone.innerHTML;
-  pg.title=document.getElementById('right-page-title').value||pg.title;
-  pg.updatedAt=Date.now();saveData();
+  const html=clone.innerHTML;
+  const title=document.getElementById('right-page-title').value;
+  if(_crossNbSplit){
+    if(!_splitNb2)return;
+    const pg=_splitNb2.pages[_splitNb2PageIdx];if(!pg)return;
+    pg.html=html;pg.title=title||pg.title;_splitNb2.updatedAt=Date.now();saveData();
+  }else{
+    if(!_curNb||_splitPageIdx<0)return;
+    const pg=_curNb.pages[_splitPageIdx];if(!pg)return;
+    pg.html=html;pg.title=title||pg.title;pg.updatedAt=Date.now();saveData();
+  }
 }
 function scheduleRightSave(){clearTimeout(_rightSaveTimer);_rightSaveTimer=setTimeout(saveRightPage,500);}
-function saveRightTitle(v){if(_curNb&&_curNb.pages[_splitPageIdx])_curNb.pages[_splitPageIdx].title=v;}
-function prevRightPage(){saveRightPage();loadRightPage(Math.max(0,_splitPageIdx-1));}
-function nextRightPage(){saveRightPage();loadRightPage(Math.min(_curNb.pages.length-1,_splitPageIdx+1));}
+function saveRightTitle(v){
+  if(_crossNbSplit){if(_splitNb2&&_splitNb2.pages[_splitNb2PageIdx])_splitNb2.pages[_splitNb2PageIdx].title=v;}
+  else{if(_curNb&&_curNb.pages[_splitPageIdx])_curNb.pages[_splitPageIdx].title=v;}
+}
+function prevRightPage(){
+  saveRightPage();
+  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.max(0,_splitNb2PageIdx-1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
+  else{loadRightPage(Math.max(0,_splitPageIdx-1));}
+}
+function nextRightPage(){
+  saveRightPage();
+  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.min(_splitNb2.pages.length-1,_splitNb2PageIdx+1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
+  else{loadRightPage(Math.min(_curNb.pages.length-1,_splitPageIdx+1));}
+}
 
 // ══ DETACH PANEL ══
 function detachPage(){
@@ -2397,7 +2546,7 @@ function runSearch(){
     if(nb.name.toLowerCase().includes(q))hits.push({type:'nb',nb,label:nb.name});
     nb.pages.forEach((pg,i)=>{
       const text=((pg.title||'')+' '+(pg.html||'').replace(/<[^>]*>/g,' ')).toLowerCase();
-      if(text.includes(q))hits.push({type:'page',nb,pg,idx:i,label:(pg.title||'Note '+(i+1))});
+      if(text.includes(q))hits.push({type:'page',nb,pg,idx:i,label:(pg.title||'Page '+(i+1))});
     });
   });
   if(!hits.length){out.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:6px 0">No results</div>';return;}
@@ -2577,7 +2726,7 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undoStroke();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redoStroke();}
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveCurPage();saveData();}
-  if(e.key==='Escape'){closeAddPgMenu();hideSlashMenu();discardAI();closeCtxMenus();closeSidebar();['modal-create-folder','modal-create-nb','modal-rename','modal-confirm','modal-prompt','modal-homework','modal-import'].forEach(closeModal);document.getElementById('math-panel').style.display='none';}
+  if(e.key==='Escape'){closeAddPgMenu();hideSlashMenu();discardAI();closeCtxMenus();closeSidebar();['modal-create-folder','modal-create-nb','modal-rename','modal-confirm','modal-prompt','modal-homework','modal-import','modal-nb-color','modal-folder-color'].forEach(closeModal);document.getElementById('math-panel').style.display='none';}
   if(e.key==='Enter'&&!e.shiftKey){if(document.getElementById('modal-create-folder').classList.contains('open'))confirmCreateFolder();else if(document.getElementById('modal-create-nb').classList.contains('open'))confirmCreateNb();else if(document.getElementById('modal-rename').classList.contains('open'))confirmRename();}
 });
 document.addEventListener('click',e=>{

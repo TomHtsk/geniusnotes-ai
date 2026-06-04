@@ -94,6 +94,8 @@
     .folder-card{cursor:pointer;position:relative;transition:transform .15s;}
     .folder-card:hover{transform:translateY(-3px);}
     .folder-card:hover .card-actions{opacity:1;}
+    .folder-card.drop-target .folder-cover{box-shadow:0 0 0 3px #a78bfa,0 0 24px rgba(139,92,246,.45)!important;transition:box-shadow .1s;}
+    .folder-card.drop-target .folder-cover::after{content:'Move here';position:absolute;inset:0;background:rgba(109,40,217,.72);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;border-radius:12px;z-index:6;letter-spacing:.03em;pointer-events:none;}
     .folder-cover{width:100%;aspect-ratio:4/3;border-radius:12px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.35);}
     .folder-cover-bg{position:absolute;inset:0;opacity:.9;}
     .folder-cover-icon{font-size:3.5rem;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3));}
@@ -194,6 +196,8 @@
     .pg-thumb-lbl{font-size:.63rem;font-weight:600;color:var(--muted);margin-top:3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .pg-thumb .pg-del{position:absolute;top:3px;right:3px;width:17px;height:17px;background:rgba(239,68,68,.8);border:none;border-radius:50%;color:#fff;font-size:.52rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
     .pg-thumb:hover .pg-del{display:flex;}
+    .pg-thumb-scale-wrap{position:absolute;inset:0;overflow:hidden;background:#fff;border-radius:7px;}
+    .pg-thumb-scale{zoom:0.175;width:794px;pointer-events:none;background:#fff;font-size:14px;line-height:1.7;color:#111827;font-family:'Inter',sans-serif;}
 
     .page-editor{flex:1;display:flex;flex-direction:column;overflow:hidden;}
     .text-tb{display:flex;align-items:center;gap:4px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;}
@@ -218,11 +222,11 @@
     .page-title-inp{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-size:1.05rem;font-weight:800;padding:9px 18px 7px;font-family:inherit;outline:none;flex-shrink:0;}
     .page-title-inp:focus{border-bottom-color:var(--accent);}
     .page-title-inp::placeholder{color:var(--muted);}
-    .text-editor-wrap{flex:1;overflow-y:auto;padding:24px 0 60px;background:#d1d5db;position:relative;}
+    .text-editor-wrap{flex:1;overflow-y:auto;padding:24px 0 0;background:#d1d5db;position:relative;}
     :root.dark .text-editor-wrap{background:#1f2937;}
-    #text-editor{min-height:1056px;outline:none;font-size:.91rem;line-height:1.78;color:var(--text);position:relative;width:clamp(400px,calc(100% - 48px),794px);margin:0 auto;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);padding:var(--pg-top,72px) var(--pg-right,72px) var(--pg-bottom,72px) var(--pg-left,72px);}
+    #text-editor{min-height:1123px;outline:none;font-size:.91rem;line-height:1.78;color:var(--text);position:relative;width:clamp(400px,calc(100% - 48px),794px);margin:0 auto;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);padding:var(--pg-top,72px) var(--pg-right,72px) var(--pg-bottom,72px) var(--pg-left,72px);}
     :root.dark #text-editor{background:#1a1a2a;color:#e8e8f0;box-shadow:0 2px 20px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04);}
-    .pg-sep{display:block;height:32px;background:transparent;user-select:none;pointer-events:none;margin-left:calc(-1*var(--pg-left,72px));width:calc(100% + var(--pg-left,72px) + var(--pg-right,72px));}
+    .pg-sep{display:block;background:transparent;user-select:none;pointer-events:none;margin-left:calc(-1*var(--pg-left,72px));width:calc(100% + var(--pg-left,72px) + var(--pg-right,72px));}
     #text-editor h1{font-size:1.45rem;font-weight:800;margin:.8rem 0 .4rem;}
     #text-editor h2{font-size:1.12rem;font-weight:700;margin:.6rem 0 .3rem;}
     #text-editor p{margin:.2rem 0;}
@@ -344,6 +348,16 @@
     .cornell-layout td{border:1px solid var(--border);padding:10px 12px;vertical-align:top;min-height:120px;}
     .cornell-layout .cl-head{font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;}
     @media(max-width:480px){.left-panel,.pages-panel{display:none;}.item-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:11px;}}
+    @media print{
+      @page{size:A4 portrait;margin:0;}
+      html,body{overflow:visible!important;height:auto!important;}
+      .nav,.ed-nav,.pages-panel,.split-divider,#right-pane,#add-pg-menu,.add-pg-btn,#split-btn,.tb-btn,#text-toolbar,#draw-toolbar,#draw-wrap,.sidebar,.sidebar-overlay,#view-shelf,#view-pages,#slash-menu,#sel-popup,#margins-panel,#ai-bar,#toast,#math-panel,.fab-btn{display:none!important;}
+      .ed-body{overflow:visible!important;}
+      .text-editor-wrap{overflow:visible!important;padding:0!important;background:white!important;}
+      #text-editor{width:794px!important;margin:0 auto!important;box-shadow:none!important;background:white!important;background-image:none!important;padding:20mm 20mm 20mm 20mm!important;}
+      .pg-sep{display:none!important;}
+      #view-editor{display:block!important;}
+    }
   </style>
 </head>
 <body>
@@ -486,6 +500,7 @@
     <div class="ed-top-right">
       <button class="tb-btn" id="split-btn" onclick="toggleSplitPicker()" title="Split screen" style="font-size:.72rem">⊞ Split</button>
       <button class="tb-btn" onclick="detachPage()" title="Detach to floating window" style="font-size:.72rem">↗ Detach</button>
+      <button class="tb-btn" onclick="window.print()" title="Print / Save as PDF" style="font-size:.72rem">🖨 Print</button>
       <div style="position:relative">
         <button class="add-pg-btn" id="add-pg-btn" onclick="toggleAddPgMenu()">+ Add Page ▾</button>
         <div class="add-pg-menu" id="add-pg-menu">
@@ -857,7 +872,7 @@
 // ══ CONSTANTS ══
 const NB_STORE='gn-notebooks', FL_STORE='gn-nb-folders';
 const CW=794,CH=1123;
-const _PG_H=1056,_GAP_H=32,_CYCLE=_PG_H+_GAP_H;
+const _PG_H=1123,_GAP_H=40,_CYCLE=_PG_H+_GAP_H;
 const COLORS=['#6D28D9','#2563EB','#0891B2','#059669','#DC2626','#DB2777','#D97706','#F97316','#1E293B','#374151'];
 const GRADIENTS=['linear-gradient(135deg,#667eea,#764ba2)','linear-gradient(135deg,#f093fb,#f5576c)','linear-gradient(135deg,#4facfe,#00f2fe)','linear-gradient(135deg,#43e97b,#38f9d7)','linear-gradient(135deg,#fa709a,#fee140)','linear-gradient(135deg,#a18cd1,#fbc2eb)'];
 function colorWithAlpha(c,a){return(!c||c.includes('gradient'))?c||'':c+a;}
@@ -1261,6 +1276,9 @@ function buildFolderCard(f){
     <div class="card-actions"><button class="card-act" onclick="event.stopPropagation();openFolderCtx(event,'${f.id}')">⋯</button></div>`;
   d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))navigate(f.id);});
   d.addEventListener('contextmenu',e=>{e.preventDefault();openFolderCtx(e,f.id);});
+  d.addEventListener('dragover',e=>{if(_dragItem&&_dragItem.type==='nb'){e.preventDefault();e.stopPropagation();d.classList.add('drop-target');}});
+  d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('drop-target');});
+  d.addEventListener('drop',e=>{d.classList.remove('drop-target');dropOnFolder(e,f.id);});
   return d;
 }
 
@@ -1295,9 +1313,9 @@ function buildNbCard(nb){
   d.draggable=true;
   d.addEventListener('click',e=>{if(!e.target.closest('.card-actions'))openNotebook(nb.id);});
   d.addEventListener('contextmenu',e=>{e.preventDefault();openNbCtx(e,nb.id);});
-  d.addEventListener('dragstart',e=>{_dragItem={type:'nb',id:nb.id};e.dataTransfer.setData('text/plain',nb.id);e.dataTransfer.effectAllowed='copy';d.style.opacity='.6';});
-  d.addEventListener('dragend',()=>{_dragItem=null;d.style.opacity='';document.querySelectorAll('.nb-card.split-target,.tree-row.split-target').forEach(x=>x.classList.remove('split-target'));});
-  d.addEventListener('dragover',e=>{if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';d.classList.add('split-target');}});
+  d.addEventListener('dragstart',e=>{_dragItem={type:'nb',id:nb.id};e.dataTransfer.setData('text/plain',nb.id);e.dataTransfer.effectAllowed='all';d.style.opacity='.6';});
+  d.addEventListener('dragend',()=>{_dragItem=null;d.style.opacity='';document.querySelectorAll('.nb-card.split-target,.tree-row.split-target,.folder-card.drop-target').forEach(x=>x.classList.remove('split-target','drop-target'));});
+  d.addEventListener('dragover',e=>{if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id&&!e.target.closest('.folder-card')){e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='copy';d.classList.add('split-target');}});
   d.addEventListener('dragleave',e=>{if(!d.contains(e.relatedTarget))d.classList.remove('split-target');});
   d.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const srcId=e.dataTransfer.getData('text/plain');d.classList.remove('split-target');if(srcId&&srcId!==nb.id){openCrossNbSplit(srcId,nb.id);}else if(_dragItem&&_dragItem.type==='nb'&&_dragItem.id!==nb.id){openCrossNbSplit(_dragItem.id,nb.id);}_dragItem=null;});
   return d;
@@ -1621,7 +1639,7 @@ function saveCurPage(){
   if(!_curNb)return;const pg=curPage();if(!pg)return;
   if(pg.type==='text'){
     const clone=document.getElementById('text-editor').cloneNode(true);
-    clone.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+    clone.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
     pg.html=clone.innerHTML;
     pg.title=document.getElementById('page-title-inp').value||pg.title;
     pg.margins={..._pgMargins};
@@ -1694,10 +1712,10 @@ function renderPanelList(){
     const d=document.createElement('div');
     d.className='pg-thumb'+(i===_curPageIdx?' active':'');
     const isText=pg.type==='text';
+    const safeHtml=isText?((pg.html||'').replace(/<script[\s\S]*?<\/script>/gi,'')):'';
     d.innerHTML=`<div class="pg-thumb-img">
       ${!isText?`<canvas id="ptc-${i}" width="100" height="133" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`:''}
-      ${isText?`<div class="pg-thumb-prev">${(pg.html||'').replace(/<[^>]*>/g,' ').slice(0,100)}</div>`:''}
-      <span style="position:relative;z-index:1;opacity:.2;font-size:.8rem">${isText?'📝':'✏️'}</span>
+      ${isText?`<div class="pg-thumb-scale-wrap"><div class="pg-thumb-scale" style="padding:${_pgMargins.top}px ${_pgMargins.right}px ${_pgMargins.bottom}px ${_pgMargins.left}px;">${safeHtml}</div></div>`:''}
     </div>
     <div class="pg-thumb-lbl">${esc(pg.title||'Page '+(i+1))}</div>
     ${_curNb.pages.length>1?`<button class="pg-del" onclick="event.stopPropagation();delPanelPage(${i})">✕</button>`:''}`;
@@ -1705,6 +1723,49 @@ function renderPanelList(){
     list.appendChild(d);
     if(!isText&&pg.dataURL)setTimeout(()=>drawPageThumb(i,pg.dataURL,'ptc-'+i),0);
   });
+}
+
+function renderVirtualPagesPanel(){
+  if(!_curNb||_curNb.pages.length>1){renderPanelList();return;}
+  const ed=document.getElementById('text-editor');if(!ed)return;
+  const pageCount=Math.max(1,Math.ceil(ed.scrollHeight/_CYCLE));
+  if(pageCount<=1){renderPanelList();return;}
+  // Build text snippets per page using char-position estimation within each element
+  const pageTexts=new Array(pageCount).fill('');
+  Array.from(ed.children).forEach(child=>{
+    if(child.classList.contains('pg-sep'))return;
+    const ct=child.offsetTop,cb=ct+child.offsetHeight;
+    const text=(child.textContent||'').replace(/\s+/g,' ').trim();
+    if(!text||cb<=0)return;
+    for(let p=0;p<pageCount;p++){
+      if(pageTexts[p].length>=120)continue;
+      const pgTop=p*_CYCLE,pgBot=(p+1)*_CYCLE;
+      if(cb<=pgTop||ct>=pgBot)continue;
+      // Fraction of element that falls on this page
+      const frac=Math.max(0,(Math.max(ct,pgTop)-ct)/(cb-ct||1));
+      const startChar=Math.floor(frac*text.length);
+      pageTexts[p]+=text.slice(startChar,startChar+150)+' ';
+    }
+  });
+  const list=document.getElementById('pages-list');list.innerHTML='';
+  const wrap=document.getElementById('text-editor-wrap');
+  const scrollTop=wrap?wrap.scrollTop:0;
+  // Build scaled HTML thumbnail once — clone removes gap overlays but keeps pg-sep for correct layout
+  const edClone=ed.cloneNode(true);
+  edClone.querySelectorAll('.gap-overlay').forEach(g=>g.remove());
+  const thumbBaseHtml=edClone.innerHTML.replace(/<script[\s\S]*?<\/script>/gi,'');
+  const thumbScale=0.175;
+  for(let p=0;p<pageCount;p++){
+    const scrollTo=ed.offsetTop+p*_CYCLE;
+    const isActive=Math.floor(Math.max(0,scrollTop-ed.offsetTop)/_CYCLE)===p;
+    const d=document.createElement('div');
+    d.className='pg-thumb'+(isActive?' active':'');
+    // margin-top offset (pre-zoom coords) scrolls content so page p shows at top of thumbnail
+    const offsetPx=p*_CYCLE;
+    d.innerHTML=`<div class="pg-thumb-img"><div class="pg-thumb-scale-wrap"><div class="pg-thumb-scale" style="padding:${_pgMargins.top}px ${_pgMargins.right}px ${_pgMargins.bottom}px ${_pgMargins.left}px;margin-top:-${offsetPx}px;">${thumbBaseHtml}</div></div></div><div class="pg-thumb-lbl">Page ${p+1}</div>`;
+    d.addEventListener('click',()=>{if(wrap)wrap.scrollTop=scrollTo;});
+    list.appendChild(d);
+  }
 }
 
 function switchPage(idx){
@@ -1826,10 +1887,10 @@ function swapSplitEditors(){
     renderPanelList();saveData();schedulePageLines();return;
   }
   const lc=document.getElementById('text-editor').cloneNode(true);
-  lc.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  lc.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
   const leftHtml=lc.innerHTML;
   const rc=document.getElementById('text-editor-right').cloneNode(true);
-  rc.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  rc.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
   const rightHtml=rc.innerHTML;
   const lp=_curNb.pages[_curPageIdx];if(lp)lp.html=rightHtml;
   const rp=_curNb.pages[_splitPageIdx];if(rp)rp.html=leftHtml;
@@ -1875,7 +1936,7 @@ function loadRightPage(idx){
 function saveRightPage(){
   if(!_splitActive)return;
   const clone=document.getElementById('text-editor-right').cloneNode(true);
-  clone.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  clone.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
   const html=clone.innerHTML;
   const title=document.getElementById('right-page-title').value;
   if(_crossNbSplit){
@@ -1910,7 +1971,7 @@ function detachPage(){
   const title=esc(document.getElementById('page-title-inp').value||pg.title||'Page');
   const isDark=document.documentElement.classList.contains('dark');
   const clone=document.getElementById('text-editor').cloneNode(true);
-  clone.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  clone.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
   const bodyHtml=clone.innerHTML;
   const win=window.open('','nb-detach','width=760,height=960,resizable=yes,scrollbars=yes');
   if(!win)return;
@@ -2350,32 +2411,103 @@ function _setPgCssVars(){
 function schedulePageLines(){clearTimeout(_pgTimer);_pgTimer=setTimeout(refreshPageLines,80);}
 function refreshPageLines(){
   const ed=document.getElementById('text-editor');if(!ed)return;
-  ed.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  // Remove ALL markers before measuring so they don't skew scrollHeight
+  ed.querySelectorAll('.pg-sep,.gap-overlay').forEach(s=>s.remove());
+  ed.style.minHeight=_PG_H+'px'; // reset before measuring
   _applyPageBreaks(ed);
   _updateEditorBg(ed);
+  // Snap height so last page is exactly A4 (ends at page bottom, no trailing gap)
+  const pages=Math.max(1,Math.ceil(ed.scrollHeight/_CYCLE));
+  ed.style.minHeight=((pages-1)*_CYCLE+_PG_H)+'px';
+  // Second pass — splits from pass 1 may have created new elements needing breaks
+  ed.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  _applyPageBreaks(ed);
+  const pages2=Math.max(1,Math.ceil(ed.scrollHeight/_CYCLE));
+  ed.style.minHeight=((pages2-1)*_CYCLE+_PG_H)+'px';
+  // Third pass — catch any remaining issues after height snap
+  ed.querySelectorAll('.pg-sep').forEach(s=>s.remove());
+  _applyPageBreaks(ed);
+  const pages3=Math.max(1,Math.ceil(ed.scrollHeight/_CYCLE));
+  ed.style.minHeight=((pages3-1)*_CYCLE+_PG_H)+'px';
+  renderVirtualPagesPanel();
 }
 function _applyPageBreaks(ed){
   const children=Array.from(ed.children);
-  let gapStart=_PG_H-_pgMargins.bottom;
+  let pgap=_PG_H; // y (editor-relative) where gray gap starts for current page
+  const contentH=_PG_H-_pgMargins.top-_pgMargins.bottom;
   for(let i=0;i<children.length;i++){
     const child=children[i];
-    if(child.classList.contains('pg-sep'))continue;
-    const childBottom=child.offsetTop+child.offsetHeight;
-    if(childBottom>gapStart-2){
+    if(child.classList.contains('pg-sep')||child.classList.contains('gap-overlay'))continue;
+    const ct=child.offsetTop, cb=ct+child.offsetHeight;
+    if(cb<=pgap)continue; // element fully before the gray gap
+    const nextStart=pgap+_GAP_H+_pgMargins.top; // where next page content starts
+    // Try Word-like line split: keep text before gap on this page, push rest to next page
+    if(_splitElementAtGapLine(ed,child,pgap,nextStart)){pgap+=_CYCLE;continue;}
+    // Fallback: push entire element to next page if it fits on one page
+    if(child.offsetHeight<=contentH){
       const sep=document.createElement('div');
       sep.className='pg-sep';sep.contentEditable='false';
-      ed.insertBefore(sep,child);
-      gapStart+=_CYCLE;
+      sep.style.height=Math.max(_GAP_H,nextStart-ct)+'px';
+      ed.insertBefore(sep,child);pgap+=_CYCLE;continue;
     }
+    // Element too tall to push or split — advance past it
+    while(cb>pgap)pgap+=_CYCLE;
   }
+}
+function _splitElementAtGapLine(ed,child,gapY,nextStart){
+  // Use offsetTop ratio to find split point — reliable regardless of scroll/viewport position
+  const ct=child.offsetTop, h=child.offsetHeight;
+  if(h<=0||gapY<=ct||gapY>=ct+h)return false; // gap outside element bounds
+  const ratio=(gapY-ct)/h; // fraction of element height above the gap
+  // Collect all text nodes and total length
+  const walker=document.createTreeWalker(child,NodeFilter.SHOW_TEXT,null,false);
+  const textNodes=[];let totalLen=0,node;
+  while((node=walker.nextNode())){textNodes.push(node);totalLen+=node.textContent.length;}
+  if(!totalLen)return false;
+  const targetIdx=Math.max(1,Math.floor(ratio*totalLen));
+  // Find the text node containing targetIdx
+  let accumulated=0,splitNode=null,splitOff=0;
+  for(const tn of textNodes){
+    const len=tn.textContent.length;
+    if(accumulated+len>=targetIdx){splitNode=tn;splitOff=targetIdx-accumulated;break;}
+    accumulated+=len;
+  }
+  if(!splitNode||splitOff<=0)return false;
+  // Snap backward to nearest word boundary
+  const txt=splitNode.textContent;
+  let off=splitOff;
+  while(off>0&&txt[off-1]!==' '&&txt[off-1]!=='\n')off--;
+  if(off<=0)off=splitOff; // no space — keep char split
+  if(off>=txt.length)return false;
+  // Extract from (splitNode,off) to end of child
+  const afterRange=document.createRange();
+  afterRange.setStart(splitNode,off);afterRange.setEnd(child,child.childNodes.length);
+  const afterFrag=afterRange.extractContents();
+  if(!afterFrag||!afterFrag.textContent.trim())return false;
+  if(!child.textContent.trim()){child.appendChild(afterFrag);return false;} // child went empty — undo
+  // Create afterEl, insert sep + afterEl after child
+  const afterEl=child.cloneNode(false);afterEl.appendChild(afterFrag);
+  const sep=document.createElement('div');
+  sep.className='pg-sep';sep.contentEditable='false';
+  sep.style.height=Math.max(_GAP_H,nextStart-gapY)+'px';
+  const ref=child.nextSibling;
+  if(ref){ed.insertBefore(sep,ref);ed.insertBefore(afterEl,sep.nextSibling);}
+  else{ed.appendChild(sep);ed.appendChild(afterEl);}
+  return true;
 }
 function _updateEditorBg(ed){
   const isDark=document.documentElement.classList.contains('dark');
   const pageClr=isDark?'#1a1a2a':'#ffffff';
-  const gapClr=isDark?'#0f0f17':'#d1d5db';
-  ed.style.backgroundImage=`repeating-linear-gradient(to bottom,${pageClr} 0,${pageClr} ${_PG_H}px,${gapClr} ${_PG_H}px,${gapClr} ${_PG_H+_GAP_H}px)`;
+  const gapClr=isDark?'#0f0f17':'#c8cdd5';
+  // Simple 2-color gradient: white page → gray gap → white page (no margin tint so page bottom is clean white)
+  ed.style.backgroundImage=`repeating-linear-gradient(to bottom,
+    ${pageClr} 0px,${pageClr} ${_PG_H}px,
+    ${gapClr} ${_PG_H}px,${gapClr} ${_PG_H+_GAP_H}px,
+    ${pageClr} ${_PG_H+_GAP_H}px,${pageClr} ${_CYCLE}px)`;
   ed.style.backgroundSize=`100% ${_CYCLE}px`;
   ed.style.backgroundAttachment='local';
+  ed.parentElement.querySelectorAll('.gap-overlay').forEach(g=>g.remove());
+  ed.querySelectorAll('.gap-overlay').forEach(g=>g.remove());
 }
 
 // ── Margins panel ──
@@ -2777,10 +2909,31 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(node.nodeType===3)node=node.parentElement;
       const prev=node.previousSibling;
       if(prev&&prev.classList&&prev.classList.contains('pg-sep')){
-        e.preventDefault();prev.remove();schedulePageLines();
+        e.preventDefault();
+        const prevEl=prev.previousSibling; // first-half element before the sep
+        prev.remove();
+        // Merge the two halves back into one element (Word-like join)
+        let targetNode=node;while(targetNode.parentElement!==ed&&targetNode.parentElement)targetNode=targetNode.parentElement;
+        if(prevEl&&prevEl.nodeName===targetNode.nodeName&&!prevEl.classList.contains('pg-sep')){
+          const savedRange=document.createRange();
+          savedRange.setStart(prevEl,prevEl.childNodes.length);
+          savedRange.collapse(true);
+          while(targetNode.firstChild)prevEl.appendChild(targetNode.firstChild);
+          targetNode.remove();
+          const sel2=window.getSelection();sel2.removeAllRanges();sel2.addRange(savedRange);
+        }
+        schedulePageLines();
       }
     }
   });
+  const _pgWrap=document.getElementById('text-editor-wrap');
+  if(_pgWrap)_pgWrap.addEventListener('scroll',function(){
+    if(!_curNb||_curNb.pages.length>1)return;
+    const ed=document.getElementById('text-editor');if(!ed)return;
+    const scrollTop=_pgWrap.scrollTop;
+    const ap=Math.floor(Math.max(0,scrollTop-ed.offsetTop)/_CYCLE);
+    document.querySelectorAll('#pages-list .pg-thumb').forEach((el,i)=>el.classList.toggle('active',i===ap));
+  },{passive:true});
 });
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>

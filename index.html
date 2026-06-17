@@ -102,7 +102,10 @@
     }
     .sidebar.open { transform:translateX(0); pointer-events:all; }
     /* Sidebar header — just × close */
-    .sb-hd { display:flex; align-items:center; justify-content:flex-end; padding:12px 12px 4px; flex-shrink:0; }
+    .sb-hd { display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; flex-shrink:0; }
+    .sb-logo-row { display:flex; align-items:center; gap:8px; }
+    .sb-logo-row img { width:26px; height:26px; border-radius:7px; }
+    .sb-logo-row span { font-size:0.88rem; font-weight:800; color:#f0f0ff; }
     .sb-close { background:none; border:none; color:rgba(255,255,255,0.35); cursor:pointer; padding:6px; border-radius:8px; display:flex; align-items:center; font-size:1rem; transition:color 0.12s,background 0.12s; }
     .sb-close:hover { color:#fff; background:rgba(255,255,255,0.08); }
     /* Items */
@@ -556,17 +559,18 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
+    <div class="sb-logo-row"><img src="images/logo.png" alt="GN"><span>GeniusNotes <span style="color:#a78bfa;">AI</span></span></div>
     <button class="sb-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sidebar-items">
-    <a href="index.html" class="sidebar-item active"> Home</a>
-    <a href="notebook.html" class="sidebar-item"> Notebooks</a>
-    <a href="my-notes.html" class="sidebar-item"> My Notes</a>
-    <a href="flashcards.html" class="sidebar-item"> Flashcards</a>
+    <a href="index.html" class="sidebar-item active">🏠 Home</a>
+    <a href="notepad.html" class="sidebar-item">📝 Notepad</a>
+    <a href="my-notes.html" class="sidebar-item">🗂 My Notes</a>
+    <a href="flashcards.html" class="sidebar-item">🃏 Flashcards</a>
   </div>
   <div class="sb-footer">
     <button onclick="toggleTheme()" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:none;color:var(--muted);font-size:0.87rem;font-weight:500;cursor:pointer;font-family:inherit;border-radius:10px;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
-      Toggle theme
+      🌙 Toggle Theme
     </button>
   </div>
 </aside>
@@ -820,25 +824,79 @@ window.startProCheckout = () => { window.location.href = 'signup.html'; };
 <script>
 // ── YouTube Transcribe ──
 let _ytText = '', _ytTitle = '';
-function goYtTranscribe() {
+
+async function _tryBrowserTranscript(vid) {
+  // Attempt to fetch captions directly from the browser (user's IP + YouTube cookies)
+  const urls = [
+    `https://www.youtube.com/api/timedtext?v=${vid}&lang=en&kind=asr&fmt=json3`,
+    `https://www.youtube.com/api/timedtext?v=${vid}&lang=en&fmt=json3`,
+    `https://www.youtube.com/api/timedtext?v=${vid}&lang=en-US&kind=asr&fmt=json3`,
+  ];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { credentials: 'include' });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data.events || []).filter(e => e.segs).map(e => e.segs.map(s => s.utf8 || '').join('')).join(' ').replace(/\s+/g, ' ').trim();
+      if (text.length > 50) return text;
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function goYtTranscribe() {
   const url = document.getElementById('yt-url-input').value.trim();
   if (!url) return;
   _ytTitle = 'YouTube Transcript';
   document.getElementById('yt-step-proc').style.display = '';
   document.getElementById('yt-step-result').style.display = 'none';
   document.getElementById('yt-modal').style.display = 'flex';
-  fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url, mode:'transcribe' }) })
-    .then(r => r.json())
-    .then(d => {
-      if (d.error) throw new Error(d.error);
-      _ytText = (d.summary || d.transcript || '').trim();
-      document.getElementById('yt-preview-text').textContent = _ytText || '(No transcript found)';
-      document.getElementById('yt-step-proc').style.display = 'none';
-      document.getElementById('yt-step-result').style.display = '';
-    })
-    .catch(err => {
-      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f87171;">${err.message}</span><br><br><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
-    });
+  try {
+    // Try fetching captions from the browser first (bypasses server IP restrictions)
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (m) {
+      const clientText = await _tryBrowserTranscript(m[1]);
+      if (clientText) {
+        _ytText = clientText;
+        document.getElementById('yt-preview-text').textContent = _ytText;
+        document.getElementById('yt-step-proc').style.display = 'none';
+        document.getElementById('yt-step-result').style.display = '';
+        return;
+      }
+    }
+    // Fall back to server-side
+    const resp = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url, mode:'transcribe' }) });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error);
+
+    // Backend got a signed caption URL but can't fetch it server-side (datacenter IP block)
+    // Let the browser fetch it directly (user's real IP + YouTube session)
+    if (d.captionUrl) {
+      try {
+        const captRes = await fetch(d.captionUrl, { credentials: 'include' });
+        if (captRes.ok) {
+          const captData = await captRes.json();
+          const clientText = (captData.events || []).filter(e => e.segs)
+            .map(e => e.segs.map(s => s.utf8 || '').join('')).join(' ').replace(/\s+/g, ' ').trim();
+          if (clientText.length > 50) {
+            _ytText = clientText;
+            document.getElementById('yt-preview-text').textContent = _ytText;
+            document.getElementById('yt-step-proc').style.display = 'none';
+            document.getElementById('yt-step-result').style.display = '';
+            return;
+          }
+        }
+      } catch (_) {}
+      throw new Error('Could not retrieve transcript. The video may have no captions. Try uploading the audio/video file directly.');
+    }
+
+    _ytText = (d.summary || d.transcript || '').trim();
+    document.getElementById('yt-preview-text').textContent = _ytText || '(No transcript found)';
+    document.getElementById('yt-step-proc').style.display = 'none';
+    document.getElementById('yt-step-result').style.display = '';
+  } catch(err) {
+    document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f87171;">${err.message}</span><br><br><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
+  }
 }
 function closeYtModal() { document.getElementById('yt-modal').style.display = 'none'; }
 function ytImportToNotepad() {

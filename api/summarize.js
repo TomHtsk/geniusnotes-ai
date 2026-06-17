@@ -6,7 +6,8 @@ function getVideoId(url) {
 async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
   const params = `url=${encodeURIComponent(youtubeUrl)}${lang ? `&lang=${lang}` : ''}${nativeOnly ? '&mode=native' : ''}`;
   const res = await fetch(`https://api.supadata.ai/v1/transcript?${params}`, {
-    headers: { 'x-api-key': apiKey }
+    headers: { 'x-api-key': apiKey },
+    signal: AbortSignal.timeout(10000)
   });
 
   const body = await res.text();
@@ -16,10 +17,13 @@ async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
 
   if (res.status === 202) {
     const jobId = parsed.id;
-    // Poll for up to 50s (10 attempts × 5s) — fits inside 60s Vercel limit
-    for (let i = 0; i < 10; i++) {
-      await new Promise(r => setTimeout(r, 5000));
-      const poll = await fetch(`https://api.supadata.ai/v1/transcript/${jobId}`, { headers: { 'x-api-key': apiKey } });
+    // Poll for up to 24s (6 attempts × 4s)
+    for (let i = 0; i < 6; i++) {
+      await new Promise(r => setTimeout(r, 4000));
+      const poll = await fetch(`https://api.supadata.ai/v1/transcript/${jobId}`, {
+        headers: { 'x-api-key': apiKey },
+        signal: AbortSignal.timeout(8000)
+      });
       if (!poll.ok) continue;
       let result;
       try { result = JSON.parse(await poll.text()); } catch { continue; }
@@ -31,18 +35,399 @@ async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
   return extractText(parsed.content);
 }
 
+function _parseCaptionRaw(raw) {
+  return raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[.,]\d{3}[^\n]*/gm, '')
+    .replace(/^\d+\s*$/gm, '')
+    .replace(/WEBVTT[^\n]*/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function fetchTranscriptGetApi(videoId) {
+  // Fetch YouTube page to get visitorData token (needed for get_transcript API)
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: _YT_HEADERS_DESKTOP,
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!pageRes.ok) throw new Error(`Page HTTP ${pageRes.status}`);
+  const html = await pageRes.text();
+
+  const vdM = html.match(/"visitorData"\s*:\s*"([^"]+)"/);
+  const visitorData = vdM ? vdM[1] : '';
+
+  // Build minimal protobuf: field 1 (videoId)
+  const vidBytes = Buffer.from(videoId, 'utf8');
+  const params = Buffer.concat([Buffer.from([0x0a, vidBytes.length]), vidBytes]).toString('base64');
+
+  const body = JSON.stringify({
+    context: {
+      client: {
+        clientName: 'WEB',
+        clientVersion: '2.20231121.01.00',
+        hl: 'en',
+        gl: 'US',
+        ...(visitorData ? { visitorData } : {})
+      }
+    },
+    params
+  });
+
+  const tRes = await fetch('https://www.youtube.com/youtubei/v1/get_transcript', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': _YT_HEADERS_DESKTOP['User-Agent'],
+      'Accept-Language': 'en-US,en;q=0.9',
+      ...(visitorData ? { 'X-Goog-Visitor-Id': visitorData } : {})
+    },
+    body,
+    signal: AbortSignal.timeout(10000)
+  });
+
+  if (!tRes.ok) throw new Error(`get_transcript HTTP ${tRes.status}`);
+  const data = await tRes.json();
+
+  // Walk the response to find transcript segments
+  const segList = data?.actions?.[0]
+    ?.updateEngagementPanelAction?.content
+    ?.transcriptRenderer?.content
+    ?.transcriptSearchPanelRenderer?.body
+    ?.transcriptSegmentListRenderer?.initialSegments;
+
+  if (!segList?.length) throw new Error('No transcript segments in response');
+
+  const text = segList
+    .map(s => s?.transcriptSegmentRenderer?.snippet?.runs?.map(r => r.text || '').join('') || '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!text || text.length < 30) throw new Error('Empty transcript from get_transcript');
+  return text;
+}
+
+async function fetchTranscriptViaJina(videoId) {
+  // Jina AI reader routes through their own infra — bypasses YouTube datacenter IP blocks
+  const res = await fetch(`https://r.jina.ai/https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'Accept': 'application/json',
+      'X-No-Cache': 'true',
+      'X-Return-Format': 'text'
+    },
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!res.ok) throw new Error(`Jina HTTP ${res.status}`);
+  let content;
+  try {
+    const data = await res.json();
+    content = data?.data?.content || data?.data?.text || '';
+  } catch {
+    content = await res.text().catch(() => '');
+  }
+  if (!content || content.length < 200) throw new Error('No content from Jina');
+  // Reject bot-detection responses
+  if (content.includes("confirm you're not a bot") || content.includes('Sign in to confirm')) {
+    throw new Error('YouTube bot-detection triggered on Jina reader');
+  }
+  return content;
+}
+
+async function fetchYtTimedtextLegacy(videoId) {
+  // Legacy timedtext URL — no signature needed for some auto-generated captions
+  const attempts = [
+    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=vtt&kind=asr`,
+    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=vtt`,
+    `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en-US&fmt=vtt&kind=asr`,
+  ];
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, { headers: _YT_HEADERS_DESKTOP, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const raw = await res.text();
+      if (!raw || raw.trim().length < 50) continue;
+      const parsed = _parseCaptionRaw(raw);
+      if (parsed.length > 50) return parsed;
+    } catch (_) { continue; }
+  }
+  throw new Error('No legacy timedtext available');
+}
+
+async function fetchCaptionsFromPiped(videoId) {
+  const instances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.leptons.xyz', 'https://piped-api.garudalinux.org'];
+  for (const base of instances) {
+    try {
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const subs = data.subtitles || [];
+      if (!subs.length) continue;
+      const sub = subs.find(s => (s.code || '').startsWith('en')) || subs[0];
+      if (!sub?.url) continue;
+      const captRes = await fetch(sub.url, { signal: AbortSignal.timeout(8000) });
+      if (!captRes.ok) continue;
+      const text = _parseCaptionRaw(await captRes.text());
+      if (text.length > 30) return text;
+    } catch (_) { continue; }
+  }
+  throw new Error('No captions from Piped');
+}
+
+async function fetchCaptionsFromInvidious(videoId) {
+  const instances = ['https://inv.nadeko.net', 'https://iv.datura.network', 'https://invidious.lunar.icu'];
+  for (const base of instances) {
+    try {
+      const r = await fetch(`${base}/api/v1/captions/${videoId}`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const tracks = data.captions || [];
+      if (!tracks.length) continue;
+      const track = tracks.find(t => (t.language_code || t.languageCode || '').startsWith('en')) || tracks[0];
+      const captUrl = track?.url;
+      if (!captUrl) continue;
+      const full = captUrl.startsWith('http') ? captUrl : `${base}${captUrl}`;
+      const captRes = await fetch(full, { signal: AbortSignal.timeout(8000) });
+      if (!captRes.ok) continue;
+      const text = _parseCaptionRaw(await captRes.text());
+      if (text.length > 30) return text;
+    } catch (_) { continue; }
+  }
+  throw new Error('No captions from Invidious');
+}
+
+const _YT_HEADERS_DESKTOP = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Cookie': 'CONSENT=YES+cb.20210629-17-p0.en+FX+119; SOCS=CAESHAgCEhJnd3NfMjAyMzA4MjktMF9SQzIaAmVuIAEaBgiAo_CmBg'
+};
+
+const _YT_HEADERS_MOBILE = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+  'Cookie': 'CONSENT=YES+cb.20210629-17-p0.en+FX+119; SOCS=CAESHAgCEhJnd3NfMjAyMzA4MjktMF9SQzIaAmVuIAEaBgiAo_CmBg'
+};
+
+function _extractTracksFromHtml(html) {
+  // Try multiple markers for different page formats
+  const markers = [
+    'var ytInitialPlayerResponse = ',
+    'ytInitialPlayerResponse=',
+    '"ytInitialPlayerResponse":',
+    'ytInitialPlayerResponse ='
+  ];
+  for (const marker of markers) {
+    let searchFrom = 0;
+    while (true) {
+      const si = html.indexOf(marker, searchFrom);
+      if (si === -1) break;
+      const bi = html.indexOf('{', si + marker.length - 1);
+      if (bi === -1) break;
+      let depth = 0, start = -1, end = -1;
+      for (let i = bi; i < Math.min(bi + 800000, html.length); i++) {
+        if (html[i] === '{') { if (depth === 0) start = i; depth++; }
+        else if (html[i] === '}') { if (--depth === 0) { end = i; break; } }
+      }
+      if (start !== -1 && end !== -1) {
+        try {
+          const pr = JSON.parse(html.slice(start, end + 1));
+          const tracks = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+          if (tracks?.length) return tracks;
+        } catch (_) {}
+      }
+      searchFrom = si + marker.length;
+    }
+  }
+  return null;
+}
+
+async function _fetchTracksFromUrl(url, headers) {
+  const r = await fetch(url, { headers, signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const html = await r.text();
+  const tracks = _extractTracksFromHtml(html);
+  if (!tracks?.length) throw new Error('No tracks in page');
+  return tracks;
+}
+
+async function fetchYtDirectCaptions(videoId) {
+  // Try mobile first (simpler page, fewer bot checks), then desktop
+  const attempts = [
+    () => _fetchTracksFromUrl(`https://m.youtube.com/watch?v=${videoId}`, _YT_HEADERS_MOBILE),
+    () => _fetchTracksFromUrl(`https://www.youtube.com/watch?v=${videoId}`, _YT_HEADERS_DESKTOP),
+  ];
+
+  let tracks = null;
+  for (const attempt of attempts) {
+    try { tracks = await attempt(); if (tracks) break; } catch (_) {}
+  }
+  if (!tracks) throw new Error('No caption tracks found in YouTube page');
+
+  const track = tracks.find(t => (t.languageCode || '').startsWith('en')) || tracks[0];
+  let baseUrl = track?.baseUrl;
+  if (!baseUrl) throw new Error('No caption baseUrl');
+  if (baseUrl.startsWith('/')) baseUrl = 'https://www.youtube.com' + baseUrl;
+
+  const captRes = await fetch(baseUrl + '&fmt=json3', {
+    headers: _YT_HEADERS_DESKTOP,
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!captRes.ok) throw new Error('Caption content fetch failed');
+
+  const captData = await captRes.json();
+  const text = (captData.events || [])
+    .filter(e => e.segs)
+    .map(e => e.segs.map(s => s.utf8 || '').join(''))
+    .join(' ')
+    .replace(/[\n\r]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!text || text.length < 30) throw new Error('Empty caption data');
+  return text;
+}
+
+async function fetchTranscriptViaInnertube(videoId) {
+  const { Innertube } = await import('youtubei.js');
+  const opts = process.env.YT_COOKIE ? { cookie: process.env.YT_COOKIE } : {};
+  const yt = await Innertube.create(opts);
+
+  let info;
+  try {
+    info = await yt.getInfo(videoId);
+  } catch (e) {
+    throw new Error(`getInfo: ${e.message}`);
+  }
+
+  // Try structured getTranscript() first
+  try {
+    const transcriptData = await info.getTranscript();
+    const segments = transcriptData?.transcript?.content?.body?.initial_segments ?? [];
+    const text = segments
+      .map(seg => (seg?.snippet?.runs ?? []).map(r => r.text || '').join(''))
+      .filter(t => t.trim())
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (text && text.length > 50) return text;
+  } catch (_) {}
+
+  // Fall back to caption track URLs
+  const tracks = info.captions?.caption_tracks;
+  if (!tracks || !tracks.length) throw new Error('No caption tracks — video may have no captions');
+
+  const track = tracks.find(t => (t.language_code || '').startsWith('en')) || tracks[0];
+  let baseUrl = track?.base_url;
+  if (!baseUrl) throw new Error('No caption base URL');
+
+  // Include cookies in the caption fetch — YouTube requires auth for signed caption URLs
+  const captHeaders = {
+    ..._YT_HEADERS_DESKTOP,
+    ...(process.env.YT_COOKIE ? { Cookie: process.env.YT_COOKIE } : {})
+  };
+
+  const sep = baseUrl.includes('?') ? '&' : '?';
+
+  // Try multiple formats: json3 first, then raw (VTT/XML)
+  const formatUrls = [
+    baseUrl + sep + 'fmt=json3',
+    baseUrl + sep + 'fmt=vtt',
+    baseUrl,
+  ];
+
+  for (const captUrl of formatUrls) {
+    const captRes = await fetch(captUrl, { headers: captHeaders, signal: AbortSignal.timeout(10000) });
+    if (!captRes.ok) continue;
+    const captRaw = await captRes.text();
+    if (!captRaw || !captRaw.trim()) continue;
+
+    // Try JSON (fmt=json3)
+    try {
+      const captData = JSON.parse(captRaw);
+      const text = (captData.events || [])
+        .filter(e => e.segs)
+        .map(e => e.segs.map(s => s.utf8 || '').join(''))
+        .join(' ')
+        .replace(/[\n\r]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (text.length > 30) return text;
+    } catch (_) {}
+
+    // Try VTT/XML/raw
+    const parsed = _parseCaptionRaw(captRaw);
+    if (parsed.length > 30) return parsed;
+  }
+
+  // Content empty server-side (datacenter IP block) — return URL for browser to fetch
+  const fallbackSep = baseUrl.includes('?') ? '&' : '?';
+  return { _captionUrl: baseUrl + fallbackSep + 'fmt=json3' };
+}
+
+async function fetchAudioAndTranscribeViaGroq(videoId) {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) throw new Error('Groq key not configured');
+  const { Innertube } = await import('youtubei.js');
+  const opts = process.env.YT_COOKIE ? { cookie: process.env.YT_COOKIE } : {};
+  const yt = await Innertube.create(opts);
+  const stream = await yt.download(videoId, { type: 'audio', quality: 'best', format: 'mp4' });
+  const chunks = [];
+  let totalSize = 0;
+  for await (const chunk of stream) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    chunks.push(buf);
+    totalSize += buf.length;
+    if (totalSize > 24 * 1024 * 1024) throw new Error('Audio too large (>24MB). Try a shorter video.');
+  }
+  const audioBuffer = Buffer.concat(chunks);
+  if (audioBuffer.length < 1000) throw new Error('Audio file too small');
+  const form = new FormData();
+  form.append('file', new Blob([audioBuffer], { type: 'audio/mp4' }), 'audio.mp4');
+  form.append('model', 'whisper-large-v3');
+  form.append('response_format', 'text');
+  const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${groqKey}` },
+    body: form,
+    signal: AbortSignal.timeout(50000)
+  });
+  if (!whisperRes.ok) {
+    const e = await whisperRes.text();
+    throw new Error(`Whisper ${whisperRes.status}: ${e.slice(0, 200)}`);
+  }
+  const text = await whisperRes.text();
+  if (!text || text.length < 10) throw new Error('Empty transcription result');
+  return text.trim();
+}
+
 async function fetchFullTranscript(videoId) {
   const supadataKey = process.env.SUPADATA_API_KEY;
-  if (!supadataKey) throw new Error('Transcription service not configured.');
+  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`; // canonical — no tracking params
-  // 1. Try English native captions (fast, no AI cost)
-  // 2. Fall back to primary native captions in whatever language the video is in
-  // 3. Fall back to AI transcription if no native captions exist at all
-  const text = await supadataFetch(youtubeUrl, supadataKey, 'en', true)
-    .catch(() => supadataFetch(youtubeUrl, supadataKey, null, true))
-    .catch(() => supadataFetch(youtubeUrl, supadataKey, null, false));
-  return text;
+  const tryAll = await Promise.all([
+    supadataKey ? supadataFetch(youtubeUrl, supadataKey, 'en', true).catch(() => null) : Promise.resolve(null),
+    supadataKey ? supadataFetch(youtubeUrl, supadataKey, null, true).catch(() => null) : Promise.resolve(null),
+    fetchCaptionsFromPiped(videoId).catch(() => null),
+    fetchCaptionsFromInvidious(videoId).catch(() => null),
+    fetchYtDirectCaptions(videoId).catch(() => null),
+    fetchTranscriptGetApi(videoId).catch(() => null),
+    // fetchTranscriptViaGroqWhisper(videoId).catch(() => null), // disabled - ytdl decipher broken
+  ]);
+
+  const fast = tryAll.find(r => r && r.length > 50);
+  if (fast) return fast;
+
+  // Last resort: Supadata AI (async job, up to 30s)
+  if (supadataKey) return supadataFetch(youtubeUrl, supadataKey, null, false);
+  throw new Error('Could not retrieve transcript. Try uploading the audio/video file directly.');
 }
 
 function extractText(content) {
@@ -463,13 +848,74 @@ module.exports = async function handler(req, res) {
     if (!videoId) return res.status(400).json({ error: 'Invalid YouTube URL' });
 
     if (mode === 'transcribe') {
+      if (req.body._test) return res.status(200).json({ ok: true });
+      const errors = {};
+
+      // 1. Jina AI reader — routes through Jina's infra, bypasses datacenter IP blocks
       try {
-        const transcript = await fetchFullTranscript(videoId);
-        if (!transcript || transcript.length < 50) throw new Error();
-        return res.status(200).json({ summary: transcript });
-      } catch (_) {
-        throw new Error('This video does not have captions available. Try a video with auto-generated or manual subtitles.');
+        const r = await fetchTranscriptViaJina(videoId);
+        if (r && r.length > 100) return res.status(200).json({ summary: r });
+        errors.jina = 'Result too short';
+      } catch (e) { errors.jina = e.message; }
+
+      // 2. Legacy timedtext API (works for some public videos without signed URL)
+      try {
+        const r = await fetchYtTimedtextLegacy(videoId);
+        if (r && r.length > 50) return res.status(200).json({ summary: r });
+        errors.timedtext = 'Result too short';
+      } catch (e) { errors.timedtext = e.message; }
+
+      // 3. InnerTube via youtubei.js
+      // If content fetch fails but caption URLs are available, return them for browser-side fetch
+      // (browser has user's real IP + session — server is blocked by YouTube datacenter IP filter)
+      let _innertubeCapUrl = null;
+      try {
+        const r = await fetchTranscriptViaInnertube(videoId);
+        if (r && typeof r === 'object' && r._captionUrl) {
+          _innertubeCapUrl = r._captionUrl;
+          errors.innertube = 'Content empty server-side, returning URL for client fetch';
+        } else if (r && r.length > 50) {
+          return res.status(200).json({ summary: r });
+        } else {
+          errors.innertube = 'Result too short';
+        }
+      } catch (e) { errors.innertube = e.message; }
+      if (_innertubeCapUrl) return res.status(200).json({ captionUrl: _innertubeCapUrl });
+
+      // 4. Piped + Invidious in parallel (20s window)
+      const captResults = await Promise.race([
+        Promise.all([
+          fetchCaptionsFromPiped(videoId).catch(e => { errors.piped = e.message; return null; }),
+          fetchCaptionsFromInvidious(videoId).catch(e => { errors.inv = e.message; return null; }),
+        ]),
+        new Promise(r => setTimeout(() => r([null, null]), 20000))
+      ]);
+      const captResult = captResults.find(r => r && r.length > 50);
+      if (captResult) return res.status(200).json({ summary: captResult });
+
+      // 5. Supadata fallback (if quota available)
+      const supadataKey2 = process.env.SUPADATA_API_KEY;
+      if (supadataKey2) {
+        const youtubeUrl2 = `https://www.youtube.com/watch?v=${videoId}`;
+        try {
+          const r = await supadataFetch(youtubeUrl2, supadataKey2, null, true);
+          if (r && r.length > 50) return res.status(200).json({ summary: r });
+        } catch (e) { errors.supadata = e.message; }
       }
+
+      // 6. Audio → Groq Whisper (last resort: download audio and AI transcribe)
+      try {
+        const r = await fetchAudioAndTranscribeViaGroq(videoId);
+        if (r && r.length > 10) return res.status(200).json({ summary: r });
+      } catch (e) { errors.groq_whisper = e.message; }
+
+      const isQuotaErr = Object.values(errors).some(m => /limit|quota/i.test(m));
+      return res.status(500).json({
+        error: isQuotaErr
+          ? 'Transcript service quota exceeded. This will reset next month, or add a new SUPADATA_API_KEY in Vercel environment variables.'
+          : 'Could not retrieve transcript for this video. YouTube is blocking server-side access. Try uploading the audio/video file directly using the Upload button.',
+        _debug: errors
+      });
     }
 
     const transcript = await fetchVideoContent(videoId, url);

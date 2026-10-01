@@ -102,6 +102,18 @@ async function _verifyToken(req, res, opts) {
   }
 }
 
+// TEMPORARY DIAGNOSTIC — remove once the production 401-on-checkout issue is
+// root-caused. Same token-verification path as _verifyToken but rethrows the
+// real error instead of swallowing it into the generic 401 message.
+async function _debugVerify(req) {
+  const header = req.headers.authorization || '';
+  const match = header.match(/^Bearer (.+)$/);
+  if (!match) return { step: 'no_header' };
+  _ensureAdmin();
+  const decoded = await _auth().verifyIdToken(match[1]);
+  return { step: 'verified_ok', uid: decoded.uid, isAnonymous: !!(decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous') };
+}
+
 // Returns just the uid (string) on success, or null (401 already sent). Anonymous
 // sessions are rejected unless opts.allowAnonymous is true.
 async function verifyAuth(req, res, opts) {
@@ -315,6 +327,7 @@ module.exports = {
   checkGuestYoutubeLimit,
   isAllowedOrigin,
   _ensureAdmin,
+  _debugVerify,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

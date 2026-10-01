@@ -1,5 +1,4 @@
-const admin = require('firebase-admin');
-const { applyCors, verifyAuthFull, checkRateLimit, getUserPlan, PLAN_LIMITS } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getUserPlan, PLAN_LIMITS, getDb } = require('./_lib/auth');
 
 function _monthKey() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM, UTC
@@ -19,8 +18,7 @@ module.exports = async function handler(req, res) {
   if (!(await checkRateLimit(authed.uid, res))) return;
 
   const { uid } = authed;
-  // verifyAuthFull already called _ensureAdmin() via _verifyToken.
-  const db = admin.firestore();
+  const db = getDb();
 
   if (req.method === 'GET') {
     try {

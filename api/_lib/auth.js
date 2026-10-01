@@ -16,7 +16,12 @@
 // (the free YouTube converter) — see verifyAuthFull's `allowAnonymous` option and
 // checkGuestYoutubeLimit below.
 
-const admin = require('firebase-admin');
+// firebase-admin v14+ removed the old namespaced compat API (admin.auth(),
+// admin.firestore(), admin.credential.cert(), admin.apps) from the default
+// export — must use the modular subpath imports instead.
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const ALLOWED_ORIGINS = [
   'https://geniusnotes.ai',
@@ -43,14 +48,20 @@ function applyCors(res, req) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
-let _adminInitialized = false;
 function _ensureAdmin() {
-  if (_adminInitialized || admin.apps.length) { _adminInitialized = true; return; }
+  if (getApps().length) return;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
   const serviceAccount = JSON.parse(raw);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  _adminInitialized = true;
+  initializeApp({ credential: cert(serviceAccount) });
+}
+
+// Shared Firestore handle for every file in api/ that needs direct Firestore
+// access (checkout.js, webhook.js, subscription.js) — avoids each of them
+// separately importing firebase-admin/firestore.
+function getDb() {
+  _ensureAdmin();
+  return getFirestore();
 }
 
 // Decodes and verifies the Authorization: Bearer <idToken> header. Returns the decoded
@@ -67,7 +78,7 @@ async function _verifyToken(req, res, opts) {
       return null;
     }
     _ensureAdmin();
-    const decoded = await admin.auth().verifyIdToken(match[1]);
+    const decoded = await getAuth().verifyIdToken(match[1]);
     const isAnonymous = decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous';
     if (isAnonymous && !opts.allowAnonymous) {
       res.status(401).json({ error: 'sign_in_required' });
@@ -106,7 +117,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 async function checkRateLimit(uid, res) {
   try {
     _ensureAdmin();
-    const db = admin.firestore();
+    const db = getFirestore();
     const ref = db.doc(`users/${uid}/rateLimit/current`);
     const now = Date.now();
 
@@ -159,7 +170,7 @@ function _clientIp(req) {
 async function checkGuestYoutubeLimit(req, uid, res) {
   try {
     _ensureAdmin();
-    const db = admin.firestore();
+    const db = getFirestore();
     const today = _todayKey();
     const ipKey = _sanitizeIp(_clientIp(req));
     const uidRef = db.doc(`guestLimits/${uid}`);
@@ -210,7 +221,7 @@ function _monthKey(d) {
 async function getUserPlan(uid) {
   try {
     _ensureAdmin();
-    const snap = await admin.firestore().doc(`users/${uid}`).get();
+    const snap = await getFirestore().doc(`users/${uid}`).get();
     if (!snap.exists) return 'free';
     const d = snap.data();
     const now = Math.floor(Date.now() / 1000);
@@ -231,7 +242,7 @@ async function checkAndIncrementUsage(uid, res, kind) {
     const plan = await getUserPlan(uid);
     const limit = PLAN_LIMITS[plan].ai;
     _ensureAdmin();
-    const db = admin.firestore();
+    const db = getFirestore();
     const month = _monthKey();
     const ref = db.doc(`users/${uid}/usage/${month}`);
 
@@ -263,7 +274,7 @@ async function checkYoutubeDailyLimit(uid, res) {
     const plan = await getUserPlan(uid);
     const limit = PLAN_LIMITS[plan].yt;
     _ensureAdmin();
-    const db = admin.firestore();
+    const db = getFirestore();
     const today = _todayKey();
     const ref = db.doc(`users/${uid}/ytLimit/${today}`);
 
@@ -294,6 +305,7 @@ module.exports = {
   checkGuestYoutubeLimit,
   isAllowedOrigin,
   _ensureAdmin,
+  getDb,
   getUserPlan,
   checkAndIncrementUsage,
   checkYoutubeDailyLimit,

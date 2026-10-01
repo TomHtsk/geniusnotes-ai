@@ -1,10 +1,8 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const admin = require('firebase-admin');
-const { _ensureAdmin } = require('./_lib/auth');
+const { getDb } = require('./_lib/auth');
 
 async function setProStatus(uid, pro, proUntil) {
-  _ensureAdmin();
-  await admin.firestore().doc(`users/${uid}`).set({
+  await getDb().doc(`users/${uid}`).set({
     pro: !!pro,
     proUntil: proUntil || 0,
     updatedAt: Math.floor(Date.now() / 1000),
@@ -12,23 +10,20 @@ async function setProStatus(uid, pro, proUntil) {
 }
 
 async function setPaymentFailed(uid, failed) {
-  _ensureAdmin();
-  await admin.firestore().doc(`users/${uid}`).set({
+  await getDb().doc(`users/${uid}`).set({
     paymentFailed: !!failed,
     updatedAt: Math.floor(Date.now() / 1000),
   }, { merge: true });
 }
 
 async function linkStripeCustomer(uid, customerId) {
-  _ensureAdmin();
-  await admin.firestore().doc(`users/${uid}`).set({ stripeCustomerId: customerId }, { merge: true });
+  await getDb().doc(`users/${uid}`).set({ stripeCustomerId: customerId }, { merge: true });
 }
 
 // Fallback for subscription events that lack metadata.uid (e.g. a subscription
 // created before this change shipped, or directly in the Stripe Dashboard).
 async function resolveUidFromCustomer(customerId) {
-  _ensureAdmin();
-  const snap = await admin.firestore().collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
+  const snap = await getDb().collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
   return snap.empty ? null : snap.docs[0].id;
 }
 

@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
       if (!customerId) {
         return res.status(400).json({ error: 'no_subscription', message: 'No billing account found yet — subscribe to Pro first.' });
       }
-      const host = req.headers['x-forwarded-host'] || req.headers.host || 'geniusnotes.ai';
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'notecaptain.ai';
       const proto = req.headers['x-forwarded-proto'] || 'https';
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
       await userRef.set({ stripeCustomerId: customerId }, { merge: true });
     }
 
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'geniusnotes.ai';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'notecaptain.ai';
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const base = `${proto}://${host}`;
 

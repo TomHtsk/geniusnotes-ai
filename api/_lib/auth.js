@@ -25,6 +25,8 @@
 let _fbApp = null, _fbAuth = null, _fbFirestore = null;
 
 const ALLOWED_ORIGINS = [
+  'https://notecaptain.ai',
+  'https://www.notecaptain.ai',
   'https://geniusnotes.ai',
   'https://www.geniusnotes.ai',
   'https://geniusnotes-ai.vercel.app',

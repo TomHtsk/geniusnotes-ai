@@ -1,17 +1,32 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin, _getServiceAccountProjectId } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin, _getServiceAccountProjectId, _auth } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // TEMPORARY, MINIMAL-DISCLOSURE DIAGNOSTIC — reports only a boolean and the
-  // service account's project_id (not sensitive — the same value is already
-  // publicly visible in every page's own Firebase client config). No error
-  // detail, message, or stack. Remove once root-caused.
-  if (req.method === 'GET' && req.headers['x-gn-diag'] === '1') {
-    try { const pid = _getServiceAccountProjectId(); return res.status(200).json({ adminInitOk: true, projectId: pid }); }
-    catch (e) { return res.status(200).json({ adminInitOk: false }); }
+  // TEMPORARY, MINIMAL-DISCLOSURE DIAGNOSTIC — reports only a boolean, the
+  // service account's project_id (not sensitive — already public in every
+  // page's own Firebase client config), and (POST only, with a real
+  // Authorization header) the Firebase Admin SDK's own fixed error CODE for
+  // the token (e.g. "auth/id-token-expired") — a stable, documented enum
+  // value, not a raw message or stack. Remove once root-caused.
+  if (req.headers['x-gn-diag'] === '1') {
+    if (req.method === 'GET') {
+      try { const pid = _getServiceAccountProjectId(); return res.status(200).json({ adminInitOk: true, projectId: pid }); }
+      catch (e) { return res.status(200).json({ adminInitOk: false }); }
+    }
+    if (req.method === 'POST') {
+      const header = req.headers.authorization || '';
+      const match = header.match(/^Bearer (.+)$/);
+      if (!match) return res.status(200).json({ hasToken: false });
+      try {
+        const decoded = await _auth().verifyIdToken(match[1]);
+        return res.status(200).json({ tokenOk: true, isAnonymous: !!(decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous') });
+      } catch (e) {
+        return res.status(200).json({ tokenOk: false, code: e.code || 'unknown' });
+      }
+    }
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

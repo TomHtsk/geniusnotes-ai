@@ -382,6 +382,7 @@ module.exports = {
   isAllowedOrigin,
   _ensureAdmin,
   _getServiceAccountProjectId,
+  _auth,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

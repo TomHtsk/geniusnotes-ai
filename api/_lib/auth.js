@@ -50,18 +50,45 @@ function applyCors(res, req) {
 }
 
 // Tolerant parser for the FIREBASE_SERVICE_ACCOUNT env var. Pasting the key JSON
-// into Vercel by hand often leaves extra text after the closing brace (e.g. the
-// key pasted twice, or a stray line), which makes plain JSON.parse throw and
-// breaks every signed-in request. This accepts: the raw JSON, JSON with junk
-// before/after it (uses the first complete {...} object), or base64 of the JSON.
+// into Vercel by hand can leave it double-JSON-encoded, base64-encoded, or with
+// extra text before/after it, any of which makes plain JSON.parse throw and
+// breaks every signed-in request. Tries the simple, direct parse FIRST (exactly
+// what worked before this tolerant logic existed) so well-formed content is
+// never put at risk by the fallback logic below; only falls back to base64
+// decoding or extracting the first balanced {...} object for genuinely messy
+// input.
+function _tryParseJson(s) {
+  try { return JSON.parse(s); } catch (_) { return null; }
+}
+function _normalizeServiceAccount(obj) {
+  if (obj.private_key && obj.private_key.indexOf('\\n') !== -1) {
+    obj.private_key = obj.private_key.replace(/\\n/g, '\n');
+  }
+  return obj;
+}
+function _looksLikeServiceAccount(obj) {
+  return !!(obj && typeof obj === 'object' && obj.project_id && obj.client_email && obj.private_key);
+}
 function _parseServiceAccount(raw) {
   let text = String(raw).trim();
-  if (text && text[0] !== '{') {
+
+  let obj = _tryParseJson(text);
+  if (typeof obj === 'string') obj = _tryParseJson(obj.trim()); // double-JSON-encoded value
+  if (_looksLikeServiceAccount(obj)) return _normalizeServiceAccount(obj);
+
+  if (text[0] !== '{') {
     try {
       const decoded = Buffer.from(text, 'base64').toString('utf8').trim();
-      if (decoded.startsWith('{')) text = decoded;
+      if (decoded.startsWith('{')) {
+        const decodedObj = _tryParseJson(decoded);
+        if (_looksLikeServiceAccount(decodedObj)) return _normalizeServiceAccount(decodedObj);
+        text = decoded; // fall through to the brace matcher below on the decoded text
+      }
     } catch (_) {}
   }
+
+  // Extract the first balanced {...} object — handles extra pasted text before/after
+  // the real JSON (e.g. the key pasted twice, or a stray line).
   const start = text.indexOf('{');
   if (start === -1) throw new Error('FIREBASE_SERVICE_ACCOUNT does not contain a JSON object');
   let depth = 0, inStr = false, esc = false, end = -1;
@@ -78,14 +105,11 @@ function _parseServiceAccount(raw) {
     else if (c === '}') { depth--; if (depth === 0) { end = i; break; } }
   }
   if (end === -1) throw new Error('FIREBASE_SERVICE_ACCOUNT JSON is incomplete (no closing brace)');
-  const obj = JSON.parse(text.slice(start, end + 1));
-  if (obj.private_key && obj.private_key.indexOf('\\n') !== -1) {
-    obj.private_key = obj.private_key.replace(/\\n/g, '\n');
-  }
-  if (!obj.project_id || !obj.client_email || !obj.private_key) {
+  const extracted = JSON.parse(text.slice(start, end + 1));
+  if (!_looksLikeServiceAccount(extracted)) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT is missing project_id, client_email or private_key');
   }
-  return obj;
+  return _normalizeServiceAccount(extracted);
 }
 
 function _ensureAdmin() {
@@ -166,7 +190,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 async function checkRateLimit(uid, res) {
   try {
     _ensureAdmin();
-    const db = getFirestore();
+    const db = getDb();
     const ref = db.doc(`users/${uid}/rateLimit/current`);
     const now = Date.now();
 
@@ -219,7 +243,7 @@ function _clientIp(req) {
 async function checkGuestYoutubeLimit(req, uid, res) {
   try {
     _ensureAdmin();
-    const db = getFirestore();
+    const db = getDb();
     const today = _todayKey();
     const ipKey = _sanitizeIp(_clientIp(req));
     const uidRef = db.doc(`guestLimits/${uid}`);
@@ -270,7 +294,7 @@ function _monthKey(d) {
 async function getUserPlan(uid) {
   try {
     _ensureAdmin();
-    const snap = await getFirestore().doc(`users/${uid}`).get();
+    const snap = await getDb().doc(`users/${uid}`).get();
     if (!snap.exists) return 'free';
     const d = snap.data();
     const now = Math.floor(Date.now() / 1000);
@@ -291,7 +315,7 @@ async function checkAndIncrementUsage(uid, res, kind) {
     const plan = await getUserPlan(uid);
     const limit = PLAN_LIMITS[plan].ai;
     _ensureAdmin();
-    const db = getFirestore();
+    const db = getDb();
     const month = _monthKey();
     const ref = db.doc(`users/${uid}/usage/${month}`);
 
@@ -323,7 +347,7 @@ async function checkYoutubeDailyLimit(uid, res) {
     const plan = await getUserPlan(uid);
     const limit = PLAN_LIMITS[plan].yt;
     _ensureAdmin();
-    const db = getFirestore();
+    const db = getDb();
     const today = _todayKey();
     const ref = db.doc(`users/${uid}/ytLimit/${today}`);
 

@@ -112,6 +112,7 @@ function _parseServiceAccount(raw) {
   return _normalizeServiceAccount(extracted);
 }
 
+let _fbProjectId = null; // TEMPORARY, for the diagnostic below — remove with it.
 function _ensureAdmin() {
   if (_fbApp) return;
   const { initializeApp, cert, getApps } = require('firebase-admin/app');
@@ -119,8 +120,10 @@ function _ensureAdmin() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
   const serviceAccount = _parseServiceAccount(raw);
+  _fbProjectId = serviceAccount.project_id;
   _fbApp = initializeApp({ credential: cert(serviceAccount) });
 }
+function _getServiceAccountProjectId() { _ensureAdmin(); return _fbProjectId; }
 
 function _auth() {
   _ensureAdmin();
@@ -378,6 +381,7 @@ module.exports = {
   checkGuestYoutubeLimit,
   isAllowedOrigin,
   _ensureAdmin,
+  _getServiceAccountProjectId,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

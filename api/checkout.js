@@ -1,16 +1,16 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin, _getServiceAccountProjectId } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // TEMPORARY, MINIMAL-DISCLOSURE DIAGNOSTIC — reports ONLY a boolean, no error
-  // detail, message, or stack (unlike the earlier debug branch that got flagged
-  // as a leak risk). Tests whether the Admin SDK can even initialize server-side,
-  // independent of any user token. Remove once root-caused.
+  // TEMPORARY, MINIMAL-DISCLOSURE DIAGNOSTIC — reports only a boolean and the
+  // service account's project_id (not sensitive — the same value is already
+  // publicly visible in every page's own Firebase client config). No error
+  // detail, message, or stack. Remove once root-caused.
   if (req.method === 'GET' && req.headers['x-gn-diag'] === '1') {
-    try { _ensureAdmin(); return res.status(200).json({ adminInitOk: true }); }
+    try { const pid = _getServiceAccountProjectId(); return res.status(200).json({ adminInitOk: true, projectId: pid }); }
     catch (e) { return res.status(200).json({ adminInitOk: false }); }
   }
 

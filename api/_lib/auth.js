@@ -18,10 +18,20 @@
 
 // firebase-admin v14+ removed the old namespaced compat API (admin.auth(),
 // admin.firestore(), admin.credential.cert(), admin.apps) from the default
-// export — must use the modular subpath imports instead. Required lazily
-// (inside _ensureAdmin, not at module top level) so that any resolution
-// problem surfaces as a normal catchable error instead of crashing the whole
-// serverless function at cold start with an opaque, bodyless 500.
+// export — must use the modular subpath imports instead. Required at module
+// top level (not lazily inside a function) — Vercel's static dependency
+// tracer only reliably bundles subpaths it can see via a literal top-level
+// require(); a lazy, function-scoped require of 'firebase-admin/auth' was
+// getting missed by that tracer in production (reproduced as ERR_REQUIRE_ESM
+// at runtime despite working fine locally), even though 'firebase-admin/app'
+// happened to still resolve. The crash this was originally made lazy to avoid
+// was a logic bug (checking the removed `admin.apps.length`), not a require
+// problem — fixed properly below via getApps() instead, so eager requires are
+// safe now.
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
+
 let _fbApp = null, _fbAuth = null, _fbFirestore = null;
 
 const ALLOWED_ORIGINS = [
@@ -112,22 +122,18 @@ function _parseServiceAccount(raw) {
   return _normalizeServiceAccount(extracted);
 }
 
-let _fbProjectId = null; // TEMPORARY, for the diagnostic below — remove with it.
 function _ensureAdmin() {
   if (_fbApp) return;
-  const { initializeApp, cert, getApps } = require('firebase-admin/app');
   if (getApps().length) { _fbApp = getApps()[0]; return; }
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
   const serviceAccount = _parseServiceAccount(raw);
-  _fbProjectId = serviceAccount.project_id;
   _fbApp = initializeApp({ credential: cert(serviceAccount) });
 }
-function _getServiceAccountProjectId() { _ensureAdmin(); return _fbProjectId; }
 
 function _auth() {
   _ensureAdmin();
-  if (!_fbAuth) _fbAuth = require('firebase-admin/auth').getAuth(_fbApp);
+  if (!_fbAuth) _fbAuth = getAuth(_fbApp);
   return _fbAuth;
 }
 
@@ -136,7 +142,7 @@ function _auth() {
 // separately importing firebase-admin/firestore.
 function getDb() {
   _ensureAdmin();
-  if (!_fbFirestore) _fbFirestore = require('firebase-admin/firestore').getFirestore(_fbApp);
+  if (!_fbFirestore) _fbFirestore = getFirestore(_fbApp);
   return _fbFirestore;
 }
 
@@ -381,8 +387,6 @@ module.exports = {
   checkGuestYoutubeLimit,
   isAllowedOrigin,
   _ensureAdmin,
-  _getServiceAccountProjectId,
-  _auth,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

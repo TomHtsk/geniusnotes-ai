@@ -18,10 +18,11 @@
 
 // firebase-admin v14+ removed the old namespaced compat API (admin.auth(),
 // admin.firestore(), admin.credential.cert(), admin.apps) from the default
-// export — must use the modular subpath imports instead.
-const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getAuth } = require('firebase-admin/auth');
-const { getFirestore } = require('firebase-admin/firestore');
+// export — must use the modular subpath imports instead. Required lazily
+// (inside _ensureAdmin, not at module top level) so that any resolution
+// problem surfaces as a normal catchable error instead of crashing the whole
+// serverless function at cold start with an opaque, bodyless 500.
+let _fbApp = null, _fbAuth = null, _fbFirestore = null;
 
 const ALLOWED_ORIGINS = [
   'https://geniusnotes.ai',
@@ -49,11 +50,19 @@ function applyCors(res, req) {
 }
 
 function _ensureAdmin() {
-  if (getApps().length) return;
+  if (_fbApp) return;
+  const { initializeApp, cert, getApps } = require('firebase-admin/app');
+  if (getApps().length) { _fbApp = getApps()[0]; return; }
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
   const serviceAccount = JSON.parse(raw);
-  initializeApp({ credential: cert(serviceAccount) });
+  _fbApp = initializeApp({ credential: cert(serviceAccount) });
+}
+
+function _auth() {
+  _ensureAdmin();
+  if (!_fbAuth) _fbAuth = require('firebase-admin/auth').getAuth(_fbApp);
+  return _fbAuth;
 }
 
 // Shared Firestore handle for every file in api/ that needs direct Firestore
@@ -61,7 +70,8 @@ function _ensureAdmin() {
 // separately importing firebase-admin/firestore.
 function getDb() {
   _ensureAdmin();
-  return getFirestore();
+  if (!_fbFirestore) _fbFirestore = require('firebase-admin/firestore').getFirestore(_fbApp);
+  return _fbFirestore;
 }
 
 // Decodes and verifies the Authorization: Bearer <idToken> header. Returns the decoded
@@ -78,7 +88,7 @@ async function _verifyToken(req, res, opts) {
       return null;
     }
     _ensureAdmin();
-    const decoded = await getAuth().verifyIdToken(match[1]);
+    const decoded = await _auth().verifyIdToken(match[1]);
     const isAnonymous = decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous';
     if (isAnonymous && !opts.allowAnonymous) {
       res.status(401).json({ error: 'sign_in_required' });

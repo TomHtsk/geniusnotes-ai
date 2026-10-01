@@ -1,4 +1,53 @@
-# GeniusNotes.ai — Project Context
+# NoteCaptain (notecaptain.ai) — Project Context
+
+> Formerly "GeniusNotes.ai". The site was renamed to **NoteCaptain** in Oct 2026 and now lives at **www.notecaptain.ai**. Internal IDs keep the old name on purpose (Firebase project `geniusnotes-ai`, GitHub repo `geniusnotes-ai`, `gn-` storage keys). Do not rename those — users would lose accounts and saved notes.
+
+## READ FIRST — current state (Oct 2026)
+
+### What the product is
+A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to Notepad → flashcards/quiz**. Plain HTML/CSS/JS pages + Vercel serverless functions in `/api`. No framework, no build step.
+
+### Working with the owner
+- The owner (Thomas) is a beginner. Explain in plain English, show a plan before big edits, change only what was asked, and finish by listing changed files + how to test.
+- Keep it simple: this is an MVP. Hide rather than delete features. Don't add new dependencies or API files without asking.
+
+### Rules that must not be broken
+1. **Max 12 serverless functions** (Vercel Hobby). We are AT the limit. Never add a new file in `/api` — add an `action` to an existing endpoint instead.
+2. **Every `/api` endpoint (except `webhook.js`) requires a Firebase ID token** via `api/_lib/auth.js` (`verifyAuth` / `verifyAuthFull`). Frontend calls go through `_authFetch`. Anonymous tokens are accepted only for the YouTube converter (`summarize.js`).
+3. **CORS allow-list** in `api/_lib/auth.js` (`ALLOWED_ORIGINS`): notecaptain.ai, www.notecaptain.ai, the vercel.app address, localhost. No `*`.
+4. **Never trust the browser for plan/limits.** Plan and usage are checked server-side (`getUserPlan`, `checkAndIncrementUsage`, `checkYoutubeDailyLimit`, `checkGuestYoutubeLimit`).
+5. **Secrets only in Vercel env vars.** `FIREBASE_SERVICE_ACCOUNT` is parsed by `_parseServiceAccount` (tolerates extra text / base64).
+6. **AI provider is Groq** (OpenAI-compatible endpoint), not OpenAI. Transcription: Supadata (YouTube), Groq Whisper / AssemblyAI (audio).
+7. **Wikipedia content is CC BY-SA 4.0** — keep the attribution + license link on the result card, the full-screen reader, and notes sent to the Notepad.
+
+### Plans and limits (`PLAN_LIMITS` in `api/_lib/auth.js`)
+| Plan | AI actions / month | Lecture recording / month | YouTube conversions / day |
+|---|---|---|---|
+| Guest (not signed in) | — | — | 3 |
+| Free (signed in) | 10 | 30 min | 3 |
+| Pro ($6.99/mo or $39.99/yr) | 500 (fair use) | 10 hours | 50 |
+
+Limit hit → API returns 402 `limit_reached` → frontend shows the upgrade modal.
+
+### Access
+- Free for everyone, no sign-in: Wikipedia search/reader, YouTube converter (guests are signed in anonymously behind the scenes).
+- Sign-in required: Notepad, My Notes, Flashcards, Upload, Record Lecture, all AI tools. Locked items show 🔒 and open the shared sign-in modal (`js/auth-gate.js`).
+- Hidden ("Coming soon" overlay): `passwords.html`, `vault.html`.
+
+### Key files added recently
+- `js/search.js` — single smart search bar (detects YouTube link vs. topic), recent-search chips
+- `js/wiki.js` — Wikipedia summary card, autocomplete, related topics, full-screen article reader, "Send to Notepad" (uses `gn-notepad-pending*` keys)
+- `js/auth-gate.js` — shared sign-in modal and 🔒 gating
+- `api/_lib/auth.js` — CORS, auth, rate limits, plans/usage, shared Firestore handle (`getDb`)
+- `pricing.html` + pricing section on `index.html` (`#pricing`); `startProCheckout(plan)` → `/api/checkout`
+
+### Notepad (`notepad.html`)
+Simplified in Oct 2026: one continuous "pageless" document by default, notes stored safely for long text, trimmed toolbar with a "More" menu. **Sections further down that describe fixed pages, cross-page Enter/Backspace/Delete, rulers and zoom were written before this change — verify against the code before relying on them.**
+
+### Not done yet (ideas, don't build unless asked)
+Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashcards + quiz mode, Privacy Policy/Terms pages, removing temporary checkout debug output (`_debugVerify`, `x-gn-debug`) once checkout is confirmed working.
+
+---
 
 ## notebook.html — Notebooks App (updated June 2026)
 
@@ -80,25 +129,31 @@
 - `colorWithAlpha()` guards gradient strings from having hex alpha appended (would produce invalid CSS)
 
 ## Live URLs
-- https://geniusnotes.ai / https://www.geniusnotes.ai
-- https://geniusnotes-ai.vercel.app
+- https://www.notecaptain.ai (notecaptain.ai redirects to www)
+- https://geniusnotes-ai.vercel.app (Vercel's built-in address)
+- geniusnotes.ai is RETIRED — do not add it back to CORS, Firebase, or links.
 
 ## Firebase
-- Project: `geniusnotes-ai`
-- API key: `AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI`
-- App ID: `1:1041746856723:web:fae9072e0292c3946068e6`
-- Providers: Email/Password + Google
-- Authorized domains: `geniusnotes-ai.vercel.app`, `geniusnotes.ai`, `www.geniusnotes.ai`
+- Project ID: `geniusnotes-ai` (internal ID; cannot be renamed — leave as is)
+- Web config (apiKey/appId) is inline in each HTML page; it is public by design.
+- Providers: Email/Password, Google, Anonymous (guests using the YouTube converter)
+- Authorized domains: `notecaptain.ai`, `www.notecaptain.ai`, plus Firebase defaults
+- Server side uses `firebase-admin` v14 MODULAR imports only (`firebase-admin/app`, `/auth`, `/firestore`), required lazily inside `api/_lib/auth.js`. Never use `admin.auth()` / `admin.firestore()`.
 
-## Stripe (test mode)
-- Test secret: stored in Vercel env var `STRIPE_SECRET_KEY` — do not commit
-- Monthly: `price_1TZMytFzUKNvR71hbVBxf0Lc` | Yearly: `price_1TZMytFzUKNvR71hXvErlp8s`
+## Stripe (LIVE mode — real charges)
+- Product "GeniusNotes AI" (rename to NoteCaptain in Stripe when convenient)
+- Prices come from env vars `STRIPE_PRICE_MONTHLY` ($6.99/mo) and `STRIPE_PRICE_YEARLY` ($39.99/yr). Never hardcode price IDs.
+- Promotion code `EARLY` = $2 off monthly forever (first 100 users); checkout has `allow_promotion_codes: true`.
+- Webhook: `https://www.notecaptain.ai/api/webhook` (signature verified with `STRIPE_WEBHOOK_SECRET`)
+- Customer Portal ("Manage subscription") is `POST /api/checkout {action:'portal'}` — NOT a separate file (function limit).
 
-## Vercel Env Vars
-`GROQ_API_KEY`, `SUPADATA_API_KEY` (`sd_c660106aa59694f231f3a315b20e6777`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+## Vercel Env Vars (values live ONLY in Vercel — never write keys in this file or in code)
+`GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `YOUTUBE_API_KEY`, `YT_COOKIE`
 
-## Git
-Remote: `https://github.com/TomHtsk/geniusnotes-ai.git` (branch: `main`)
+## Git / Deploy
+- Remote: `https://github.com/TomHtsk/geniusnotes-ai.git` (branch: `main`). Pushing `main` deploys to production on Vercel.
+- The owner is on Windows; the project path contains an apostrophe (`Thomas henry's folder`) — quote paths.
+- Commit before every big change. Never commit secrets.
 
 ---
 

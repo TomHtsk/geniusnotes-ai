@@ -22,7 +22,7 @@
 // (inside _ensureAdmin, not at module top level) so that any resolution
 // problem surfaces as a normal catchable error instead of crashing the whole
 // serverless function at cold start with an opaque, bodyless 500.
-let _fbApp = null, _fbAuth = null, _fbFirestore = null;
+let _fbApp = null, _fbFirestore = null;
 
 const ALLOWED_ORIGINS = [
   'https://notecaptain.ai',
@@ -112,7 +112,6 @@ function _parseServiceAccount(raw) {
   return _normalizeServiceAccount(extracted);
 }
 
-let _fbProjectId = null; // TEMPORARY, for the diagnostic below — remove with it.
 function _ensureAdmin() {
   if (_fbApp) return;
   const { initializeApp, cert, getApps } = require('firebase-admin/app');
@@ -120,10 +119,8 @@ function _ensureAdmin() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
   const serviceAccount = _parseServiceAccount(raw);
-  _fbProjectId = serviceAccount.project_id;
   _fbApp = initializeApp({ credential: cert(serviceAccount) });
 }
-function _getServiceAccountProjectId() { _ensureAdmin(); return _fbProjectId; }
 
 // Token verification via Firebase's Identity Toolkit REST API instead of
 // firebase-admin/auth's getAuth(). require('firebase-admin/auth') reproducibly
@@ -406,8 +403,6 @@ module.exports = {
   checkGuestYoutubeLimit,
   isAllowedOrigin,
   _ensureAdmin,
-  _getServiceAccountProjectId,
-  _verifyIdTokenRest,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

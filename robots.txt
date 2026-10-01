@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /passwords.html
+Disallow: /vault.html
+Disallow: /share.html
+Disallow: /reset.html
+
+Sitemap: https://www.notecaptain.ai/sitemap.xml

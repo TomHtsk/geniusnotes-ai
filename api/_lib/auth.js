@@ -49,13 +49,52 @@ function applyCors(res, req) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
+// Tolerant parser for the FIREBASE_SERVICE_ACCOUNT env var. Pasting the key JSON
+// into Vercel by hand often leaves extra text after the closing brace (e.g. the
+// key pasted twice, or a stray line), which makes plain JSON.parse throw and
+// breaks every signed-in request. This accepts: the raw JSON, JSON with junk
+// before/after it (uses the first complete {...} object), or base64 of the JSON.
+function _parseServiceAccount(raw) {
+  let text = String(raw).trim();
+  if (text && text[0] !== '{') {
+    try {
+      const decoded = Buffer.from(text, 'base64').toString('utf8').trim();
+      if (decoded.startsWith('{')) text = decoded;
+    } catch (_) {}
+  }
+  const start = text.indexOf('{');
+  if (start === -1) throw new Error('FIREBASE_SERVICE_ACCOUNT does not contain a JSON object');
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new Error('FIREBASE_SERVICE_ACCOUNT JSON is incomplete (no closing brace)');
+  const obj = JSON.parse(text.slice(start, end + 1));
+  if (obj.private_key && obj.private_key.indexOf('\\n') !== -1) {
+    obj.private_key = obj.private_key.replace(/\\n/g, '\n');
+  }
+  if (!obj.project_id || !obj.client_email || !obj.private_key) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT is missing project_id, client_email or private_key');
+  }
+  return obj;
+}
+
 function _ensureAdmin() {
   if (_fbApp) return;
   const { initializeApp, cert, getApps } = require('firebase-admin/app');
   if (getApps().length) { _fbApp = getApps()[0]; return; }
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set');
-  const serviceAccount = JSON.parse(raw);
+  const serviceAccount = _parseServiceAccount(raw);
   _fbApp = initializeApp({ credential: cert(serviceAccount) });
 }
 

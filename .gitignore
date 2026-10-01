@@ -7,3 +7,5 @@ merge_out.log
 merge_test.js
 pg_break_test.js
 Claude outputs/
+.claude/
+_test_*.js

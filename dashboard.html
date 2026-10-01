@@ -115,6 +115,7 @@
   </style>
 </head>
 <body>
+<script src="js/auth-gate.js"></script>
 
 <!-- PAGE TAB BAR -->
 <div id="tab-bar-root">
@@ -139,9 +140,9 @@
   </div>
   <div class="sb-items" style="border-bottom:1px solid rgba(255,255,255,0.07);">
     <a href="index.html" class="sb-item">🏠 Home</a>
-    <a href="notepad.html" class="sb-item">📝 Notepad</a>
-    <a href="my-notes.html" class="sb-item">🗂 My Notes</a>
-    <a href="flashcards.html" class="sb-item">🃏 Flashcards</a>
+    <a href="notepad.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">📝 Notepad</a>
+    <a href="my-notes.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use My Notes">🗂 My Notes</a>
+    <a href="flashcards.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">🃏 Flashcards</a>
     <a href="dashboard.html" class="sb-item active">📊 Dashboard</a>
   </div>
   <div style="padding:8px 10px;flex-shrink:0;">

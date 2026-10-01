@@ -361,6 +361,7 @@
   </style>
 </head>
 <body>
+<script src="js/auth-gate.js"></script>
 
 <nav class="nav">
   <button class="nav-ham" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
@@ -391,11 +392,11 @@
   </div>
   <div class="sb-items">
     <a href="index.html" class="sb-item">🏠 Home</a>
-    <a href="notepad.html" class="sb-item">📝 Notepad</a>
-    <a href="my-notes.html" class="sb-item">🗂️ My Notes</a>
+    <a href="notepad.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">📝 Notepad</a>
+    <a href="my-notes.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use My Notes">🗂️ My Notes</a>
     <a href="notebook.html" class="sb-item active">📓 Notebooks</a>
     <a href="dashboard.html" class="sb-item">📊 Dashboard</a>
-    <a href="flashcards.html" class="sb-item">🃏 Flashcards</a>
+    <a href="flashcards.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">🃏 Flashcards</a>
   </div>
   <div class="sb-footer"><button class="sb-theme" onclick="toggleTheme()">🌙 Toggle Theme</button></div>
 

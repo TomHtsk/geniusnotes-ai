@@ -144,6 +144,8 @@
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
 </head>
 <body>
+<script src="js/auth-gate.js"></script>
+<script>gnGuardPage();</script>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
@@ -152,8 +154,8 @@
   </div>
   <div class="sb-items">
     <a href="index.html" class="sb-item">🏠 Home</a>
-    <a href="notepad.html" class="sb-item">📝 Notepad</a>
-    <a href="my-notes.html" class="sb-item">🗂 My Notes</a>
+    <a href="notepad.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">📝 Notepad</a>
+    <a href="my-notes.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use My Notes">🗂 My Notes</a>
     <a href="flashcards.html" class="sb-item active">🃏 Flashcards</a>
   </div>
   <div class="sb-footer">

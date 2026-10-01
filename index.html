@@ -504,9 +504,6 @@
     }
     /* ── HOW IT WORKS ── */
     .how-section { max-width:900px; margin:0 auto; padding:24px 24px 80px; }
-    .demo-wrap { width:100%; border-radius:18px; overflow:hidden; margin-bottom:64px; background:var(--surface); border:1px solid var(--border); }
-    .demo-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; height:360px; background:linear-gradient(135deg,#0d0d1a 0%,#1a1a2e 100%); }
-    .demo-placeholder p { font-size:0.85rem; color:rgba(255,255,255,0.3); font-weight:500; }
     .how-hd { text-align:center; margin-bottom:48px; }
     .how-hd h2 { font-size:1.8rem; font-weight:900; letter-spacing:-0.03em; margin-bottom:12px; }
     .how-hd p { color:var(--muted); font-size:0.95rem; max-width:480px; margin:0 auto; }
@@ -611,9 +608,9 @@
   </div>
   <div class="sidebar-items">
     <a href="index.html" class="sidebar-item active">🏠 Home</a>
-    <a href="notepad.html" class="sidebar-item">📝 Notepad</a>
-    <a href="my-notes.html" class="sidebar-item">🗂 My Notes</a>
-    <a href="flashcards.html" class="sidebar-item">🃏 Flashcards</a>
+    <a href="notepad.html" class="sidebar-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">📝 Notepad</a>
+    <a href="my-notes.html" class="sidebar-item" data-requires-auth data-auth-reason="Sign in free to use My Notes">🗂 My Notes</a>
+    <a href="flashcards.html" class="sidebar-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">🃏 Flashcards</a>
   </div>
   <div class="sb-footer">
     <button onclick="toggleTheme()" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:none;color:var(--muted);font-size:0.87rem;font-weight:500;cursor:pointer;font-family:inherit;border-radius:10px;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
@@ -721,22 +718,18 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
   <div class="home-hero">
     <div class="home-hero-inner">
       <div class="home-actions">
-        <a href="notepad.html" class="ha-btn ha-purple" id="card-notes">
+        <a href="notepad.html" class="ha-btn ha-purple" id="card-notes" data-requires-auth data-auth-reason="Sign in free to use the Notepad">
           <svg class="ha-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           <span class="ha-label">Take Notes</span>
         </a>
-        <button class="ha-btn ha-ghost" id="card-import" onclick="openUploadModal(event)">
+        <button class="ha-btn ha-ghost" id="card-import" onclick="openUploadModal(event)" data-requires-auth data-auth-reason="Sign in free to upload files">
           <svg class="ha-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span class="ha-label">Upload</span>
         </button>
-        <button class="ha-btn ha-ghost" id="card-record" onclick="openRecordModal()">
+        <button class="ha-btn ha-ghost" id="card-record" onclick="openRecordModal()" data-requires-auth data-auth-reason="Sign in free to record a lecture">
           <svg class="ha-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           <span class="ha-label">Record Lecture</span>
         </button>
-        <a href="my-notes.html" class="ha-btn ha-ghost">
-          <svg class="ha-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><path d="M18 2v4h4"/></svg>
-          <span class="ha-label">AI Recall</span>
-        </a>
       </div>
 
       <!-- Unified smart search bar: detects YouTube links vs. search topics -->
@@ -758,80 +751,6 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
     </div>
   </div>
 
-  <!-- Body -->
-  <div class="home-body">
-    <!-- Convert callout -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:14px;padding:18px 22px;margin-bottom:32px;display:flex;align-items:flex-start;gap:16px;">
-      <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple2)" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </div>
-      <div>
-        <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-bottom:6px;">Convert any note into the format you need</div>
-        <div style="font-size:0.82rem;color:var(--muted);line-height:1.65;">Open a note in the Notepad and type a <span style="background:rgba(139,92,246,0.15);color:var(--purple2);border:1px solid rgba(139,92,246,0.3);border-radius:5px;padding:1px 7px;font-family:monospace;font-size:0.85em;font-weight:700;">/command</span> to instantly transform it — into <strong style="color:var(--text);">Cornell Notes</strong>, <strong style="color:var(--text);">Flashcards</strong>, a <strong style="color:var(--text);">Study Guide</strong>, <strong style="color:var(--text);">Bullet Points</strong>, an <strong style="color:var(--text);">Outline</strong>, an <strong style="color:var(--text);">Academic Essay</strong>, and more. The result opens as a new note so your original is never changed.</div>
-        <a href="notepad.html" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:0.79rem;font-weight:700;color:var(--purple2);text-decoration:none;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Try it in the Notepad →</a>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ── HOW IT WORKS ── -->
-  <section class="how-section" id="how">
-
-    <!-- Demo video placeholder -->
-    <div class="demo-wrap">
-      <div class="demo-placeholder">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="rgba(255,255,255,0.3)" stroke="none"/></svg>
-        <p>Demo video coming soon</p>
-      </div>
-    </div>
-
-    <!-- Headline -->
-    <div class="how-hd">
-      <h2>Study smarter in three steps.</h2>
-      <p>GeniusNotes AI turns your notes, videos, and lectures into structured study material — instantly.</p>
-    </div>
-
-    <!-- Feature steps -->
-    <div class="how-grid">
-      <div class="how-card">
-        <div class="how-num">01</div>
-        <h3>Capture anything</h3>
-        <p>Type notes, upload a PDF or document, paste a YouTube link, or record a lecture live. GeniusNotes handles every format.</p>
-      </div>
-      <div class="how-card">
-        <div class="how-num">02</div>
-        <h3>Run an AI command</h3>
-        <p>Type <span class="how-code">/cornellnotes</span>, <span class="how-code">/flashcards</span>, <span class="how-code">/studyguide</span> or any other command. The AI rewrites your note into the format you need in seconds.</p>
-      </div>
-      <div class="how-card">
-        <div class="how-num">03</div>
-        <h3>Study, share &amp; download</h3>
-        <p>Open your transformed note, share it with a link for live collaboration, or export as PDF, DOC, or TXT.</p>
-      </div>
-    </div>
-
-    <!-- Feature pills -->
-    <div class="how-pills" id="features">
-      <span class="how-pill">Cornell Notes</span>
-      <span class="how-pill">Flashcards</span>
-      <span class="how-pill">Study Guide</span>
-      <span class="how-pill">Bullet Points</span>
-      <span class="how-pill">Outline</span>
-      <span class="how-pill">AI Highlight</span>
-      <span class="how-pill">Grammar Check</span>
-      <span class="how-pill">Spelling</span>
-      <span class="how-pill">Live Collaboration</span>
-      <span class="how-pill">PDF Export</span>
-      <span class="how-pill">YouTube Transcribe</span>
-      <span class="how-pill">Voice Recording</span>
-    </div>
-
-    <!-- CTA -->
-    <div style="text-align:center;margin-top:48px;">
-      <a href="signup.html" style="display:inline-flex;align-items:center;gap:8px;background:#7c3aed;color:#fff;padding:14px 32px;border-radius:12px;font-size:0.95rem;font-weight:800;text-decoration:none;transition:background 0.15s;box-shadow:0 4px 24px rgba(124,58,237,0.4);" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">Start for free — no credit card needed</a>
-    </div>
-
-  </section>
 
 </main>
 
@@ -852,14 +771,33 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import {
+  getAuth, onAuthStateChanged, signOut, signInAnonymously,
+  GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  linkWithCredential, linkWithPopup, EmailAuthProvider,
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 const _fapp = initializeApp({ apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI', authDomain:'geniusnotes-ai.firebaseapp.com', projectId:'geniusnotes-ai', appId:'1:1041746856723:web:fae9072e0292c3946068e6' });
 const _fauth = getAuth(_fapp);
 window._fauth = _fauth; // exposed so the classic (non-module) scripts below can read currentUser for API auth
+// Modular-SDK primitives exposed for js/auth-gate.js (shared sign-in modal) and the
+// classic scripts below, since they can't use `import` directly.
+window._fbModular = {
+  signInAnonymously: () => signInAnonymously(_fauth),
+  signInWithPopup: (provider) => signInWithPopup(_fauth, provider),
+  signInWithEmailAndPassword: (email, pw) => signInWithEmailAndPassword(_fauth, email, pw),
+  createUserWithEmailAndPassword: (email, pw) => createUserWithEmailAndPassword(_fauth, email, pw),
+  linkWithPopup: (user, provider) => linkWithPopup(user, provider),
+  linkWithCredential: (user, credential) => linkWithCredential(user, credential),
+  GoogleAuthProvider,
+  EmailAuthProvider,
+};
 const _s = id => { const e=document.getElementById(id); if(e) e.style.display=''; };
 const _h = id => { const e=document.getElementById(id); if(e) e.style.display='none'; };
 onAuthStateChanged(_fauth, user => {
-  if (user) {
+  // Anonymous sessions (silent guest sign-in for the free YouTube converter) must never
+  // look "signed in" in the nav — only a real account counts.
+  const realUser = user && !user.isAnonymous;
+  if (realUser) {
     _h('nav-tryfree'); _h('nav-signin'); _s('nav-dashboard'); _s('nav-signout');
     window._gnLoggedIn = true;
     window._hsUid = user.uid;
@@ -867,7 +805,8 @@ onAuthStateChanged(_fauth, user => {
     _s('nav-tryfree'); _s('nav-signin'); _h('nav-dashboard'); _h('nav-signout');
     window._gnLoggedIn = false;
   }
-  window._proUser = user || null;
+  window._proUser = realUser ? user : null;
+  if (typeof window._gnOnAuthChange === 'function') window._gnOnAuthChange(user);
 });
 window.navSignOut = async () => { try { await signOut(_fauth); } catch(e){} };
 window.startProCheckout = () => { window.location.href = 'signup.html'; };
@@ -928,9 +867,24 @@ async function goYtTranscribe() {
         return;
       }
     }
+    // Free guest access: silently create an anonymous Firebase session if the visitor
+    // isn't signed in at all yet, so _authFetch has a token to send. No UI, no prompt —
+    // only /api/summarize accepts anonymous tokens (see api/_lib/auth.js).
+    if (!window._fauth.currentUser && window._fbModular) {
+      try { await window._fbModular.signInAnonymously(); } catch (_) {}
+    }
     // Fall back to server-side
     const resp = await _authFetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url, mode:'transcribe' }) });
     const d = await resp.json();
+    if (resp.status === 429 && d.error === 'guest_limit_reached') {
+      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f0f0ff;">${d.message || "You've used your 3 free conversions today. Sign in free for more."}</span><br><br><button onclick="closeYtModal();window.gnRequireSignIn&&window.gnRequireSignIn('Sign in free for unlimited conversions')" style="margin-top:8px;margin-right:8px;padding:7px 16px;border-radius:8px;background:var(--purple);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;">Sign in</button><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
+      return;
+    }
+    if (resp.status === 401 && d.error === 'sign_in_required') {
+      closeYtModal();
+      if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in to use this feature');
+      return;
+    }
     if (d.error) throw new Error(d.error);
 
     // Backend got a signed caption URL but can't fetch it server-side (datacenter IP block)
@@ -965,6 +919,17 @@ async function goYtTranscribe() {
 function closeYtModal() { document.getElementById('yt-modal').style.display = 'none'; }
 function ytImportToNotepad() {
   if (!_ytText) return;
+  const user = window._fauth && window._fauth.currentUser;
+  const realUser = user && !user.isAnonymous;
+  if (!realUser) {
+    if (window.gnRequireSignIn) {
+      window.gnRequireSignIn('Sign in free to send this to your Notepad', _doYtImportToNotepad);
+    }
+    return;
+  }
+  _doYtImportToNotepad();
+}
+function _doYtImportToNotepad() {
   localStorage.setItem('gn-notepad-pending', _ytText);
   localStorage.setItem('gn-notepad-pending-title', _ytTitle);
   window.location.href = 'notepad.html';
@@ -1074,6 +1039,7 @@ function _umDownloadGeneric(text, name, fmt) {
 <script src="js/recorder.js"></script>
 <script src="js/wiki.js"></script>
 <script src="js/search.js"></script>
+<script src="js/auth-gate.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- RECORD MODAL -->

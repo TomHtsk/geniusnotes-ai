@@ -126,6 +126,8 @@
   <script>if(localStorage.getItem('gn-theme')==='light'){document.documentElement.classList.add('light');document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mn-theme-btn');if(b)b.textContent='🌙 Dark';});}</script>
 </head>
 <body>
+<script src="js/auth-gate.js"></script>
+<script>gnGuardPage();</script>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
@@ -134,9 +136,9 @@
   </div>
   <div class="sb-items">
     <a href="index.html" class="sb-item">🏠 Home</a>
-    <a href="notepad.html" class="sb-item">📝 Notepad</a>
+    <a href="notepad.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">📝 Notepad</a>
     <a href="my-notes.html" class="sb-item active">🗂 My Notes</a>
-    <a href="flashcards.html" class="sb-item">🃏 Flashcards</a>
+    <a href="flashcards.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">🃏 Flashcards</a>
   </div>
   <div class="sb-footer">
     <button class="sb-theme" onclick="(function(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');})()">🌙 Toggle Theme</button>

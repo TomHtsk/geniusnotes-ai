@@ -11,6 +11,10 @@
 //     if (!(await checkRateLimit(uid, res))) return; // checkRateLimit already sent the 429
 //     ... existing handler logic unchanged below ...
 //   };
+//
+// api/summarize.js is the one endpoint that also accepts anonymous Firebase users
+// (the free YouTube converter) — see verifyAuthFull's `allowAnonymous` option and
+// checkGuestYoutubeLimit below.
 
 const admin = require('firebase-admin');
 
@@ -49,10 +53,12 @@ function _ensureAdmin() {
   _adminInitialized = true;
 }
 
-// Verifies the Authorization: Bearer <idToken> header. On success returns the uid.
-// On any failure, sends the 401 response itself and returns null — callers should
-// `if (!uid) return;` immediately after calling this.
-async function verifyAuth(req, res) {
+// Decodes and verifies the Authorization: Bearer <idToken> header. Returns the decoded
+// token (which includes .uid, .email, and .firebase.sign_in_provider) on success, or
+// null after sending the 401 response itself. `opts.allowAnonymous` (default false)
+// controls whether a token from an anonymous Firebase session is accepted at all.
+async function _verifyToken(req, res, opts) {
+  opts = opts || {};
   try {
     const header = req.headers.authorization || '';
     const match = header.match(/^Bearer (.+)$/);
@@ -62,30 +68,33 @@ async function verifyAuth(req, res) {
     }
     _ensureAdmin();
     const decoded = await admin.auth().verifyIdToken(match[1]);
-    return decoded.uid;
+    const isAnonymous = decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous';
+    if (isAnonymous && !opts.allowAnonymous) {
+      res.status(401).json({ error: 'sign_in_required' });
+      return null;
+    }
+    decoded._isAnonymous = !!isAnonymous;
+    return decoded;
   } catch (e) {
     res.status(401).json({ error: 'Unauthorized — invalid or expired token' });
     return null;
   }
 }
 
-// Same as verifyAuth but returns { uid, email } — for the one handler (checkout.js)
-// that needs the verified email too, instead of trusting an email from the request body.
-async function verifyAuthFull(req, res) {
-  try {
-    const header = req.headers.authorization || '';
-    const match = header.match(/^Bearer (.+)$/);
-    if (!match) {
-      res.status(401).json({ error: 'Unauthorized — missing Authorization header' });
-      return null;
-    }
-    _ensureAdmin();
-    const decoded = await admin.auth().verifyIdToken(match[1]);
-    return { uid: decoded.uid, email: decoded.email || null };
-  } catch (e) {
-    res.status(401).json({ error: 'Unauthorized — invalid or expired token' });
-    return null;
-  }
+// Returns just the uid (string) on success, or null (401 already sent). Anonymous
+// sessions are rejected unless opts.allowAnonymous is true.
+async function verifyAuth(req, res, opts) {
+  const decoded = await _verifyToken(req, res, opts);
+  return decoded ? decoded.uid : null;
+}
+
+// Same as verifyAuth but returns { uid, email, isAnonymous } — for callers that need
+// the verified email (checkout.js, subscription.js) or need to branch on anonymous
+// status (summarize.js, for the free/guest-limited YouTube converter).
+async function verifyAuthFull(req, res, opts) {
+  const decoded = await _verifyToken(req, res, opts);
+  if (!decoded) return null;
+  return { uid: decoded.uid, email: decoded.email || null, isAnonymous: decoded._isAnonymous };
 }
 
 const RATE_LIMIT_MAX = 30;
@@ -125,4 +134,70 @@ async function checkRateLimit(uid, res) {
   }
 }
 
-module.exports = { applyCors, verifyAuth, verifyAuthFull, checkRateLimit, isAllowedOrigin };
+const GUEST_YT_LIMIT = 3;
+
+function _todayKey() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, UTC
+}
+
+function _sanitizeIp(ip) {
+  return String(ip || 'unknown').trim().replace(/[^a-zA-Z0-9.:]/g, '_').slice(0, 100) || 'unknown';
+}
+
+function _clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return String(fwd).split(',')[0].trim();
+  return req.headers['x-real-ip'] || req.socket && req.socket.remoteAddress || 'unknown';
+}
+
+// Free YouTube-converter guest limit: 3 conversions/day, enforced both per anonymous
+// uid AND per IP address (so one guest can't just clear storage to get more, and one
+// IP can't be hammered through many anonymous sessions). Only called for anonymous
+// users — real signed-in users use the normal checkRateLimit instead. Sends the 429
+// itself (with the exact guest_limit_reached shape the frontend looks for) and returns
+// false if either counter is already at the limit.
+async function checkGuestYoutubeLimit(req, uid, res) {
+  try {
+    _ensureAdmin();
+    const db = admin.firestore();
+    const today = _todayKey();
+    const ipKey = _sanitizeIp(_clientIp(req));
+    const uidRef = db.doc(`guestLimits/${uid}`);
+    const ipRef = db.doc(`guestLimitsByIp/${ipKey}`);
+
+    const allowed = await db.runTransaction(async (tx) => {
+      const [uidSnap, ipSnap] = await Promise.all([tx.get(uidRef), tx.get(ipRef)]);
+      const uidData = uidSnap.exists ? uidSnap.data() : null;
+      const ipData = ipSnap.exists ? ipSnap.data() : null;
+      const uidCount = (uidData && uidData.day === today) ? uidData.count : 0;
+      const ipCount = (ipData && ipData.day === today) ? ipData.count : 0;
+
+      if (uidCount >= GUEST_YT_LIMIT || ipCount >= GUEST_YT_LIMIT) return false;
+
+      tx.set(uidRef, { day: today, count: uidCount + 1 });
+      tx.set(ipRef, { day: today, count: ipCount + 1 });
+      return true;
+    });
+
+    if (!allowed) {
+      res.status(429).json({
+        error: 'guest_limit_reached',
+        message: "You've used your 3 free conversions today. Sign in free for more.",
+      });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    // Fail open on infra errors, same reasoning as checkRateLimit.
+    return true;
+  }
+}
+
+module.exports = {
+  applyCors,
+  verifyAuth,
+  verifyAuthFull,
+  checkRateLimit,
+  checkGuestYoutubeLimit,
+  isAllowedOrigin,
+};

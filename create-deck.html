@@ -182,6 +182,17 @@
 </div>
 
 <script>
+  // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+  // Signed-out requests go through without a token and the server returns 401.
+  async function _authFetch(url, opts) {
+    opts = opts || {};
+    const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (user) {
+      const token = await user.getIdToken();
+      opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+    }
+    return fetch(url, opts);
+  }
   window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
 
   // ── UID helpers ──
@@ -238,7 +249,7 @@
         text = await file.text();
       } else if (file.name.toLowerCase().endsWith('.docx')) {
         const b64 = await fileToB64(file);
-        const d = await (await fetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({file:b64,name:file.name}) })).json();
+        const d = await (await _authFetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({file:b64,name:file.name}) })).json();
         text = d.text || '';
       } else if (file.name.toLowerCase().endsWith('.pdf')) {
         text = await extractPdf(file);
@@ -278,7 +289,7 @@
 
     try {
       const prompt = text.length < 200 ? `Generate ${count} flashcards about: ${text}` : text;
-      const resp = await fetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:prompt, mode:'flashcards', count}) });
+      const resp = await _authFetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:prompt, mode:'flashcards', count}) });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
 
@@ -445,7 +456,7 @@
         el('ma-proc-row').style.display='flex';
         try {
           const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
-          const res=await fetch('/api/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,mimeType:blob.type})});
+          const res=await _authFetch('/api/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,mimeType:blob.type})});
           const d=await res.json();
           if(d.transcript&&d.transcript.trim()){
             const ta=el('ma-textarea'); ta.value=d.transcript.trim();

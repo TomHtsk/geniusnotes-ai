@@ -1,3 +1,5 @@
+const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+
 async function ddgLookup(query) {
   try {
     const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, { signal: AbortSignal.timeout(5000) });
@@ -29,11 +31,12 @@ const _CHAT_SYSTEM = `You are an expert AI study tutor for GeniusNotes AI. Help 
 async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
+  const uid = await verifyAuth(req, res);
+  if (!uid) return;
+  if (!(await checkRateLimit(uid, res))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });

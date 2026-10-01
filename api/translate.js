@@ -1,3 +1,5 @@
+const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+
 async function groqFetch(body, apiKey) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -17,11 +19,12 @@ async function groqFetch(body, apiKey) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const uid = await verifyAuth(req, res);
+  if (!uid) return;
+  if (!(await checkRateLimit(uid, res))) return;
 
   const { text, targetLang, sourceLang } = req.body || {};
   if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });

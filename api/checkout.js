@@ -1,4 +1,5 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { applyCors, verifyAuthFull, checkRateLimit } = require('./_lib/auth');
 
 const PRICES = {
   monthly: 'price_1TZMytFzUKNvR71hbVBxf0Lc',
@@ -6,15 +7,19 @@ const PRICES = {
 };
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const authed = await verifyAuthFull(req, res);
+  if (!authed) return;
+  if (!(await checkRateLimit(authed.uid, res))) return;
 
   try {
-    const { uid, email, plan = 'monthly' } = req.body || {};
-    if (!uid || !email) return res.status(400).json({ error: 'Missing uid or email' });
+    // uid/email come from the verified token, not the request body — a client can no
+    // longer start a checkout session on someone else's account by sending their uid.
+    const { uid, email } = authed;
+    const { plan = 'monthly' } = req.body || {};
+    if (!uid || !email) return res.status(400).json({ error: 'Missing uid or email on token' });
 
     const priceId = PRICES[plan] || PRICES.monthly;
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'geniusnotes.ai';

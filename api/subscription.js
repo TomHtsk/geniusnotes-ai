@@ -1,12 +1,16 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { applyCors, verifyAuthFull, checkRateLimit } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  const authed = await verifyAuthFull(req, res);
+  if (!authed) return;
+  if (!(await checkRateLimit(authed.uid, res))) return;
 
-  const { email } = req.query;
+  // Email comes from the verified token, not an arbitrary query param — a signed-in user
+  // can no longer look up another account's subscription status by guessing their email.
+  const email = authed.email;
   if (!email) return res.status(200).json({ pro: false });
 
   try {

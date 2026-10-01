@@ -1470,6 +1470,18 @@
 </div>
 
 <script>
+// Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+// Signed-out requests go through without a token and the server returns 401.
+async function _authFetch(url, opts) {
+  opts = opts || {};
+  const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+  if (user) {
+    const token = await user.getIdToken();
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+  }
+  return fetch(url, opts);
+}
+
 // ── LOCKED PAGE SIZE (US Letter at 96 DPI) ── change only here, nowhere else ──
 const PAGE_W = 816;   // 8.5 in
 const PAGE_H = 1056;  // 11 in
@@ -1555,7 +1567,7 @@ async function importDoc(input) {
       let binary = '';
       for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
       const base64 = btoa(binary);
-      const r = await fetch('/api/extract', {
+      const r = await _authFetch('/api/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: base64 })
@@ -4598,10 +4610,10 @@ async function cpConvert(mode) {
   try {
     var result = '', isHtml = false;
     if (mode === 'homework') {
-      var r = await fetch('/api/homework', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
+      var r = await _authFetch('/api/homework', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text}) });
       var d = await r.json(); if (!r.ok) throw new Error(d.error || 'API error'); result = d.result || '';
     } else {
-      var r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, mode}) });
+      var r = await _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, mode}) });
       var d = await r.json(); if (!r.ok) throw new Error(d.error || 'API error');
       if (mode === 'cornell' && d.result) {
         try { result = _renderCornellHTML(JSON.parse(d.result)); isHtml = true; }
@@ -4625,7 +4637,7 @@ async function cpSend() {
   document.getElementById('cp-send').disabled = true;
   var loadEl = _cpAddAI('<span class="cp-ai-loading">Thinking…</span>', false, true);
   try {
-    var r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, mode:'prompt', prompt}) });
+    var r = await _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, mode:'prompt', prompt}) });
     var d = await r.json(); if (!r.ok) throw new Error(d.error || 'API error');
     loadEl.remove(); _cpAddAI(d.result || '');
   } catch(e) { loadEl.remove(); _cpAddAI('Error: ' + e.message); }
@@ -4771,7 +4783,7 @@ function _splitIntoChunks(text, size) {
 }
 
 async function _formatChunk(text) {
-  const r = await fetch('/api/writing', {
+  const r = await _authFetch('/api/writing', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, mode: 'format', tone: 'Auto-detect' })
   });
@@ -5025,7 +5037,7 @@ async function _runDocFormat() {
   try {
     const body = { text: _dfNoteText, mode: _dfMode };
     if (tone) body.tone = tone;
-    const r = await fetch('/api/writing', {
+    const r = await _authFetch('/api/writing', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
@@ -5668,7 +5680,7 @@ function _rerunHighlight() {
   const prompt = (document.getElementById('hl-reprompt')?.value || '').trim();
   const card = document.getElementById('interp-card');
   document.getElementById('ic-body-wrap').innerHTML = '<div class="ic-loading"><div class="ic-spin"></div>Highlighting…</div>';
-  fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt }) })
+  _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt }) })
   .then(r => _safeJson(r))
   .then(d => {
     if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
@@ -5707,7 +5719,7 @@ function runInterpret(mode) {
 
   function _runHlFetch(prompt) {
     document.getElementById('ic-body-wrap').innerHTML = '<div class="ic-loading"><div class="ic-spin"></div>Highlighting…</div>';
-    fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt || '' }) })
+    _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt || '' }) })
     .then(r => _safeJson(r))
     .then(d => {
       if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
@@ -5723,8 +5735,8 @@ function runInterpret(mode) {
   if (isHighlight) { _runHlFetch(''); return; }
 
   const fetchPromise = isGrammar
-    ? fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'grammar' }) })
-    : fetch('/api/interpret', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode, noteTitle, noteContext }) });
+    ? _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'grammar' }) })
+    : _authFetch('/api/interpret', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode, noteTitle, noteContext }) });
 
   fetchPromise
   .then(r => _safeJson(r))
@@ -5834,7 +5846,7 @@ async function _submitAiInline() {
   const status = document.getElementById('ai-inline-status');
   btn.textContent = '⏳ Writing…'; btn.disabled = true; status.textContent = '';
   try {
-    const r = await fetch('/api/writing', {
+    const r = await _authFetch('/api/writing', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: prompt, mode: 'inline' })
     });
@@ -6272,7 +6284,7 @@ async function runHlSb() {
 
     status.textContent = '🔍 Comparing sections…';
     try {
-      const r = await fetch('/api/writing', {
+      const r = await _authFetch('/api/writing', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ text: originalText, mode: 'diff', tone: cornellText })
       });
@@ -6288,7 +6300,7 @@ async function runHlSb() {
   // ── REGULAR HIGHLIGHT MODE ──
   status.textContent = '⏳ Highlighting…';
   try {
-    const r = await fetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode:'highlight', tone: prompt }) });
+    const r = await _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, mode:'highlight', tone: prompt }) });
     const d = await _safeJson(r);
     if (!r.ok || !d.result) throw new Error(d.error || 'No result');
     _applyNoteHighlights(d.result, editor);
@@ -6748,7 +6760,7 @@ function _mathSolveHomework() {
 }
 
 async function _mathToLatex(input) {
-  const r = await fetch('/api/writing', {
+  const r = await _authFetch('/api/writing', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ text: input, mode: 'math' })
   });
@@ -6862,7 +6874,7 @@ function openHomeworkSolver() {
 async function _runHomeworkSolver(text) {
   const statusEl = document.getElementById('hw-status');
   try {
-    const r = await fetch('/api/homework', {
+    const r = await _authFetch('/api/homework', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ text: text.slice(0, 8000) })
     });
@@ -8059,7 +8071,7 @@ async function runHlSbSplit() {
   }
   status.textContent = '🔍 Comparing panels…';
   try {
-    const r = await fetch('/api/writing', {
+    const r = await _authFetch('/api/writing', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ text: rightText, mode:'diff', tone: leftText })
     });
@@ -8445,7 +8457,7 @@ async function importVideo(input) {
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
     const base64 = btoa(binary);
-    const r = await fetch('/api/transcribe', {
+    const r = await _authFetch('/api/transcribe', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ audio: base64, mimeType: file.type || 'video/mp4' })
     });

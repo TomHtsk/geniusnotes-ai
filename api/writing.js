@@ -1,3 +1,5 @@
+const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+
 const MAX_CHARS = 15000;
 
 function getPrompt(mode, text, tone) {
@@ -90,11 +92,12 @@ async function _citGroq(b,k){for(let a=0;a<3;a++){const r=await fetch('https://a
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
+  const uid = await verifyAuth(req, res);
+  if (!uid) return;
+  if (!(await checkRateLimit(uid, res))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });

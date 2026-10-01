@@ -125,10 +125,36 @@ function _ensureAdmin() {
 }
 function _getServiceAccountProjectId() { _ensureAdmin(); return _fbProjectId; }
 
-function _auth() {
-  _ensureAdmin();
-  if (!_fbAuth) _fbAuth = require('firebase-admin/auth').getAuth(_fbApp);
-  return _fbAuth;
+// Token verification via Firebase's Identity Toolkit REST API instead of
+// firebase-admin/auth's getAuth(). require('firebase-admin/auth') reproducibly
+// fails with ERR_REQUIRE_ESM in Vercel's deployed runtime (confirmed via a
+// temporary diagnostic — works fine locally, fails in production regardless of
+// whether the require is eager or lazy, and regardless of vercel.json
+// includeFiles — points to Vercel's bundler mishandling this package's dual
+// CJS/ESM conditional exports for this specific subpath). The REST endpoint
+// below needs only the public Firebase Web API key (the same value already
+// embedded in every page's own client-side Firebase config — not a secret),
+// so it sidesteps the Admin SDK's auth module entirely.
+const FIREBASE_WEB_API_KEY = 'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI';
+async function _verifyIdTokenRest(idToken) {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_WEB_API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+  const data = await res.json().catch(() => ({}));
+  const user = data.users && data.users[0];
+  if (!res.ok || !user) {
+    const err = new Error((data.error && data.error.message) || 'Invalid or expired token');
+    err.code = (data.error && data.error.message) || 'auth/invalid-token';
+    throw err;
+  }
+  const isAnonymous = !user.providerUserInfo || user.providerUserInfo.length === 0;
+  return {
+    uid: user.localId,
+    email: user.email || null,
+    firebase: { sign_in_provider: isAnonymous ? 'anonymous' : ((user.providerUserInfo[0] || {}).providerId || 'password') },
+  };
 }
 
 // Shared Firestore handle for every file in api/ that needs direct Firestore
@@ -153,8 +179,7 @@ async function _verifyToken(req, res, opts) {
       res.status(401).json({ error: 'Unauthorized — missing Authorization header' });
       return null;
     }
-    _ensureAdmin();
-    const decoded = await _auth().verifyIdToken(match[1]);
+    const decoded = await _verifyIdTokenRest(match[1]);
     const isAnonymous = decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous';
     if (isAnonymous && !opts.allowAnonymous) {
       res.status(401).json({ error: 'sign_in_required' });
@@ -382,7 +407,7 @@ module.exports = {
   isAllowedOrigin,
   _ensureAdmin,
   _getServiceAccountProjectId,
-  _auth,
+  _verifyIdTokenRest,
   getDb,
   getUserPlan,
   checkAndIncrementUsage,

@@ -1,5 +1,5 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin, _getServiceAccountProjectId, _auth } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getDb, _ensureAdmin, _getServiceAccountProjectId, _verifyIdTokenRest } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
       const match = header.match(/^Bearer (.+)$/);
       if (!match) return res.status(200).json({ hasToken: false });
       try {
-        const decoded = await _auth().verifyIdToken(match[1]);
+        const decoded = await _verifyIdTokenRest(match[1]);
         return res.status(200).json({ tokenOk: true, isAnonymous: !!(decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous') });
       } catch (e) {
         return res.status(200).json({ tokenOk: false, code: e.code || 'unknown' });

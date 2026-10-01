@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <title>Notebooks — NoteCaptain AI</title>
+  <title>Notebooks — GeniusNotes AI</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
@@ -367,7 +367,7 @@
   <button class="nav-ham" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
   <a href="index.html" class="nav-logo">
     <img src="images/icon.png" onerror="this.style.display='none'" alt=""/>
-    <span class="nav-logo-text">NoteCaptain<span class="ai">.ai</span></span>
+    <span class="nav-logo-text">GeniusNotes<span class="ai">.ai</span></span>
   </a>
   <div class="nav-right">
     <span id="sync-indicator" title="Cloud sync status" style="font-size:.72rem;font-weight:700;color:var(--muted);padding:4px 8px;border-radius:20px;background:var(--surface2);display:none;gap:4px;align-items:center;">☁</span>
@@ -387,7 +387,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
   <div class="sb-hd">
-    <div class="sb-logo-row"><img src="images/icon.png" onerror="this.style.display='none'" alt=""/><span>NoteCaptain<span style="color:#A78BFA">.ai</span></span></div>
+    <div class="sb-logo-row"><img src="images/icon.png" onerror="this.style.display='none'" alt=""/><span>GeniusNotes<span style="color:#A78BFA">.ai</span></span></div>
     <button class="sb-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sb-items">
@@ -2704,7 +2704,7 @@ function runSearch(){
 function _seedDemoNotebook(){
   if(_nbs.length>0||localStorage.getItem('gn-nb-demo-seeded'))return;
   const nb={id:uid(),name:'Prompt Guide',color:'#6D28D9',folderId:null,starred:false,deleted:false,createdAt:Date.now(),updatedAt:Date.now(),
-    pages:[{id:uid(),type:'text',title:'Welcome to NoteCaptain Notebooks',
+    pages:[{id:uid(),type:'text',title:'Welcome to GeniusNotes Notebooks',
       html:`<h1>Welcome to Notebooks! 📓</h1><p>This is your AI-powered notebook. Here are the key features:</p><h2>✍️ Slash Commands</h2><p>Type <strong>/</strong> anywhere for AI commands:</p><ul><li><strong>/bullets</strong> — Bullet points</li><li><strong>/outline</strong> — Structured outline</li><li><strong>/cornellnotes</strong> — Cornell Notes (AI)</li><li><strong>/studyguide</strong> — Study guide</li><li><strong>/flashcards</strong> — Q&amp;A flashcards</li><li><strong>/highlight</strong> — Highlight key terms</li><li><strong>/prompt</strong> — Custom AI instruction</li><li><strong>/share</strong> — Copy page to clipboard</li></ul><h2>🎨 Toolbar Tools</h2><ul><li><strong>🖼 Photo</strong> — Insert images inline</li><li><strong>✏️ Draw</strong> — Annotate over the page</li><li><strong>∑ Math</strong> — Insert LaTeX equations (KaTeX)</li><li><strong>⬚ Margins</strong> — Adjust page margins</li></ul><h2>✨ Convert Menu (FAB button)</h2><ul><li><strong>📐 Cornell Template</strong> — Blank Cornell Notes table</li><li><strong>📚 Homework Solver</strong> — Step-by-step solutions</li><li><strong>📥 Import</strong> — YouTube transcript or file upload</li></ul><h2>📄 Layout</h2><p>Select text to see the <strong>AI popup</strong> (define, grammar, spelling). Use <strong>⊞ Split</strong> for two pages side by side, or <strong>↗ Detach</strong> for a floating window.</p>`,
       dataURL:null,template:'ruled'},
     {id:uid(),type:'text',title:'My Notes',

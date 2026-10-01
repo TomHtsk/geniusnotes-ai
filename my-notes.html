@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>My Notes — NoteCaptain AI</title>
+  <title>My Notes — GeniusNotes AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     :root{--bg:#06060F;--surface:#12121E;--surface2:#1a1a2e;--border:rgba(255,255,255,0.08);--text:#E8E8F0;--muted:#6B6B80;--subtle:#1e1e32;--hover:#1e1e32;--input:#0d0d1a;}
@@ -131,7 +131,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
-    <div class="sb-logo-row"><img src="images/logo.png" alt="GN"><span>NoteCaptain <span style="color:#a78bfa;">AI</span></span></div>
+    <div class="sb-logo-row"><img src="images/logo.png" alt="GN"><span>GeniusNotes <span style="color:#a78bfa;">AI</span></span></div>
     <button class="sb-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sb-items">
@@ -151,7 +151,7 @@
   </button>
   <a class="nav-center" href="index.html">
     <img src="images/logo.png" alt="">
-    <span class="nav-center-text">NoteCaptain <span class="ai">AI</span></span>
+    <span class="nav-center-text">GeniusNotes <span class="ai">AI</span></span>
   </a>
   <button class="nav-theme" id="mn-theme-btn" onclick="(function(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');document.getElementById('mn-theme-btn').textContent=l?'🌙 Dark':'☀️ Light';})()">☀️ Light</button>
 <script>window.addEventListener('storage',e=>{if(e.key==='gn-theme'){document.documentElement.classList.toggle('light',e.newValue==='light');var b=document.getElementById('mn-theme-btn');if(b)b.textContent=e.newValue==='light'?'🌙 Dark':'☀️ Light';}});</script>

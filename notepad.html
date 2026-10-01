@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Notepad — NoteCaptain AI</title>
+  <title>Notepad — GeniusNotes AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -874,7 +874,7 @@
     <!-- Top header: logo + name + actions -->
     <div class="sb-top">
       <div class="sb-logo"><img src="images/logo.png" alt="GN"></div>
-      <span class="sb-name">NoteCaptain <span>AI</span></span>
+      <span class="sb-name">GeniusNotes <span>AI</span></span>
       <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -7012,7 +7012,7 @@ function initCloudSync() {
 }
 
 function _welcomeNoteContent() {
-  return `<h1>Welcome to NoteCaptain AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p>`;
+  return `<h1>Welcome to GeniusNotes AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p>`;
 }
 
 async function _seedWelcomeNote(uid) {
@@ -7040,7 +7040,7 @@ async function _seedWelcomeNote(uid) {
     const folder = { id: folderId, name: 'Prompt Guide', created: Date.now() };
     const welcomeNote = {
       id: welcomeId,
-      title: 'Getting Started — NoteCaptain AI',
+      title: 'Getting Started — GeniusNotes AI',
       content: _welcomeNoteContent(),
       folderId,
       created: Date.now(),

@@ -16,10 +16,10 @@
   <meta name="description" content="Turn videos, PDFs, and lectures into notes, flashcards, and quizzes instantly. Free AI study tools — no credit card required." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #06060F;
+      --bg: #05060c;
       --surface: #12121E;
       --surface2: #1A1A2E;
       --border: rgba(255,255,255,0.07);
@@ -32,7 +32,7 @@
       --green: #1ED760;
     }
     :root.light {
-      --bg: #F5F5FA;
+      --bg: #05060c;
       --surface: #FFFFFF;
       --surface2: #EEEEF6;
       --border: rgba(0,0,0,0.08);
@@ -49,6 +49,9 @@
     body { background: var(--bg); background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
 
+    /* ── UNDER CONSTRUCTION BANNER ── */
+    .uc-banner { background:#f5c842; color:#1a1400; font-size:0.78rem; font-weight:700; text-align:center; padding:7px 16px; letter-spacing:0.02em; position:relative; z-index:101; }
+    .in-iframe .uc-banner { display:none; }
     /* ── NAV ── */
     nav {
       position: sticky; top: 0; z-index: 100;
@@ -424,37 +427,59 @@
     @keyframes twBlink { 0%,100%{opacity:1} 50%{opacity:0} }
 
     /* ── HOME DASHBOARD ── */
-    .home-main { height:calc(100vh - 64px); overflow-y:auto; background:var(--bg); }
+    .home-main { height:calc(100vh - 64px); overflow-y:auto; background:var(--bg);
+      background-image:
+        radial-gradient(1px 1px at 8% 12%, rgba(255,255,255,0.65) 50%, transparent),
+        radial-gradient(1px 1px at 42% 6%, rgba(255,255,255,0.5) 50%, transparent),
+        radial-gradient(1px 1px at 76% 18%, rgba(255,255,255,0.6) 50%, transparent),
+        radial-gradient(1px 1px at 93% 38%, rgba(255,255,255,0.45) 50%, transparent),
+        radial-gradient(1px 1px at 18% 54%, rgba(255,255,255,0.55) 50%, transparent),
+        radial-gradient(1px 1px at 61% 62%, rgba(255,255,255,0.4) 50%, transparent),
+        radial-gradient(1px 1px at 29% 82%, rgba(255,255,255,0.5) 50%, transparent),
+        radial-gradient(1px 1px at 87% 91%, rgba(255,255,255,0.55) 50%, transparent),
+        radial-gradient(1px 1px at 50% 97%, rgba(255,255,255,0.35) 50%, transparent),
+        radial-gradient(1px 1px at 5% 70%, rgba(255,255,255,0.4) 50%, transparent);
+      background-size: 420px 520px; background-repeat: repeat; }
     /* Hero banner */
-    .home-hero { padding:52px 32px 48px; position:relative; overflow:hidden; background:#060a1a; }
-    .home-hero-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; z-index:0; pointer-events:none; }
-    .home-hero::before { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(6,10,26,0.35) 0%,rgba(6,10,26,0.78) 100%); pointer-events:none; z-index:1; }
-    .home-hero-inner { max-width:860px; margin:0 auto; position:relative; z-index:2; }
+    /* ── COSMIC HERO ── */
+    .home-hero { position:relative; overflow:hidden; background:#05060c; padding:70px 24px 100px; min-height:80vh; display:flex; align-items:center; justify-content:center; text-align:center; }
+    /* central bright white glow */
+    .home-hero::before { content:''; position:absolute; top:46%; left:50%; width:min(1100px,120vw); height:min(1100px,120vw); transform:translate(-50%,-50%); pointer-events:none; z-index:0;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 18%, rgba(255,255,255,0.18) 36%, rgba(255,255,255,0) 55%);
+      filter:blur(14px); animation:heroGlow 12s ease-in-out infinite; }
+    /* subtle star field */
+    .home-hero::after { content:''; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0.55;
+      background-image:
+        radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.7) 50%, transparent),
+        radial-gradient(1px 1px at 78% 16%, rgba(255,255,255,0.6) 50%, transparent),
+        radial-gradient(1px 1px at 34% 68%, rgba(255,255,255,0.5) 50%, transparent),
+        radial-gradient(1px 1px at 88% 72%, rgba(255,255,255,0.6) 50%, transparent),
+        radial-gradient(1px 1px at 55% 84%, rgba(255,255,255,0.45) 50%, transparent),
+        radial-gradient(1px 1px at 22% 48%, rgba(255,255,255,0.5) 50%, transparent),
+        radial-gradient(1px 1px at 66% 38%, rgba(255,255,255,0.4) 50%, transparent); }
+    @keyframes heroGlow { 0%,100%{opacity:0.9;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)} }
+    .home-hero-video { display:none; }
+    .home-hero-inner { max-width:980px; margin:0 auto; position:relative; z-index:2; }
     .home-badge { display:inline-flex; align-items:center; gap:7px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35); border-radius:100px; padding:5px 14px; font-size:0.73rem; font-weight:700; color:#a78bfa; letter-spacing:0.03em; margin-bottom:20px; }
     .home-badge-dot { width:7px; height:7px; border-radius:50%; background:#a78bfa; animation:recdot 2s ease-in-out infinite; }
-    .home-title { font-size:2.6rem; font-weight:900; letter-spacing:-0.035em; line-height:1.1; margin-bottom:14px; background:linear-gradient(135deg,#fff 40%,#c4b5fd 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-    .home-sub { font-size:1rem; color:rgba(200,200,230,0.65); margin-bottom:36px; max-width:480px; line-height:1.65; }
-    /* Action row: horizontal pill buttons */
-    .home-actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:0; }
-    .ha-btn { display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:12px; text-decoration:none; font-size:0.88rem; font-weight:700; cursor:pointer; border:none; font-family:inherit; transition:transform 0.18s,box-shadow 0.18s; white-space:nowrap; }
-    .ha-btn:hover { transform:translateY(-2px); }
-    .ha-purple { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; box-shadow:0 4px 20px rgba(124,58,237,0.45); }
-    .ha-purple:hover { box-shadow:0 8px 28px rgba(124,58,237,0.6); }
-    .ha-ghost { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.8); border:1px solid rgba(255,255,255,0.12); }
-    .ha-ghost:hover { background:rgba(255,255,255,0.12); }
+    .home-title { font-size:clamp(3rem,8vw,6rem); font-weight:600; letter-spacing:-0.03em; line-height:1.02; margin-bottom:32px; color:#fff; }
+    .home-title .ht-blue { color:#3b82f6; }
+    .home-title .ht-gold { color:#f5e27a; }
+    .home-sub { font-size:1.18rem; color:rgba(220,224,245,0.82); margin:0 auto 10px; max-width:620px; line-height:1.6; }
+    .home-sub-2 { font-size:1.12rem; color:rgba(200,206,235,0.72); margin:0 auto 40px; max-width:620px; line-height:1.6; }
+    /* Action row: centered glassy buttons */
+    .home-actions { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:0; }
+    .ha-btn { display:inline-flex; align-items:center; gap:10px; padding:15px 28px; border-radius:14px; text-decoration:none; font-size:0.98rem; font-weight:500; cursor:pointer; border:1px solid rgba(255,255,255,0.12); font-family:inherit; transition:transform 0.18s,box-shadow 0.18s,background 0.18s; white-space:nowrap; background:rgba(18,20,32,0.55); color:rgba(240,240,255,0.92); backdrop-filter:blur(14px); }
+    .ha-btn:hover { transform:translateY(-2px); background:rgba(30,33,50,0.7); box-shadow:0 10px 36px rgba(0,0,0,0.4); }
+    .ha-purple { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; border-color:transparent; box-shadow:0 4px 24px rgba(124,58,237,0.5); }
+    .ha-purple:hover { box-shadow:0 10px 36px rgba(124,58,237,0.65); background:linear-gradient(135deg,#8b5cf6,#5b52f0); }
+    .ha-ghost {}
     .ha-icon { width:20px; height:20px; flex-shrink:0; }
     @keyframes recdot { 0%,100%{opacity:1} 50%{opacity:0.3} }
     /* Body section */
-    .home-body { max-width:860px; margin:0 auto; padding:36px 32px 60px; }
-    /* YouTube input */
-    .home-yt-row { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:10px 14px; margin-bottom:40px; }
-    .yt-logo { display:flex; align-items:center; gap:7px; font-size:0.82rem; font-weight:700; color:var(--text); white-space:nowrap; flex-shrink:0; }
+    .home-body { max-width:860px; margin:0 auto; padding:36px 32px 20px; }
+    /* Icon classes reused by the unified smart search bar (js/search.js) */
     .yt-logo-icon { background:#ff0000; color:#fff; border-radius:4px; width:24px; height:17px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; flex-shrink:0; }
-    .yt-divider { width:1px; height:18px; background:var(--border); flex-shrink:0; margin:0 2px; }
-    .yt-input { flex:1; background:none; border:none; outline:none; font-size:0.84rem; color:var(--text); font-family:inherit; min-width:0; }
-    .yt-input::placeholder { color:var(--muted); }
-    .yt-btn { background:var(--purple); border:none; color:#fff; font-size:0.81rem; font-weight:700; padding:7px 16px; border-radius:8px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:opacity 0.15s; }
-    .yt-btn:hover { opacity:0.85; }
     /* Recent notes */
     .home-recent-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .home-recent-title { font-size:1rem; font-weight:800; }
@@ -471,14 +496,14 @@
     .home-note-date { font-size:0.68rem; color:var(--muted); margin-top:3px; }
     .home-empty { text-align:center; color:var(--muted); font-size:0.84rem; padding:32px 0; grid-column:1/-1; }
     @media(max-width:700px) {
-      .home-title { font-size:1.8rem; }
-      .home-hero { padding:36px 20px 36px; }
+      .home-hero { padding:90px 18px 70px; min-height:auto; }
+      .home-sub, .home-sub-2 { font-size:1rem; }
       .home-body { padding:24px 20px 48px; }
       .home-notes-grid { grid-template-columns:1fr 1fr; }
       .home-actions { gap:8px; }
     }
     /* ── HOW IT WORKS ── */
-    .how-section { max-width:900px; margin:0 auto; padding:72px 24px 80px; }
+    .how-section { max-width:900px; margin:0 auto; padding:24px 24px 80px; }
     .demo-wrap { width:100%; border-radius:18px; overflow:hidden; margin-bottom:64px; background:var(--surface); border:1px solid var(--border); }
     .demo-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; height:360px; background:linear-gradient(135deg,#0d0d1a 0%,#1a1a2e 100%); }
     .demo-placeholder p { font-size:0.85rem; color:rgba(255,255,255,0.3); font-weight:500; }
@@ -544,6 +569,28 @@
     @keyframes recpulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.5)}50%{box-shadow:0 0 0 14px rgba(239,68,68,0)} }
     .rec-live { background:#0d0d1a;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:rgba(255,255,255,0.7);line-height:1.65;min-height:80px;max-height:160px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;margin-top:14px; }
     .rec-timer { font-size:1.1rem;font-weight:800;color:#a78bfa;text-align:center;margin-bottom:4px;font-variant-numeric:tabular-nums; }
+    /* ── WIKIPEDIA RESULT CARD (icon class reused by the unified smart search bar) ── */
+    .wiki-logo-icon { background:#fff; color:#000; border-radius:4px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:900; flex-shrink:0; font-family:'Georgia',serif; }
+    .wiki-status { font-size:0.84rem; color:rgba(220,224,245,0.75); padding:10px 2px 4px; max-width:620px; margin:0 auto; text-align:center; }
+    .wiki-error { color:#f87171; }
+    .wiki-card { position:relative; display:flex; gap:16px; background:rgba(18,20,32,0.55); border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(14px); border-radius:14px; padding:16px; margin:14px auto 0; max-width:620px; text-align:left; box-shadow:0 10px 36px rgba(0,0,0,0.35); }
+    .wiki-close { position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:rgba(230,230,245,0.8); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s,color 0.15s; }
+    .wiki-close:hover { background:rgba(255,255,255,0.16); color:#fff; }
+    .wiki-thumb { width:110px; height:110px; object-fit:cover; border-radius:10px; flex-shrink:0; background:rgba(255,255,255,0.08); }
+    .wiki-body { flex:1; min-width:0; }
+    .wiki-title { font-size:1rem; font-weight:800; color:#fff; margin-bottom:6px; }
+    .wiki-summary { font-size:0.84rem; color:rgba(220,224,245,0.75); line-height:1.65; margin-bottom:8px; }
+    .wiki-link { font-size:0.8rem; font-weight:700; color:#c4b5fd; text-decoration:none; display:inline-block; margin-bottom:6px; }
+    .wiki-link:hover { opacity:0.8; }
+    .wiki-attribution { font-size:0.68rem; color:rgba(220,224,245,0.5); }
+    .wiki-actions-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+    .wiki-full-toggle { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:0.78rem; font-weight:700; padding:5px 12px; border-radius:7px; cursor:pointer; font-family:inherit; transition:background 0.15s; }
+    .wiki-full-toggle:hover { background:rgba(255,255,255,0.15); }
+    .wiki-full-panel { position:relative; margin-bottom:10px; }
+    .wiki-full-content { max-height:260px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px; outline:none; }
+    .wiki-full-content:focus { border-color:#a78bfa; }
+    .wiki-full-text { white-space:pre-wrap; font-family:inherit; font-size:0.8rem; line-height:1.7; color:rgba(225,228,245,0.85); margin:0; }
+    @media(max-width:520px) { .wiki-card { flex-direction:column; } .wiki-thumb { width:100%; height:160px; } }
   </style>
 </head>
 <body>
@@ -574,6 +621,9 @@
     </button>
   </div>
 </aside>
+
+<!-- ── UNDER CONSTRUCTION BANNER ── -->
+<div class="uc-banner">🚧 This site is under construction — some features may be incomplete.</div>
 
 <!-- ── NAV ── -->
 <nav>
@@ -669,12 +719,7 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
 <main class="home-main">
   <!-- Hero banner -->
   <div class="home-hero">
-    <video class="home-hero-video" autoplay loop muted playsinline preload="auto">
-      <source src="images/hero-bg.mp4" type="video/mp4">
-    </video>
     <div class="home-hero-inner">
-      <h1 class="home-title">Your AI study<br>co-captain.</h1>
-      <p class="home-sub">Import notes, record lectures, or just start typing — GeniusNotes AI does the rest.</p>
       <div class="home-actions">
         <a href="notepad.html" class="ha-btn ha-purple" id="card-notes">
           <svg class="ha-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -693,22 +738,28 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
           <span class="ha-label">AI Recall</span>
         </a>
       </div>
+
+      <!-- Unified smart search bar: detects YouTube links vs. search topics -->
+      <form id="smart-search-form" class="smart-search-bar">
+        <div class="yt-logo-icon smart-icon-static">▶</div>
+        <div class="smart-search-icon" id="smart-search-icon">
+          <div class="wiki-logo-icon fade-icon fade-in" id="smart-icon-wiki">W</div>
+          <div class="yt-logo-icon fade-icon" id="smart-icon-yt" style="display:none;">▶</div>
+        </div>
+        <div class="smart-divider"></div>
+        <input id="smart-search-input" class="smart-search-input" type="text" placeholder="Search any topic or paste a YouTube link…" autocomplete="off" />
+        <button type="submit" class="smart-search-btn" id="smart-search-btn">Search</button>
+      </form>
+      <!-- Kept for goYtTranscribe(), which reads this id directly -->
+      <input type="hidden" id="yt-url-input" />
+
+      <div id="recent-searches-row" class="recent-searches-row" hidden></div>
+      <div id="wiki-result"></div>
     </div>
   </div>
 
   <!-- Body -->
   <div class="home-body">
-    <!-- YouTube input -->
-    <div class="home-yt-row">
-      <div class="yt-logo">
-        <div class="yt-logo-icon">▶</div>
-        YouTube video
-      </div>
-      <div class="yt-divider"></div>
-      <input class="yt-input" id="yt-url-input" placeholder="Paste a YouTube URL to transcribe" />
-      <button class="yt-btn" onclick="goYtTranscribe()">Transcribe</button>
-    </div>
-
     <!-- Convert callout -->
     <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:14px;padding:18px 22px;margin-bottom:32px;display:flex;align-items:flex-start;gap:16px;">
       <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -724,7 +775,7 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
   </div>
 
   <!-- ── HOW IT WORKS ── -->
-  <section class="how-section">
+  <section class="how-section" id="how">
 
     <!-- Demo video placeholder -->
     <div class="demo-wrap">
@@ -760,7 +811,7 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
     </div>
 
     <!-- Feature pills -->
-    <div class="how-pills">
+    <div class="how-pills" id="features">
       <span class="how-pill">Cornell Notes</span>
       <span class="how-pill">Flashcards</span>
       <span class="how-pill">Study Guide</span>
@@ -1008,6 +1059,8 @@ function _umDownloadGeneric(text, name, fmt) {
 }
 </script>
 <script src="js/recorder.js"></script>
+<script src="js/wiki.js"></script>
+<script src="js/search.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- RECORD MODAL -->

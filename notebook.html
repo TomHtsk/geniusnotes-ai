@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
   <style>
     /* Light mode is the default */
-    :root{--bg:#F4F5F7;--surface:#FFFFFF;--surface2:#F0F1F3;--border:rgba(0,0,0,0.08);--text:#111827;--muted:#6B7280;--accent:#111827;--accent2:#374151;--input:#F9FAFB;--red:#EF4444;color-scheme:light;}
+    :root{--bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F0F1F3;--border:rgba(0,0,0,0.08);--text:#111827;--muted:#6B7280;--accent:#111827;--accent2:#374151;--input:#F9FAFB;--red:#EF4444;color-scheme:light;}
     /* Dark mode */
     :root.dark{--bg:#0F0F17;--surface:#1A1A2A;--surface2:#22223A;--border:rgba(255,255,255,0.08);--text:#E8E8F0;--muted:#6B7280;--accent:#E8E8F0;--accent2:#9CA3AF;--input:#12121E;--red:#F87171;color-scheme:dark;}
     /* keep --purple as alias so other pages still work */
@@ -737,7 +737,7 @@
       <input id="right-page-title" class="page-title-inp" placeholder="Note title…" oninput="saveRightTitle(this.value)"/>
       <div style="flex:1;overflow-y:auto;padding:24px 0 60px;background:#d1d5db;">
         <div id="text-editor-right" contenteditable="true" data-placeholder="Click to edit…"
-          style="min-height:1056px;outline:none;font-size:.91rem;line-height:1.78;color:var(--text);position:relative;width:clamp(280px,calc(100% - 48px),794px);margin:0 auto;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);padding:72px;"
+          style="min-height:1123px;outline:none;font-size:.91rem;line-height:1.78;color:var(--text);position:relative;width:clamp(280px,calc(100% - 48px),794px);margin:0 auto;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);padding:72px;"
           oninput="scheduleRightSave()"></div>
       </div>
     </div>
@@ -1981,7 +1981,7 @@ function detachPage(){
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
 <style>*{box-sizing:border-box;margin:0;padding:0;}body{background:${isDark?'#0f0f17':'#d1d5db'};padding:24px 0 60px;font-family:'Inter',sans-serif;}
-.page{width:794px;margin:0 auto;background:${isDark?'#1a1a2a':'#fff'};color:${isDark?'#e8e8f0':'#111827'};box-shadow:0 2px 16px rgba(0,0,0,.18);padding:72px;min-height:1056px;font-size:.91rem;line-height:1.78;}
+.page{width:794px;margin:0 auto;background:${isDark?'#1a1a2a':'#fff'};color:${isDark?'#e8e8f0':'#111827'};box-shadow:0 2px 16px rgba(0,0,0,.18);padding:72px;min-height:1123px;font-size:.91rem;line-height:1.78;}
 h1{font-size:1.45rem;font-weight:800;margin:.8rem 0 .4rem;}h2{font-size:1.12rem;font-weight:700;margin:.6rem 0 .3rem;}blockquote{border-left:3px solid #8b5cf6;padding-left:12px;color:#6b7280;margin:.4rem 0;}table{border-collapse:collapse;width:100%;}td{border:1px solid #e5e7eb;padding:8px 10px;vertical-align:top;}</style>
 </head><body><div class="page"><h2 style="margin-bottom:20px;font-size:1.2rem">${title}</h2>${bodyHtml}</div></body></html>`);
   win.document.close();

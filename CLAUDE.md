@@ -219,6 +219,53 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 - Injected when `notes.length === 0`
 - Cannot be deleted
 
+### Selection popup — font size badge
+- `#sel-fs-badge` span shows computed font size of selected text (px)
+- Populated in `showSelectionPopup()` via `window.getComputedStyle(anchorEl).fontSize`
+- `_updateFsDisplay()` also uses `getComputedStyle` (not `el.style.fontSize`)
+
+### Split screen — right pane (paginated, June 2026)
+- Right pane uses real `.page-box` divs in `#pages-container-right` (same as left), NOT the old gradient-fake `#editor-right`
+- `_createRightPageBox(isFirst)` — mirrors `_createPageBox`; wires `_activeEditor='right'` on focus/mousedown
+- `_buildPagesContainerRight(pagesArr)` — rebuilds all page boxes from a pages array, then calls `requestAnimationFrame(_reflowPagesRight)`
+- `_reflowPagesRight()` — overflow reflow engine for right pane (mirrors `_reflowPages` but simpler — no cursor-follow or undo)
+- `_serializePagesRight()` / `_getEditorRightText()` — serialize right pages for save/stats
+- `#doc-ruler-right` — ruler added to right pane; `buildRuler()` populates both `doc-ruler-track` and `doc-ruler-track-right`
+- **Zoom sync**: `setZoom()` applies `container.style.zoom` to BOTH `#pages-container` and `#pages-container-right`; `enterSplitMode()` also applies current zoom to right pane on open
+
+### `_reflowPages()` — reflow engine changes (June 2026)
+- **Overflow pass — empty trailing blocks discarded**: when `lastBlock` is empty AND cursor is NOT in it, `lastBlock` is removed instead of pushed to the next page (Word behavior — trailing empty lines are absorbed by the page boundary, not flowed to the next page)
+- **Pre-pass skips cursor's page**: the pre-pass that strips leading empty blocks from non-first pages now SKIPS the page the cursor is on (`if (_rfCursorPc && cpc === _rfCursorPc) continue`). Empty leading blocks on the active page are intentional (user-typed), not overflow artifacts. Cleanup only runs on pages without the cursor.
+
+### Enter key on non-first pages (June 2026)
+- Handler fires for **any block at offset 0** on any non-first page (previously only fired for `pc.firstChild`)
+- Inserts new empty `<p>` ABOVE cursor's block; cursor stays in `entBlock` (Word behavior: Enter before a paragraph pushes it down, cursor stays with the text)
+- No stale-empty-block stripping in the Enter handler — pre-pass handles cleanup when cursor is elsewhere
+
+### Backspace cross-page handler (updated June 2026)
+- Three-part guard: (1) block is **empty** → return (browser deletes the empty line); (2) any **non-empty** previous sibling → return (browser handles); (3) only empty siblings above or none → strip them, proceed to TEXT MERGE
+- **TEXT MERGE**: moves block's children into `_lastReal` (last real `<p>` on prevPc), removes block. Binary-search from `_bsOrigLen` to find how much of the merged text fits on page N-1; split overflow to page N via Range API. Succeeds where block-move fails: page N-1 full → two paragraphs need 2 line-heights, merged text shares the last line
+- Falls back to block-move if `_lastReal` is special (img, table, cornell, math, draw)
+- **Cursor placement**: save `_bsOrigLen = _lastReal.textContent.length` BEFORE merge. After all mutations + `_reflowPages()`, place cursor via fresh `TreeWalker(SHOW_TEXT)` in `setTimeout(0)` walking to character `_bsOrigLen` in `_lastReal`. **Never use a live Range saved before the binary search** — `element.textContent = partial` clamps `(elem,N)` to `(elem,1)`, corrupting the range and causing catastrophic paragraph-merging on the next Backspace keypress
+- `prevPc.focus({ preventScroll: true })` + TreeWalker cursor in `setTimeout(0)` + `setTimeout(_scrollCursorIntoView, 60)`
+
+### Delete cross-page handler (June 2026)
+- Symmetric to Backspace: cursor at end of last block on page N, Delete pulls first block of page N+1
+- **TEXT MERGE**: merges `firstBlock`'s children into `delBlock`, removes `firstBlock`. Binary-search from `_delOrigLen`. `_delDidTextMerge` flag set when text-merge path taken
+- Falls back to block-move for special elements
+- **Cursor placement**: save `_delJoinOff = delBlock.textContent.length` BEFORE merge. After `_reflowPages()` (which may move `delBlock` to page 2 if rich-HTML measurement exceeds plain-text estimate), place cursor via fresh TreeWalker in `setTimeout(0)`. `_tgt.closest('.page-content')` ensures focus goes to whichever page owns `delBlock` after reflow
+- `pc.focus({ preventScroll: true })` + TreeWalker cursor in `setTimeout(0)` + `setTimeout(_scrollCursorIntoView, 60)`
+
+### `_scrollCursorIntoView()` helper (June 2026)
+- Shared function called after every cross-page focus switch (Backspace, Delete, all four arrow keys)
+- Reads cursor `getBoundingClientRect()` vs `#editor-wrap-left` bounds; scrolls by minimum needed with `behavior:'smooth'`
+- Arrow key handlers call it directly (cursor is placed synchronously); Backspace/Delete call via `setTimeout(..., 60)` to let reflow settle first
+
+### Spell check / Grammarly suppression (June 2026)
+- Each `.page-content` created with: `setAttribute('spellcheck','false')`, `autocorrect/autocomplete/autocapitalize off`, `data-gramm="false"`, `data-gramm_editor="false"`, `data-enable-grammarly="false"`
+- CSS: `.page-content::spelling-error { text-decoration:none !important }` + `::grammar-error` + `-webkit-` prefixed variants
+- Both JS attribute AND CSS needed — Chrome can override `spellcheck=false`; Grammarly extension ignores it without `data-gramm`
+
 ### Other features (unchanged)
 - Selection popup: 1 word → Spelling; multiple words → Define/Comprehend/Grammar
 - Sticky Notes: `.gn-sticky` spans, inline HTML storage
@@ -306,6 +353,11 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 ### api/extract.js
 - PPTX: `fileType:'pptx'` → JSZip → `<a:t>` XML extraction
 - Image OCR: Groq vision `meta-llama/llama-4-scout-17b-16e-instruct`
+
+---
+
+## Theme — Light Mode Background
+All pages use `--bg: #FAF9F6` in their `:root.light` block (warm off-white). Previously each page had its own value (`#F5F5FA`, `#F4F4FC`, `#F5EFE0`, `#eeeef6`, etc.). `notebook.html` uses light as default (`:root` not `:root.light`) — same value applied there.
 
 ---
 

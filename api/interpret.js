@@ -27,7 +27,7 @@ async function groqCall(prompt, apiKey) {
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
-const _CHAT_SYSTEM = `You are an expert AI study tutor for GeniusNotes AI. Help students learn effectively.\n- Explain concepts clearly — start simple, build up\n- Use examples and real-world connections\n- Keep responses concise: 2-4 paragraphs or a short list\n- Use **bold** for key terms\n- Be encouraging but academically rigorous`;
+const _CHAT_SYSTEM = `You are an expert AI study tutor for NoteCaptain AI. Help students learn effectively.\n- Explain concepts clearly — start simple, build up\n- Use examples and real-world connections\n- Keep responses concise: 2-4 paragraphs or a short list\n- Use **bold** for key terms\n- Be encouraging but academically rigorous`;
 async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
 
 module.exports = async function handler(req, res) {

@@ -57,15 +57,7 @@
       const d = await r.json();
       if (d.url) { window.location.href = d.url; return; }
       _restoreBtn(btnEl, orig);
-      // TEMPORARY DIAGNOSTIC — remove once root-caused.
-      try {
-        const token = await getFirebaseUser().getIdToken(true);
-        const dbgR = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'x-gn-debug': '1' }, body: '{}' });
-        const dbg = await dbgR.json();
-        alert((d.error || 'Unable to start checkout.') + '\n\nDebug: ' + JSON.stringify(dbg));
-      } catch (dbgErr) {
-        alert((d.error || 'Unable to start checkout.') + '\n\n(debug call also failed: ' + dbgErr.message + ')');
-      }
+      alert(d.error || 'Unable to start checkout. Please try again.');
     } catch (e) {
       _restoreBtn(btnEl, orig);
       alert('Unable to start checkout. Please try again.');

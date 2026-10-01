@@ -1,21 +1,10 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { applyCors, verifyAuthFull, checkRateLimit, getDb, _debugVerify } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getDb } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // TEMPORARY DIAGNOSTIC — remove once root-caused.
-  if (req.headers['x-gn-debug'] === '1') {
-    try {
-      const result = await _debugVerify(req);
-      return res.status(200).json({ debug: true, result });
-    } catch (e) {
-      return res.status(200).json({ debug: true, error: e.message, code: e.code, name: e.name, stack: (e.stack || '').split('\n').slice(0, 5) });
-    }
-  }
-
   const authed = await verifyAuthFull(req, res);
   if (!authed) return;
   if (!(await checkRateLimit(authed.uid, res))) return;

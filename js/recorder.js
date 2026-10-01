@@ -1,4 +1,4 @@
-/* GeniusNotes — Floating Recorder Widget */
+/* NoteCaptain — Floating Recorder Widget */
 (function () {
   'use strict';
   const SRApi = window.SpeechRecognition || window.webkitSpeechRecognition;

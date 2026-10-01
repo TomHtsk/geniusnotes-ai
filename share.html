@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Shared Note — GeniusNotes AI</title>
+  <title>Shared Note — NoteCaptain AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -63,7 +63,7 @@
 <nav>
   <a class="nav-logo" href="index.html">
     <img src="images/logo.png" alt="logo">
-    <span>GeniusNotes <span class="ai">AI</span></span>
+    <span>NoteCaptain <span class="ai">AI</span></span>
   </a>
   <div class="nav-right">
     <span class="nav-badge" id="mode-badge">Shared Note</span>
@@ -190,9 +190,9 @@
       const badge = document.getElementById('mode-badge');
       badge.textContent = '✏️ Collaborative';
       badge.className = 'nav-badge collab-badge';
-      document.title = (data.title||'Shared Note') + ' · Live — GeniusNotes AI';
+      document.title = (data.title||'Shared Note') + ' · Live — NoteCaptain AI';
     } else {
-      document.title = (data.title||'Shared Note') + ' — GeniusNotes AI';
+      document.title = (data.title||'Shared Note') + ' — NoteCaptain AI';
     }
   }
 

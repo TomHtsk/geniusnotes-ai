@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -7,6 +7,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const { text, mode } = req.body || {};
   if (!text || !mode) return res.status(400).json({ error: 'Missing text or mode' });

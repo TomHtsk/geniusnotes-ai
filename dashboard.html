@@ -183,10 +183,20 @@
   </a>
   <div class="nav-right">
     <button class="nav-moon" onclick="toggleTheme()">🌙</button>
+    <div id="nav-pro-badge-wrap" style="display:none;position:relative;">
+      <button id="nav-pro-badge" onclick="document.getElementById('nav-pro-menu').classList.toggle('open')" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;color:#fff;font-size:0.76rem;font-weight:800;padding:6px 13px;border-radius:100px;cursor:pointer;font-family:inherit;">Pro ✓</button>
+      <div id="nav-pro-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,0.3);padding:6px;min-width:170px;z-index:50;">
+        <button onclick="gnOpenManageSubscription(this)" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:0.82rem;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">Manage subscription</button>
+      </div>
+    </div>
+    <a href="pricing.html" id="nav-go-pro" style="background:none;border:1.5px solid rgba(139,92,246,0.5);color:var(--purple2);text-decoration:none;font-size:0.82rem;font-weight:700;padding:6.5px 16px;border-radius:8px;">✨ Go Pro</a>
     <div class="user-avatar" id="user-avatar">G</div>
     <a class="nav-open-tools" href="my-notes.html">⏱ History</a>
   </div>
 </nav>
+<style>
+  #nav-pro-menu.open { display: block !important; }
+</style>
 
 <!-- Main -->
 <div class="main">
@@ -277,6 +287,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="js/cloud-sync.js"></script>
+<script src="js/pricing.js"></script>
 <script>
 firebase.initializeApp({
   apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
@@ -310,6 +321,8 @@ firebase.auth().onAuthStateChanged(function(user) {
   if (new URLSearchParams(location.search).get('pro') === '1') {
     document.getElementById('pro-welcome').style.display = 'flex';
     history.replaceState({}, '', 'dashboard.html');
+    // The webhook write can land a beat after this page does — re-check shortly after.
+    setTimeout(() => checkProStatus(user.uid, user.email), 2500);
   }
 });
 
@@ -334,8 +347,23 @@ async function checkProStatus(uid, email) {
     // api/subscription.js now reads the verified token's email instead of a query param.
     const r = await _authFetch('/api/subscription');
     const d = await r.json();
+    const badgeWrap = document.getElementById('nav-pro-badge-wrap');
+    const goProBtn = document.getElementById('nav-go-pro');
+    if (d.pro) {
+      if (badgeWrap) badgeWrap.style.display = '';
+      if (goProBtn) goProBtn.style.display = 'none';
+    } else {
+      if (badgeWrap) badgeWrap.style.display = 'none';
+      if (goProBtn) goProBtn.style.display = '';
+    }
   } catch {}
 }
+
+document.addEventListener('click', function (e) {
+  const menu = document.getElementById('nav-pro-menu');
+  if (!menu || !menu.classList.contains('open')) return;
+  if (!e.target.closest('#nav-pro-badge-wrap')) menu.classList.remove('open');
+});
 
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');

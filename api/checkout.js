@@ -1,10 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const admin = require('firebase-admin');
 const { applyCors, verifyAuthFull, checkRateLimit } = require('./_lib/auth');
-
-const PRICES = {
-  monthly: 'price_1TZMytFzUKNvR71hbVBxf0Lc',
-  yearly:  'price_1TZMytFzUKNvR71hXvErlp8s',
-};
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -14,14 +10,51 @@ module.exports = async function handler(req, res) {
   if (!authed) return;
   if (!(await checkRateLimit(authed.uid, res))) return;
 
+  const { uid, email } = authed;
+  const { action } = req.body || {};
+  // verifyAuthFull already called _ensureAdmin() via _verifyToken, so admin is
+  // already initialized by this point.
+  const userRef = admin.firestore().doc(`users/${uid}`);
+
+  if (action === 'portal') {
+    try {
+      const userSnap = await userRef.get();
+      const customerId = userSnap.exists ? userSnap.data().stripeCustomerId : null;
+      if (!customerId) {
+        return res.status(400).json({ error: 'no_subscription', message: 'No billing account found yet — subscribe to Pro first.' });
+      }
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'geniusnotes.ai';
+      const proto = req.headers['x-forwarded-proto'] || 'https';
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${proto}://${host}/dashboard.html`,
+      });
+      return res.status(200).json({ url: session.url });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   try {
     // uid/email come from the verified token, not the request body — a client can no
     // longer start a checkout session on someone else's account by sending their uid.
-    const { uid, email } = authed;
     const { plan = 'monthly' } = req.body || {};
     if (!uid || !email) return res.status(400).json({ error: 'Missing uid or email on token' });
 
-    const priceId = PRICES[plan] || PRICES.monthly;
+    const priceId = plan === 'yearly' ? process.env.STRIPE_PRICE_YEARLY : process.env.STRIPE_PRICE_MONTHLY;
+    if (!priceId) return res.status(500).json({ error: 'Pricing not configured' });
+
+    // Reuse-or-create a real Stripe Customer tied to uid (instead of a
+    // customer_email-only session) so the Customer Portal and webhook.js both
+    // have a stable id to key off of.
+    const userSnap = await userRef.get();
+    let customerId = userSnap.exists ? userSnap.data().stripeCustomerId : null;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email, metadata: { uid } });
+      customerId = customer.id;
+      await userRef.set({ stripeCustomerId: customerId }, { merge: true });
+    }
+
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'geniusnotes.ai';
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const base = `${proto}://${host}`;
@@ -30,10 +63,12 @@ module.exports = async function handler(req, res) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: email,
+      customer: customerId,
+      allow_promotion_codes: true,
+      subscription_data: { metadata: { uid } },
       metadata: { uid },
       success_url: `${base}/dashboard.html?pro=1`,
-      cancel_url: `${base}/?canceled=1`,
+      cancel_url: `${base}/#pricing`,
     });
 
     return res.status(200).json({ url: session.url });

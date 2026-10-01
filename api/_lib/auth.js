@@ -193,6 +193,99 @@ async function checkGuestYoutubeLimit(req, uid, res) {
   }
 }
 
+// Plan tiers and their limits. Record limits are in seconds (1800s = 30min,
+// 36000s = 10hr). YouTube limits are per-day; AI/record limits are per-month.
+const PLAN_LIMITS = {
+  free: { ai: 10, record: 1800, yt: 3 },
+  pro: { ai: 500, record: 36000, yt: 50 },
+};
+
+function _monthKey(d) {
+  return (d || new Date()).toISOString().slice(0, 7); // YYYY-MM, UTC
+}
+
+// Reads users/{uid} and returns 'pro' if pro===true and not expired, else 'free'.
+// Plain read (not a transaction) — called by every limit-check helper below. Fails
+// open to 'free' on any error so a Firestore hiccup never silently grants Pro.
+async function getUserPlan(uid) {
+  try {
+    _ensureAdmin();
+    const snap = await admin.firestore().doc(`users/${uid}`).get();
+    if (!snap.exists) return 'free';
+    const d = snap.data();
+    const now = Math.floor(Date.now() / 1000);
+    const active = d.pro === true && (!d.proUntil || d.proUntil === 0 || d.proUntil > now);
+    return active ? 'pro' : 'free';
+  } catch (e) {
+    return 'free';
+  }
+}
+
+// Monthly AI-action counter at users/{uid}/usage/{YYYY-MM}. `kind` is currently
+// always 'ai' (kept as a param for future extensibility). Sends the 402 itself
+// and returns false when the plan's monthly cap is already reached; otherwise
+// increments the counter and returns true. Fail-open on Firestore errors, same
+// reasoning as checkRateLimit.
+async function checkAndIncrementUsage(uid, res, kind) {
+  try {
+    const plan = await getUserPlan(uid);
+    const limit = PLAN_LIMITS[plan].ai;
+    _ensureAdmin();
+    const db = admin.firestore();
+    const month = _monthKey();
+    const ref = db.doc(`users/${uid}/usage/${month}`);
+
+    const result = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : { month, aiActions: 0, recordSeconds: 0 };
+      const used = data.aiActions || 0;
+      if (used >= limit) return { ok: false, used, limit };
+      tx.set(ref, Object.assign({}, data, { month, aiActions: used + 1 }), { merge: true });
+      return { ok: true, used: used + 1, limit };
+    });
+
+    if (!result.ok) {
+      res.status(402).json({ error: 'limit_reached', used: result.used, limit: result.limit, plan });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+// Per-day YouTube-conversion counter for SIGNED-IN users at
+// users/{uid}/ytLimit/{YYYY-MM-DD}. Anonymous guests keep using
+// checkGuestYoutubeLimit above, unchanged. Same 402 shape/fail-open behavior
+// as checkAndIncrementUsage.
+async function checkYoutubeDailyLimit(uid, res) {
+  try {
+    const plan = await getUserPlan(uid);
+    const limit = PLAN_LIMITS[plan].yt;
+    _ensureAdmin();
+    const db = admin.firestore();
+    const today = _todayKey();
+    const ref = db.doc(`users/${uid}/ytLimit/${today}`);
+
+    const result = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : null;
+      const count = (data && data.day === today) ? data.count : 0;
+      if (count >= limit) return { ok: false, used: count, limit };
+      tx.set(ref, { day: today, count: count + 1 });
+      return { ok: true, used: count + 1, limit };
+    });
+
+    if (!result.ok) {
+      res.status(402).json({ error: 'limit_reached', used: result.used, limit: result.limit, plan });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
 module.exports = {
   applyCors,
   verifyAuth,
@@ -200,4 +293,9 @@ module.exports = {
   checkRateLimit,
   checkGuestYoutubeLimit,
   isAllowedOrigin,
+  _ensureAdmin,
+  getUserPlan,
+  checkAndIncrementUsage,
+  checkYoutubeDailyLimit,
+  PLAN_LIMITS,
 };

@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
 
 async function groqFetch(body, apiKey) {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const { text, targetLang, sourceLang } = req.body || {};
   if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });

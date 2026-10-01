@@ -286,6 +286,8 @@
     /* ── PRICING ── */
     .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 780px; margin: 0 auto; }
     @media(max-width:620px){ .pricing-grid { grid-template-columns: 1fr; } }
+    .pricing-grid.pricing-grid-3 { grid-template-columns: 1fr 1fr 1fr; max-width: 900px; }
+    @media(max-width:800px){ .pricing-grid.pricing-grid-3 { grid-template-columns: 1fr; } }
     .pricing-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; padding: 36px 32px;
@@ -479,7 +481,7 @@
     /* Body section */
     .home-body { max-width:860px; margin:0 auto; padding:36px 32px 20px; }
     /* Icon classes reused by the unified smart search bar (js/search.js) */
-    .yt-logo-icon { background:#ff0000; color:#fff; border-radius:4px; width:24px; height:17px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; flex-shrink:0; }
+    .yt-logo-icon { background:#ff0000; color:#fff; border-radius:5px; width:32px; height:23px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:900; flex-shrink:0; }
     /* Recent notes */
     .home-recent-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .home-recent-title { font-size:1rem; font-weight:800; }
@@ -567,7 +569,7 @@
     .rec-live { background:#0d0d1a;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:rgba(255,255,255,0.7);line-height:1.65;min-height:80px;max-height:160px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;margin-top:14px; }
     .rec-timer { font-size:1.1rem;font-weight:800;color:#a78bfa;text-align:center;margin-bottom:4px;font-variant-numeric:tabular-nums; }
     /* ── WIKIPEDIA RESULT CARD (icon class reused by the unified smart search bar) ── */
-    .wiki-logo-icon { background:#fff; color:#000; border-radius:4px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:900; flex-shrink:0; font-family:'Georgia',serif; }
+    .wiki-logo-icon { background:#fff; color:#000; border-radius:5px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:900; flex-shrink:0; font-family:'Georgia',serif; }
     .wiki-status { font-size:0.84rem; color:rgba(220,224,245,0.75); padding:10px 2px 4px; max-width:620px; margin:0 auto; text-align:center; }
     .wiki-error { color:#f87171; }
     .wiki-card { position:relative; display:flex; gap:16px; background:rgba(18,20,32,0.55); border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(14px); border-radius:14px; padding:16px; margin:14px auto 0; max-width:620px; text-align:left; box-shadow:0 10px 36px rgba(0,0,0,0.35); }
@@ -629,12 +631,23 @@
   </div>
   <div class="nav-right">
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:6px;border-radius:8px;line-height:1;">🌙</button>
+    <a href="pricing.html" style="font-size:0.82rem;font-weight:600;color:var(--muted);text-decoration:none;padding:7px 4px;">Pricing</a>
+    <button id="nav-go-pro" onclick="startProCheckout('monthly', this)" style="display:none;background:none;border:1.5px solid rgba(139,92,246,0.5);color:var(--purple2);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;padding:6.5px 16px;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">✨ Go Pro</button>
+    <div id="nav-pro-badge-wrap" style="display:none;position:relative;">
+      <button id="nav-pro-badge" onclick="document.getElementById('nav-pro-menu').classList.toggle('open')" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;color:#fff;font-size:0.76rem;font-weight:800;padding:6px 13px;border-radius:100px;cursor:pointer;font-family:inherit;">Pro ✓</button>
+      <div id="nav-pro-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,0.3);padding:6px;min-width:170px;z-index:50;">
+        <button onclick="gnOpenManageSubscription(this)" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:0.82rem;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">Manage subscription</button>
+      </div>
+    </div>
     <a href="signup.html" class="btn-primary" id="nav-tryfree" style="display:none">Get Started</a>
     <a href="signin.html" class="btn-ghost" id="nav-signin" style="display:none">Sign In</a>
     <a href="notepad.html" class="btn-ghost" id="nav-dashboard" style="display:none">My Notepad</a>
     <button id="nav-signout" onclick="navSignOut()" style="display:none;background:none;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:600;color:var(--muted);padding:7px 16px;border-radius:8px;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--surface)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--muted)'">Sign Out</button>
   </div>
 </nav>
+<style>
+  #nav-pro-menu.open { display: block !important; }
+</style>
 
 <script>
 function toggleSidebar() {
@@ -732,6 +745,56 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
     </div>
   </div>
 
+  <!-- ── PRICING ── -->
+  <section id="pricing" style="max-width:900px;margin:0 auto;padding:64px 24px 80px;">
+    <h2 style="text-align:center;font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:40px;">Simple pricing</h2>
+    <div class="pricing-grid pricing-grid-3">
+      <div class="pricing-card">
+        <div class="pricing-plan">Free</div>
+        <div class="pricing-price">$0</div>
+        <div class="pricing-per">forever</div>
+        <ul class="pricing-features">
+          <li>Wikipedia search</li>
+          <li>3 YouTube conversions/day</li>
+          <li>Notepad &amp; Flashcards</li>
+          <li>10 AI actions/month</li>
+          <li>30 min lecture recording/month</li>
+        </ul>
+        <a href="signup.html" id="pricing-free-btn" class="btn-plan">Start free</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-plan">Pro Monthly</div>
+        <div class="pricing-price">$6.99<sub>/mo</sub></div>
+        <div class="pricing-per">billed monthly</div>
+        <ul class="pricing-features">
+          <li>Unlimited AI actions (fair use)</li>
+          <li>50 YouTube conversions/day</li>
+          <li>10 hrs lecture recording/month</li>
+          <li>Cloud sync</li>
+        </ul>
+        <button class="btn-plan" onclick="startProCheckout('monthly', this)">Go Pro</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Best value — $3.33/mo</div>
+        <div class="pricing-plan">Pro Yearly</div>
+        <div class="pricing-price">$39.99<sub>/yr</sub></div>
+        <div class="pricing-per">billed yearly</div>
+        <ul class="pricing-features">
+          <li>Unlimited AI actions (fair use)</li>
+          <li>50 YouTube conversions/day</li>
+          <li>10 hrs lecture recording/month</li>
+          <li>Cloud sync</li>
+        </ul>
+        <button class="btn-plan cta" onclick="startProCheckout('yearly', this)">Go Pro yearly</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:28px;font-size:0.86rem;color:var(--purple2);font-weight:600;">
+      🎉 Early supporter: use code <strong>EARLY</strong> at checkout for $4.99/month, locked in forever (first 100 users).
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:0.76rem;color:var(--muted);">
+      Secure checkout by Stripe · Cancel anytime
+    </div>
+  </section>
 
 </main>
 
@@ -744,6 +807,7 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
   <div class="footer-links">
     <a href="notepad.html">Notepad</a>
     <a href="my-notes.html">My Notes</a>
+    <a href="pricing.html">Pricing</a>
     <a href="signin.html">Sign In</a>
     <a href="signup.html">Sign Up</a>
   </div>
@@ -782,16 +846,22 @@ onAuthStateChanged(_fauth, user => {
     _h('nav-tryfree'); _h('nav-signin'); _s('nav-dashboard'); _s('nav-signout');
     window._gnLoggedIn = true;
     window._hsUid = user.uid;
+    if (typeof window._refreshProBadge === 'function') window._refreshProBadge();
   } else {
     _s('nav-tryfree'); _s('nav-signin'); _h('nav-dashboard'); _h('nav-signout');
     window._gnLoggedIn = false;
+    // Guests still see "Go Pro" (clicking it opens the sign-in modal, same as
+    // any other protected action) — only a confirmed Pro account hides it.
+    _s('nav-go-pro'); _h('nav-pro-badge-wrap');
+    const freeBtn = document.getElementById('pricing-free-btn');
+    if (freeBtn) { freeBtn.textContent = 'Start free'; freeBtn.href = 'signup.html'; freeBtn.onclick = null; freeBtn.classList.remove('btn-plan-disabled'); }
   }
   window._proUser = realUser ? user : null;
   if (typeof window._gnOnAuthChange === 'function') window._gnOnAuthChange(user);
 });
 window.navSignOut = async () => { try { await signOut(_fauth); } catch(e){} };
-window.startProCheckout = () => { window.location.href = 'signup.html'; };
 </script>
+<script src="js/pricing.js"></script>
 
 <script>
 // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
@@ -805,6 +875,32 @@ async function _authFetch(url, opts) {
   }
   return fetch(url, opts);
 }
+
+// Fetches real pro status (not just "signed in") and toggles the nav Go Pro
+// button vs Pro ✓ badge, plus the pricing section's Free-card button.
+async function _refreshProBadge() {
+  try {
+    const r = await _authFetch('/api/subscription');
+    const d = await r.json();
+    const freeBtn = document.getElementById('pricing-free-btn');
+    if (d.pro) {
+      document.getElementById('nav-go-pro').style.display = 'none';
+      document.getElementById('nav-pro-badge-wrap').style.display = '';
+      if (freeBtn) { freeBtn.textContent = 'Downgrade by canceling'; freeBtn.removeAttribute('href'); freeBtn.onclick = () => gnOpenManageSubscription(freeBtn); }
+    } else {
+      document.getElementById('nav-go-pro').style.display = '';
+      document.getElementById('nav-pro-badge-wrap').style.display = 'none';
+      if (freeBtn) { freeBtn.textContent = 'Current plan'; freeBtn.removeAttribute('href'); freeBtn.onclick = (e) => e.preventDefault(); freeBtn.style.opacity = '0.6'; freeBtn.style.cursor = 'default'; }
+    }
+  } catch (e) {}
+}
+window._refreshProBadge = _refreshProBadge;
+
+document.addEventListener('click', function (e) {
+  const menu = document.getElementById('nav-pro-menu');
+  if (!menu || !menu.classList.contains('open')) return;
+  if (!e.target.closest('#nav-pro-badge-wrap')) menu.classList.remove('open');
+});
 
 // ── YouTube Transcribe ──
 let _ytText = '', _ytTitle = '';
@@ -864,6 +960,13 @@ async function goYtTranscribe() {
     if (resp.status === 401 && d.error === 'sign_in_required') {
       closeYtModal();
       if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in to use this feature');
+      return;
+    }
+    if (resp.status === 402 && d.error === 'limit_reached') {
+      // Signed-in free/pro accounts past their daily YouTube cap (anonymous guests
+      // hit the 429 guest_limit_reached branch above instead).
+      closeYtModal();
+      if (window.gnShowUpgradeModal) window.gnShowUpgradeModal(Object.assign({}, d, { kind: 'youtube' }));
       return;
     }
     if (d.error) throw new Error(d.error);

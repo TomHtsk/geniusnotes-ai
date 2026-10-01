@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
 
 async function ddgLookup(query) {
   try {
@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });

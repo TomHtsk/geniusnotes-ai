@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkRateLimit, checkGuestYoutubeLimit } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit } = require('./_lib/auth');
 
 function getVideoId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -786,15 +786,16 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   // This is the one endpoint anonymous Firebase users (the free YouTube converter) may
-  // call — everything else requires a real account. Anonymous callers get a stricter
-  // 3/day guest limit (by uid AND by IP); real signed-in users keep the normal 30/hour.
+  // call — everything else requires a real account. YouTube has its own per-tier daily
+  // cap (guest 3/day, free 3/day, pro 50/day) — separate from the monthly AI-action
+  // count, and separate from the generic 30/hour rate limit used elsewhere.
   const authed = await verifyAuthFull(req, res, { allowAnonymous: true });
   if (!authed) return;
   const { uid, isAnonymous } = authed;
   if (isAnonymous) {
     if (!(await checkGuestYoutubeLimit(req, uid, res))) return;
   } else {
-    if (!(await checkRateLimit(uid, res))) return;
+    if (!(await checkYoutubeDailyLimit(uid, res))) return;
   }
 
   // ytsearch route (rewired from /api/ytsearch)

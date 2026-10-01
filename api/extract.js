@@ -1,6 +1,6 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
-const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
 
 async function ocrImage(base64, mime, apiKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -31,6 +31,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   try {
     const { content, ocrImages } = req.body || {};

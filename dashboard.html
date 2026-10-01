@@ -316,9 +316,22 @@ function signOut() {
   firebase.auth().signOut().then(() => { window.location.href = 'index.html'; });
 }
 
+// Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+// Signed-out requests go through without a token and the server returns 401.
+async function _authFetch(url, opts) {
+  opts = opts || {};
+  const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+  if (user) {
+    const token = await user.getIdToken();
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+  }
+  return fetch(url, opts);
+}
+
 async function checkProStatus(uid, email) {
   try {
-    const r = await fetch('/api/subscription?email=' + encodeURIComponent(email || ''));
+    // api/subscription.js now reads the verified token's email instead of a query param.
+    const r = await _authFetch('/api/subscription');
     const d = await r.json();
   } catch {}
 }
@@ -376,7 +389,7 @@ async function handleDropFile(file) {
       binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
     }
     const base64 = btoa(binary);
-    const r = await fetch('/api/transcribe', {
+    const r = await _authFetch('/api/transcribe', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ audio: base64, mimeType: file.type || 'video/mp4' })
     });

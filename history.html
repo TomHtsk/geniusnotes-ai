@@ -212,6 +212,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="js/cloud-sync.js"></script>
 <script>
+  // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+  // Signed-out requests go through without a token and the server returns 401.
+  async function _authFetch(url, opts) {
+    opts = opts || {};
+    const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (user) {
+      const token = await user.getIdToken();
+      opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+    }
+    return fetch(url, opts);
+  }
   firebase.initializeApp({
     apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
     authDomain:"geniusnotes-ai.firebaseapp.com",
@@ -882,7 +893,7 @@
       : question;
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await _authFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] })

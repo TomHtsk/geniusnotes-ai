@@ -213,6 +213,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="js/cloud-sync.js"></script>
 <script>
+// Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+// Signed-out requests go through without a token and the server returns 401.
+async function _authFetch(url, opts) {
+  opts = opts || {};
+  const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+  if (user) {
+    const token = await user.getIdToken();
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+  }
+  return fetch(url, opts);
+}
 const FIREBASE_CONFIG = {
   apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI',
   authDomain:'geniusnotes-ai.firebaseapp.com',
@@ -302,7 +313,7 @@ async function askRecall(){
     const context = notesToSearch.slice(0,8).map(n =>
       `[${n.title||'Untitled'}]: ${stripHtml(n.content||'').slice(0,400)}`
     ).join('\n\n');
-    const r = await fetch('/api/chat', {
+    const r = await _authFetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ messages:[
         { role:'system', content:'You are an AI assistant. Answer the user\'s question based ONLY on the following notes:\n\n' + context },

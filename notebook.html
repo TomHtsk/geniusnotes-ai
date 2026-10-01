@@ -396,7 +396,6 @@
     <a href="notebook.html" class="sb-item active">📓 Notebooks</a>
     <a href="dashboard.html" class="sb-item">📊 Dashboard</a>
     <a href="flashcards.html" class="sb-item">🃏 Flashcards</a>
-    <a href="passwords.html" class="sb-item">🔐 Password Manager</a>
   </div>
   <div class="sb-footer"><button class="sb-theme" onclick="toggleTheme()">🌙 Toggle Theme</button></div>
 
@@ -869,6 +868,18 @@
 </div></div>
 
 <script>
+// Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+// Signed-out requests go through without a token and the server returns 401.
+async function _authFetch(url, opts) {
+  opts = opts || {};
+  const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+  if (user) {
+    const token = await user.getIdToken();
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+  }
+  return fetch(url, opts);
+}
+
 // ══ CONSTANTS ══
 const NB_STORE='gn-notebooks', FL_STORE='gn-nb-folders';
 const CW=794,CH=1123;
@@ -2127,7 +2138,7 @@ async function runInterpretSel(mode){
   const res=document.getElementById('ai-result'),rt=document.getElementById('ai-result-text');
   res.classList.add('show');rt.textContent='Working…';
   try{
-    const r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
+    const r=await _authFetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
     const d=await r.json();
     _aiText=d.result||d.text||d.output||'(no result)';
     rt.innerHTML=_aiText.replace(/\n/g,'<br>');
@@ -2330,7 +2341,7 @@ async function solveHomework(){
   const resultEl=document.getElementById('hw-result');
   resultEl.style.display='block';resultEl.textContent='Thinking…';
   try{
-    const r=await fetch('/api/homework',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const r=await _authFetch('/api/homework',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
     const d=await r.json();
     _hwText=d.result||d.text||d.output||'(no result)';
     resultEl.innerHTML=_hwText.replace(/\n/g,'<br>');
@@ -2369,13 +2380,13 @@ async function aiAction(mode,customPrompt){
   try{
     let r,d;
     if(['bullets','outline','cornellnotes','studyguide','flashcards','format','highlight'].includes(mode))
-      r=await fetch('/api/writing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
+      r=await _authFetch('/api/writing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
     else if(mode==='prompt')
-      r=await fetch('/api/writing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'prompt',text,prompt:customPrompt})});
+      r=await _authFetch('/api/writing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'prompt',text,prompt:customPrompt})});
     else if(mode==='summarize')
-      r=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,mode:'summarize'})});
+      r=await _authFetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,mode:'summarize'})});
     else
-      r=await fetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
+      r=await _authFetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
     d=await r.json();
     _aiText=d.result||d.text||d.output||'(no result)';
     rt.innerHTML=_aiText.replace(/\n/g,'<br>');
@@ -2612,7 +2623,7 @@ async function importYouTube(){
   const url=document.getElementById('imp-yt-url').value.trim();if(!url)return;
   const r=document.getElementById('imp-result');r.style.display='block';r.textContent='Fetching transcript…';
   try{
-    const res=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,mode:'transcribe'})});
+    const res=await _authFetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,mode:'transcribe'})});
     const d=await res.json();
     _showImportResult(d.result||d.transcript||d.text||'(no transcript)');
   }catch(e){r.textContent='Error: '+e.message;}
@@ -2627,13 +2638,13 @@ async function importFile(input){
     const b64=await toB64();
     let res,d;
     if(ext==='pdf'||['jpg','jpeg','png','webp'].includes(ext)){
-      res=await fetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ocrImages:[{data:b64,type:file.type}]})});
+      res=await _authFetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ocrImages:[{data:b64,type:file.type}]})});
     }else if(['doc','docx'].includes(ext)){
-      res=await fetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:b64})});
+      res=await _authFetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:b64})});
     }else if(['ppt','pptx'].includes(ext)){
-      res=await fetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:b64,fileType:'pptx'})});
+      res=await _authFetch('/api/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:b64,fileType:'pptx'})});
     }else if(['mp4','webm','mov'].includes(ext)){
-      res=await fetch('/api/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,type:file.type})});
+      res=await _authFetch('/api/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({audio:b64,type:file.type})});
     }else{r.textContent='Unsupported file type.';return;}
     d=await res.json();
     _showImportResult(d.text||d.result||d.transcript||'(no content)');

@@ -1,5 +1,6 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
+const { applyCors, verifyAuth, checkRateLimit } = require('./_lib/auth');
 
 async function ocrImage(base64, mime, apiKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -24,11 +25,12 @@ async function ocrImage(base64, mime, apiKey) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const uid = await verifyAuth(req, res);
+  if (!uid) return;
+  if (!(await checkRateLimit(uid, res))) return;
 
   try {
     const { content, ocrImages } = req.body || {};

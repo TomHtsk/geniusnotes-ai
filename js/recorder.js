@@ -11,6 +11,20 @@
   let _sessionText = '';
   let _periodicId = null;
 
+  // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
+  // Reuses a page-level _authFetch if the host page already defines one (most do);
+  // otherwise falls back to checking firebase.auth() directly.
+  async function _recAuthFetch(url, opts) {
+    if (typeof window._authFetch === 'function') return window._authFetch(url, opts);
+    opts = opts || {};
+    const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (user) {
+      const token = await user.getIdToken();
+      opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+    }
+    return fetch(url, opts);
+  }
+
   function inject() {
     if (document.getElementById('fr-widget')) return;
     const el = document.createElement('div');
@@ -263,7 +277,7 @@
         if (pBlob.size < 3000) return;
         const pB64 = await toB64(pBlob);
         if (!going) return;
-        const pRes = await fetch('/api/transcribe', {
+        const pRes = await _recAuthFetch('/api/transcribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ audio: pB64, mimeType: pMime, diarize: false, realtime: true })
@@ -371,7 +385,7 @@
       showDone(capturedText, needsPolish);
       if (mrChunks.length > 0) _lastBlob = new Blob(mrChunks, { type: (mr && mr.mimeType) || mime || 'audio/webm' });
       if (needsPolish) {
-        fetch('/api/transcribe', {
+        _recAuthFetch('/api/transcribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: capturedText, diarize: _diarize, spkNames: _spkNames })
@@ -400,7 +414,7 @@
         return;
       }
       const b64 = await withTimeout(toB64(blob), 8000);
-      const res = await withTimeout(fetch('/api/transcribe', {
+      const res = await withTimeout(_recAuthFetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio: b64, mimeType, diarize: _diarize, spkNames: _spkNames,

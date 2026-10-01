@@ -57,7 +57,16 @@
       const d = await r.json();
       if (d.url) { window.location.href = d.url; return; }
       _restoreBtn(btnEl, orig);
-      alert(d.error || 'Unable to start checkout. Please try again.');
+      // TEMPORARY DIAGNOSTIC — remove once root-caused. On failure, also hit the
+      // debug branch of /api/checkout with the same token to see the real reason.
+      try {
+        const token = await getFirebaseUser().getIdToken(true);
+        const dbgR = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'x-gn-debug': '1' }, body: '{}' });
+        const dbg = await dbgR.json();
+        alert((d.error || 'Unable to start checkout.') + '\n\nDebug: ' + JSON.stringify(dbg));
+      } catch (dbgErr) {
+        alert((d.error || 'Unable to start checkout.') + '\n\n(debug call also failed: ' + dbgErr.message + ')');
+      }
     } catch (e) {
       _restoreBtn(btnEl, orig);
       alert('Unable to start checkout. Please try again.');

@@ -1,11 +1,28 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const admin = require('firebase-admin');
-const { applyCors, verifyAuthFull, checkRateLimit } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, _ensureAdmin } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // TEMPORARY DIAGNOSTIC — remove once the "Unauthorized — invalid or expired
+  // token" issue on this endpoint is root-caused. Surfaces the real
+  // admin.auth().verifyIdToken() error instead of the generic 401 message.
+  if (req.headers['x-gn-debug'] === '1') {
+    try {
+      const header = req.headers.authorization || '';
+      const match = header.match(/^Bearer (.+)$/);
+      if (!match) return res.status(200).json({ debug: true, step: 'no_header' });
+      _ensureAdmin();
+      const decoded = await admin.auth().verifyIdToken(match[1]);
+      return res.status(200).json({ debug: true, step: 'verified_ok', uid: decoded.uid, isAnonymous: !!(decoded.firebase && decoded.firebase.sign_in_provider === 'anonymous') });
+    } catch (e) {
+      return res.status(200).json({ debug: true, step: 'verify_threw', message: e.message, code: e.code, name: e.name });
+    }
+  }
+
   const authed = await verifyAuthFull(req, res);
   if (!authed) return;
   if (!(await checkRateLimit(authed.uid, res))) return;

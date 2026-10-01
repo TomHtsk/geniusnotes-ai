@@ -13,8 +13,12 @@ module.exports = async function handler(req, res) {
   // value, not a raw message or stack. Remove once root-caused.
   if (req.headers['x-gn-diag'] === '1') {
     if (req.method === 'GET') {
-      try { const pid = _getServiceAccountProjectId(); return res.status(200).json({ adminInitOk: true, projectId: pid }); }
-      catch (e) { return res.status(200).json({ adminInitOk: false }); }
+      try {
+        const pid = _getServiceAccountProjectId();
+        let firestoreOk = true, firestoreCode = null;
+        try { getDb(); } catch (e) { firestoreOk = false; firestoreCode = e.code || e.message; }
+        return res.status(200).json({ adminInitOk: true, projectId: pid, firestoreOk, firestoreCode });
+      } catch (e) { return res.status(200).json({ adminInitOk: false }); }
     }
     if (req.method === 'POST') {
       const header = req.headers.authorization || '';

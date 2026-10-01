@@ -9,15 +9,17 @@
     return null;
   }
 
-  // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
-  // Reuses window._authFetch if the host page already defines one (index.html,
-  // dashboard.html both do); otherwise defines a minimal one here.
+  // Attaches a FRESH (force-refreshed) ID token to same-origin /api/* calls. Checkout
+  // and portal calls are rare, high-stakes actions, so it's worth an extra round-trip
+  // to guarantee a current token rather than reuse window._authFetch's cached one
+  // (getIdToken() without force-refresh can hand back a token the SDK still considers
+  // valid but the server's clock-skew tolerance rejects — this is what "Unauthorized —
+  // invalid or expired token" on an otherwise-working signed-in session usually means).
   async function _fetch(url, opts) {
-    if (typeof window._authFetch === 'function') return window._authFetch(url, opts);
     opts = opts || {};
     const user = getFirebaseUser();
     if (user) {
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
       opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
     }
     return fetch(url, opts);

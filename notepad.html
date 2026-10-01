@@ -23,9 +23,9 @@
       --purple: #8B5CF6; --purple2: #A78BFA; --cyan: #4FC3F7;
       --save: #28c840;
       color-scheme: dark;
-      /* ── LOCKED PAGE SIZE: US Letter at 96 DPI ── do not change these values ── */
-      --page-w: 816px;   /* Letter width:  8.5 in × 96 = 816 px */
-      --page-h: 1056px;  /* Letter height: 11  in × 96 = 1056 px */
+      /* Pageless document width/min-height (was fixed US-Letter paging; see .page-box below) */
+      --page-w: 760px;
+      --page-h: 1056px;  /* kept only as a comfortable min-height for a short/empty note */
     }
     :root.light {
       --bg: #FAF9F6; --surface: #FFFFFF; --surface2: #EEEEF6;
@@ -66,6 +66,9 @@
     .save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
     .save-dot.saved { background: var(--save); }
     .save-dot.saving { background: var(--cyan); }
+    .save-dot.error { background: #ef4444; animation: save-dot-pulse 1.4s ease-in-out infinite; }
+    @keyframes save-dot-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    #save-label[title] { cursor: help; }
     .np-btn {
       background: none; border: 1px solid var(--border);
       color: var(--muted); border-radius: 8px; padding: 5px 10px;
@@ -195,28 +198,26 @@
       gap: 32px; /* gray gap between pages */
       padding: 0; margin: 0 auto; width: 100%;
     }
+    /* Pageless document: one .page-box that grows with its content (no fixed height,
+       no overflow:hidden — there is no reflow engine moving blocks between pages anymore). */
     .page-box {
       background: var(--surface);
-      width: var(--page-w); height: var(--page-h); flex-shrink: 0;
+      width: var(--page-w); max-width: 100%; height: auto; min-height: var(--page-h); flex-shrink: 0;
       box-shadow: 0 2px 16px rgba(0,0,0,0.35);
       position: relative;
       box-sizing: border-box;
-      overflow: hidden; /* fixed page size — reflow engine moves overflowing blocks to the next page */
+      overflow: visible;
     }
     :root.light .page-box { background: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); border: 1px solid #c7c7c7; }
-    /* A single block taller than one page (e.g. a long pasted/AI-generated paragraph)
-       can't be split — let its page grow to show it in full rather than clip or loop */
-    .page-box.page-overflow { height: auto; min-height: var(--page-h); overflow: visible; }
-    .page-box.page-overflow .page-content { height: auto; overflow: visible; }
     .page-content {
       outline: none;
       font-size: 1rem; line-height: 1.8; color: var(--text);
       cursor: text; caret-color: var(--text);
       font-family: 'Inter', system-ui, sans-serif;
-      /* Margins set via JS (padding) on .page-box; content fills the remaining fixed area */
-      height: 100%;
+      /* Margins set via JS (padding) on .page-box; content grows the box naturally */
+      height: auto;
       box-sizing: border-box;
-      overflow: hidden; /* fixed height so scrollHeight > clientHeight signals overflow to _reflowPages */
+      overflow: visible;
       word-break: break-word;
     }
     .page-content:empty::before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; font-style: italic; }
@@ -231,8 +232,10 @@
     .page-content::-webkit-spelling-error { text-decoration: none !important; }
     .page-content::-webkit-grammar-error  { text-decoration: none !important; }
     .page-content * { -webkit-text-fill-color: inherit; }
-    .page-content h1 { font-size: 1.6rem; font-weight: 800; margin: 0.5em 0 0.25em; }
-    .page-content h2 { font-size: 1.25rem; font-weight: 700; margin: 0.5em 0 0.25em; }
+    .page-content p { margin: 0 0 0.9em; }
+    .page-content h1 { font-size: 1.6rem; font-weight: 800; margin: 0.9em 0 0.35em; }
+    .page-content h2 { font-size: 1.25rem; font-weight: 700; margin: 0.8em 0 0.3em; }
+    .page-content h1:first-child, .page-content h2:first-child, .page-content p:first-child { margin-top: 0; }
     .page-content ul, .page-content ol { padding-left: 1.6em; margin: 0.5em 0; }
     .page-content li { margin-bottom: 0.25em; }
     .page-content blockquote { border-left: 3px solid var(--purple2); padding-left: 16px; color: var(--muted); margin: 0.5em 0; }
@@ -415,6 +418,11 @@
       flex-shrink: 0; height: 26px; overflow: hidden; position: relative;
       background: #1c1c2e; border-top: 1px solid rgba(139,92,246,0.15); border-bottom: 1px solid rgba(139,92,246,0.15);
     }
+    /* Ruler hidden by default (toggle: More ▾ → Ruler); body.show-ruler reveals it */
+    body:not(.show-ruler) #doc-ruler, body:not(.show-ruler) #doc-ruler-right { display: none; }
+    /* Header zone hidden by default (toggle: More ▾ → Header) — the "Click to add header"
+       hint and the zone itself only take up space/show once the user opts in */
+    body:not(.show-pagehdr) .page-header-zone { display: none; }
     :root.light #doc-ruler, :root.light #doc-ruler-right { background: #dcdce8; border-color: rgba(0,0,0,0.12); }
     #doc-ruler-track, #doc-ruler-track-right { position: relative; max-width: var(--page-w); margin: 0 auto; height: 100%; }
     .ruler-margin { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.22); }
@@ -453,7 +461,8 @@
       .np-body, .editor-split-row, .split-pane { display: block !important; overflow: visible !important; height: auto !important; }
       .editor-wrap { overflow: visible !important; padding: 0 !important; background: white !important; box-shadow: none !important; }
       #pages-container { gap: 0 !important; }
-      .page-box { box-shadow: none !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; page-break-after: always; }
+      .page-box { box-shadow: none !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; }
+      .page-content h1, .page-content h2, .page-content h3 { break-after: avoid; }
       #pg-line-overlay { display: none !important; }
       @page { size: letter portrait; margin: 0; }
     }
@@ -821,28 +830,37 @@
       <span id="save-label" class="si-label">Saved</span>
       <span id="cloud-indicator" style="font-size:0.8rem;margin-left:4px;opacity:0.6;display:none;" title="Cloud sync"></span>
     </div>
-    <div style="position:relative;" id="export-wrap">
-      <button onclick="toggleExportMenu()" id="export-btn" class="np-btn">⬇ <span class="np-btn-label">Export</span> <span style="font-size:0.6rem;opacity:0.7;">▾</span></button>
-      <div id="export-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:168px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;">
-        <button onclick="exportDoc()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📄 Word (.docx)</button>
-        <button onclick="exportPdf()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🖨️ PDF</button>
-        <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📃 Text (.txt)</button>
-        <button onclick="exportGoogleDocs()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📝 Google Docs</button>
-      </div>
-    </div>
-    <div style="position:relative;" id="import-wrap">
-      <button onclick="toggleImportMenu()" class="np-btn">📂 <span class="np-btn-label">Import</span> <span style="font-size:0.6rem;opacity:0.7;">▾</span></button>
-      <div class="np-import-menu" id="import-menu">
-        <label class="np-import-item">📄 Document (.txt/.docx/.pdf)<input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this);toggleImportMenu()"></label>
-        <label class="np-import-item">🎬 Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu()"></label>
-      </div>
-    </div>
-    <button onclick="openRecModal()" class="np-btn" style="color:#f87171;" title="Record Meeting/Lecture">🎙 <span class="np-btn-label">Record</span></button>
-    <button id="save-btn" onclick="manualSave()" class="np-btn np-btn-primary">💾 <span class="np-btn-label">Save</span></button>
-    <button onclick="copyNote()" class="np-btn" id="copy-btn">📋 <span class="np-btn-label">Copy</span></button>
     <button onclick="openShareModal()" class="np-btn" title="Share note" style="color:#34d399;">🔗 <span class="np-btn-label">Share</span></button>
-    <button id="tts-btn" onclick="toggleTTS()" class="np-btn" title="Read aloud" style="color:#60a5fa;">🔊 <span class="np-btn-label">Read</span></button>
-    <button class="np-close-btn" onclick="window.location.href='my-notes.html'" title="My Notes">📂 <span class="np-btn-label">My Notes</span></button>
+    <!-- Save button removed from always-visible chrome — autosave + Ctrl+S cover it (see
+         manualSave()'s keydown binding); it's still reachable, see #save-btn inside ⋯ below. -->
+    <div style="position:relative;" id="np-more-wrap">
+      <button onclick="toggleNpMoreMenu()" id="np-more-btn" class="np-btn" title="More">⋯</button>
+      <div id="np-more-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;">
+        <button id="save-btn" onclick="manualSave()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">💾 Save</button>
+        <button onclick="copyNote()" id="copy-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📋 Copy</button>
+        <button id="tts-btn" onclick="toggleTTS()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🔊 Read aloud</button>
+        <button onclick="openRecModal()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🎙 Record</button>
+        <div style="height:1px;background:var(--border);margin:5px 2px;"></div>
+        <div style="position:relative;" id="export-wrap">
+          <button onclick="toggleExportMenu()" id="export-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">⬇ Export <span style="float:right;opacity:0.6;">▸</span></button>
+          <div id="export-menu" style="display:none;position:absolute;top:0;right:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:168px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:201;">
+            <button onclick="exportDoc()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📄 Word (.docx)</button>
+            <button onclick="exportPdf()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🖨️ PDF</button>
+            <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📃 Text (.txt)</button>
+            <button onclick="exportGoogleDocs()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📝 Google Docs</button>
+          </div>
+        </div>
+        <div style="position:relative;" id="import-wrap">
+          <button onclick="toggleImportMenu()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📂 Import <span style="float:right;opacity:0.6;">▸</span></button>
+          <div class="np-import-menu" id="import-menu" style="top:0;right:calc(100% + 6px);left:auto;">
+            <label class="np-import-item">📄 Document (.txt/.docx/.pdf)<input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
+            <label class="np-import-item">🎬 Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
+          </div>
+        </div>
+        <div style="height:1px;background:var(--border);margin:5px 2px;"></div>
+        <button onclick="window.location.href='my-notes.html'" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📂 My Notes</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -935,74 +953,13 @@
         <button class="tb-btn" onclick="fmt('italic')" title="Italic"><i>I</i></button>
         <button class="tb-btn" onclick="fmt('underline')" title="Underline"><u>U</u></button>
         <div class="tb-sep"></div>
-        <!-- Font size -->
-        <div id="fs-wrap">
-          <button id="fs-display" onclick="toggleFsPop()" title="Font size">
-            <span id="fs-label">16</span><span style="font-size:0.55rem;opacity:0.6;">px</span>
-          </button>
-          <div id="fs-popup">
-            <button class="fs-opt" onclick="applyFontSize(10)">10</button>
-            <button class="fs-opt" onclick="applyFontSize(12)">12</button>
-            <button class="fs-opt" onclick="applyFontSize(14)">14</button>
-            <button class="fs-opt active" onclick="applyFontSize(16)">16</button>
-            <button class="fs-opt" onclick="applyFontSize(18)">18</button>
-            <button class="fs-opt" onclick="applyFontSize(20)">20</button>
-            <button class="fs-opt" onclick="applyFontSize(24)">24</button>
-            <button class="fs-opt" onclick="applyFontSize(28)">28</button>
-            <button class="fs-opt" onclick="applyFontSize(32)">32</button>
-            <button class="fs-opt" onclick="applyFontSize(36)">36</button>
-            <button class="fs-opt" onclick="applyFontSize(48)">48</button>
-            <button class="fs-opt" onclick="applyFontSize(72)">72</button>
-            <div id="fs-custom-row">
-              <input id="fs-custom-input" type="number" min="6" max="200" placeholder="px" title="Custom size">
-              <button class="fs-opt" style="padding:3px 7px;min-width:0;" onclick="applyFontSize(+document.getElementById('fs-custom-input').value)">↵</button>
-            </div>
-          </div>
-        </div>
-        <!-- Font family -->
-        <div id="ff-wrap">
-          <button id="ff-display" onclick="toggleFfPop()" title="Font family">
-            <span id="ff-label">Default</span><span style="font-size:0.55rem;opacity:0.5;">▾</span>
-          </button>
-          <div id="ff-popup">
-            <button class="ff-opt active" onclick="applyFont('')"           style="font-family:inherit;">Default (Inter)</button>
-            <button class="ff-opt" onclick="applyFont('Arial, sans-serif')"           style="font-family:Arial;">Arial</button>
-            <button class="ff-opt" onclick="applyFont('Georgia, serif')"              style="font-family:Georgia;">Georgia</button>
-            <button class="ff-opt" onclick="applyFont('\'Times New Roman\', serif')"  style="font-family:'Times New Roman';">Times New Roman</button>
-            <button class="ff-opt" onclick="applyFont('\'Courier New\', monospace')"  style="font-family:'Courier New';">Courier New</button>
-            <button class="ff-opt" onclick="applyFont('Verdana, sans-serif')"         style="font-family:Verdana;">Verdana</button>
-            <button class="ff-opt" onclick="applyFont('Tahoma, sans-serif')"          style="font-family:Tahoma;">Tahoma</button>
-            <button class="ff-opt" onclick="applyFont('\'Trebuchet MS\', sans-serif')" style="font-family:'Trebuchet MS';">Trebuchet MS</button>
-            <button class="ff-opt" onclick="applyFont('Impact, sans-serif')"          style="font-family:Impact;">Impact</button>
-            <button class="ff-opt" onclick="applyFont('\'Comic Sans MS\', cursive')"  style="font-family:'Comic Sans MS';">Comic Sans</button>
-          </div>
-        </div>
-        <div class="tb-sep"></div>
         <button class="tb-btn" onclick="fmt('formatBlock','h1')" title="Heading 1">H1</button>
         <button class="tb-btn" onclick="fmt('formatBlock','h2')" title="Heading 2">H2</button>
-        <button class="tb-btn" onclick="fmt('formatBlock','p')" title="Normal text">¶</button>
         <div class="tb-sep"></div>
         <button class="tb-btn" onclick="fmt('insertUnorderedList')" title="Bullet list">• List</button>
         <button class="tb-btn" onclick="fmt('insertOrderedList')" title="Numbered list">1. List</button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="fmt('formatBlock','blockquote')" title="Blockquote">" Quote</button>
-        <button class="tb-btn" onclick="insertHR()" title="Divider">— HR</button>
-        <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="fmt('removeFormat')" title="Clear formatting">✕ Clear</button>
-        <div class="tb-sep"></div>
-        <!-- Text color -->
-        <div style="position:relative;" id="tc-wrap">
-          <button class="tb-btn" onclick="toggleCp('tc')" title="Text color" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;">
-            <b style="font-size:0.88rem;line-height:1;">A</b>
-            <span id="tc-btn-bar" style="display:inline-block;height:3px;border-radius:2px;width:13px;background:#ef4444;"></span>
-          </button>
-          <div id="tc-picker" class="color-picker-pop" style="display:none;">
-            <div class="cp-label">Text Color</div>
-            <div class="cp-swatches" id="tc-swatches"></div>
-            <div class="cp-custom"><input type="color" id="tc-custom" value="#ef4444" oninput="applyTc(this.value)"><span>Custom</span></div>
-          </div>
-        </div>
-        <!-- Background / highlight color -->
+        <!-- Background / highlight color — kept visible per the simplified toolbar spec -->
         <div style="position:relative;" id="bc-wrap">
           <button class="tb-btn" onclick="toggleCp('bc')" title="Highlight color" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;">
             <span style="font-size:0.82rem;line-height:1;">🖍</span>
@@ -1015,44 +972,111 @@
           </div>
         </div>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="triggerPhotoUpload()" title="Insert photo">📷 Photo</button>
-        <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="insertPhotos(this)"/>
-        <button id="draw-tb-btn" class="tb-btn" onclick="enterDrawMode()" title="Draw on document" style="color:#ff8c32;">✏️ Draw</button>
-        <div style="position:relative;">
-          <button class="tb-btn" onclick="toggleMathPanel()" title="Insert math equation" id="math-tb-btn">∑ Math</button>
-          <!-- math panel below -->
-          <div id="math-panel">
-            <div id="math-panel-header">
-              <div style="font-size:0.68rem;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin-bottom:7px;">∑ MATH EQUATION</div>
-              <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
-                <button class="math-sym-tab math-sym-tab-active" data-tab="basic"  onclick="setMathTab('basic')">Basic</button>
-                <button class="math-sym-tab" data-tab="greek"  onclick="setMathTab('greek')">Greek</button>
-                <button class="math-sym-tab" data-tab="calc"   onclick="setMathTab('calc')">Calculus</button>
-                <button class="math-sym-tab" data-tab="trig"   onclick="setMathTab('trig')">Trig</button>
-                <button class="math-sym-tab" data-tab="sets"   onclick="setMathTab('sets')">Sets</button>
-                <button class="math-sym-tab" data-tab="arrows" onclick="setMathTab('arrows')">Arrows</button>
-                <button class="math-sym-tab" data-tab="matrix" onclick="setMathTab('matrix')">Matrix</button>
+        <!-- Everything else lives in More ▾ — same buttons/handlers, just relocated -->
+        <div style="position:relative;" id="tb-more-wrap">
+          <button class="tb-btn" onclick="toggleTbMoreMenu()" id="tb-more-btn">More ▾</button>
+          <div id="tb-more-menu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            <button class="tb-btn" onclick="fmt('formatBlock','p')" title="Normal text">¶ Normal</button>
+            <button class="tb-btn" onclick="fmt('formatBlock','blockquote')" title="Blockquote">" Quote</button>
+            <button class="tb-btn" onclick="insertHR()" title="Divider">— HR</button>
+            <button class="tb-btn" onclick="fmt('removeFormat')" title="Clear formatting">✕ Clear</button>
+            <div class="tb-sep"></div>
+            <!-- Font size -->
+            <div id="fs-wrap">
+              <button id="fs-display" onclick="toggleFsPop()" title="Font size">
+                <span id="fs-label">16</span><span style="font-size:0.55rem;opacity:0.6;">px</span>
+              </button>
+              <div id="fs-popup">
+                <button class="fs-opt" onclick="applyFontSize(10)">10</button>
+                <button class="fs-opt" onclick="applyFontSize(12)">12</button>
+                <button class="fs-opt" onclick="applyFontSize(14)">14</button>
+                <button class="fs-opt active" onclick="applyFontSize(16)">16</button>
+                <button class="fs-opt" onclick="applyFontSize(18)">18</button>
+                <button class="fs-opt" onclick="applyFontSize(20)">20</button>
+                <button class="fs-opt" onclick="applyFontSize(24)">24</button>
+                <button class="fs-opt" onclick="applyFontSize(28)">28</button>
+                <button class="fs-opt" onclick="applyFontSize(32)">32</button>
+                <button class="fs-opt" onclick="applyFontSize(36)">36</button>
+                <button class="fs-opt" onclick="applyFontSize(48)">48</button>
+                <button class="fs-opt" onclick="applyFontSize(72)">72</button>
+                <div id="fs-custom-row">
+                  <input id="fs-custom-input" type="number" min="6" max="200" placeholder="px" title="Custom size">
+                  <button class="fs-opt" style="padding:3px 7px;min-width:0;" onclick="applyFontSize(+document.getElementById('fs-custom-input').value)">↵</button>
+                </div>
               </div>
-              <div id="math-sym-grid" style="display:flex;flex-wrap:wrap;gap:3px;max-height:76px;overflow-y:auto;padding-bottom:2px;"></div>
             </div>
-            <div id="math-ai-wrap">
-              <textarea id="math-ai-input" placeholder="Type a math problem or request…&#10;e.g. &quot;find x: 3x + 5 = 20&quot;, &quot;create 3 calculus problems&quot;, or \sqrt{20}&#10;Use symbols above · Click Solve for step-by-step help · Insert to add to note" oninput="_mathPreviewDebounce()" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))insertMathEq()"></textarea>
-              <div id="math-preview-row">
-                <div id="math-preview"></div>
-                <span id="math-preview-status"></span>
+            <!-- Font family -->
+            <div id="ff-wrap">
+              <button id="ff-display" onclick="toggleFfPop()" title="Font family">
+                <span id="ff-label">Default</span><span style="font-size:0.55rem;opacity:0.5;">▾</span>
+              </button>
+              <div id="ff-popup">
+                <button class="ff-opt active" onclick="applyFont('')"           style="font-family:inherit;">Default (Inter)</button>
+                <button class="ff-opt" onclick="applyFont('Arial, sans-serif')"           style="font-family:Arial;">Arial</button>
+                <button class="ff-opt" onclick="applyFont('Georgia, serif')"              style="font-family:Georgia;">Georgia</button>
+                <button class="ff-opt" onclick="applyFont('\'Times New Roman\', serif')"  style="font-family:'Times New Roman';">Times New Roman</button>
+                <button class="ff-opt" onclick="applyFont('\'Courier New\', monospace')"  style="font-family:'Courier New';">Courier New</button>
+                <button class="ff-opt" onclick="applyFont('Verdana, sans-serif')"         style="font-family:Verdana;">Verdana</button>
+                <button class="ff-opt" onclick="applyFont('Tahoma, sans-serif')"          style="font-family:Tahoma;">Tahoma</button>
+                <button class="ff-opt" onclick="applyFont('\'Trebuchet MS\', sans-serif')" style="font-family:'Trebuchet MS';">Trebuchet MS</button>
+                <button class="ff-opt" onclick="applyFont('Impact, sans-serif')"          style="font-family:Impact;">Impact</button>
+                <button class="ff-opt" onclick="applyFont('\'Comic Sans MS\', cursive')"  style="font-family:'Comic Sans MS';">Comic Sans</button>
               </div>
             </div>
-            <div id="math-panel-footer">
-              <label style="font-size:0.72rem;color:#888;display:flex;align-items:center;gap:5px;cursor:pointer;">
-                <input type="checkbox" id="math-display" style="accent-color:#8B5CF6;" onchange="_mathTryPreview()"> Display block
-              </label>
-              <button onclick="_mathSolveHomework()" id="math-convert-btn" style="padding:6px 14px;background:rgba(79,195,247,0.12);border:1px solid rgba(79,195,247,0.35);border-radius:8px;color:#4fc3f7;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">🧠 Solve</button>
-              <button onclick="insertMathEq()" style="padding:6px 16px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.45);border-radius:8px;color:#a78bfa;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Insert →</button>
+            <div class="tb-sep"></div>
+            <!-- Text color -->
+            <div style="position:relative;" id="tc-wrap">
+              <button class="tb-btn" onclick="toggleCp('tc')" title="Text color" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;">
+                <b style="font-size:0.88rem;line-height:1;">A</b>
+                <span id="tc-btn-bar" style="display:inline-block;height:3px;border-radius:2px;width:13px;background:#ef4444;"></span>
+              </button>
+              <div id="tc-picker" class="color-picker-pop" style="display:none;">
+                <div class="cp-label">Text Color</div>
+                <div class="cp-swatches" id="tc-swatches"></div>
+                <div class="cp-custom"><input type="color" id="tc-custom" value="#ef4444" oninput="applyTc(this.value)"><span>Custom</span></div>
+              </div>
             </div>
+            <button class="tb-btn" onclick="triggerPhotoUpload()" title="Insert photo">📷 Photo</button>
+            <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="insertPhotos(this)"/>
+            <button id="draw-tb-btn" class="tb-btn" onclick="enterDrawMode()" title="Draw on document" style="color:#ff8c32;">✏️ Draw</button>
+            <div style="position:relative;">
+              <button class="tb-btn" onclick="toggleMathPanel()" title="Insert math equation" id="math-tb-btn">∑ Math</button>
+              <!-- math panel below -->
+              <div id="math-panel">
+                <div id="math-panel-header">
+                  <div style="font-size:0.68rem;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin-bottom:7px;">∑ MATH EQUATION</div>
+                  <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
+                    <button class="math-sym-tab math-sym-tab-active" data-tab="basic"  onclick="setMathTab('basic')">Basic</button>
+                    <button class="math-sym-tab" data-tab="greek"  onclick="setMathTab('greek')">Greek</button>
+                    <button class="math-sym-tab" data-tab="calc"   onclick="setMathTab('calc')">Calculus</button>
+                    <button class="math-sym-tab" data-tab="trig"   onclick="setMathTab('trig')">Trig</button>
+                    <button class="math-sym-tab" data-tab="sets"   onclick="setMathTab('sets')">Sets</button>
+                    <button class="math-sym-tab" data-tab="arrows" onclick="setMathTab('arrows')">Arrows</button>
+                    <button class="math-sym-tab" data-tab="matrix" onclick="setMathTab('matrix')">Matrix</button>
+                  </div>
+                  <div id="math-sym-grid" style="display:flex;flex-wrap:wrap;gap:3px;max-height:76px;overflow-y:auto;padding-bottom:2px;"></div>
+                </div>
+                <div id="math-ai-wrap">
+                  <textarea id="math-ai-input" placeholder="Type a math problem or request…&#10;e.g. &quot;find x: 3x + 5 = 20&quot;, &quot;create 3 calculus problems&quot;, or \sqrt{20}&#10;Use symbols above · Click Solve for step-by-step help · Insert to add to note" oninput="_mathPreviewDebounce()" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))insertMathEq()"></textarea>
+                  <div id="math-preview-row">
+                    <div id="math-preview"></div>
+                    <span id="math-preview-status"></span>
+                  </div>
+                </div>
+                <div id="math-panel-footer">
+                  <label style="font-size:0.72rem;color:#888;display:flex;align-items:center;gap:5px;cursor:pointer;">
+                    <input type="checkbox" id="math-display" style="accent-color:#8B5CF6;" onchange="_mathTryPreview()"> Display block
+                  </label>
+                  <button onclick="_mathSolveHomework()" id="math-convert-btn" style="padding:6px 14px;background:rgba(79,195,247,0.12);border:1px solid rgba(79,195,247,0.35);border-radius:8px;color:#4fc3f7;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">🧠 Solve</button>
+                  <button onclick="insertMathEq()" style="padding:6px 16px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.45);border-radius:8px;color:#a78bfa;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Insert →</button>
+                </div>
+              </div>
+            </div>
+            <button class="tb-btn" onclick="toggleMarginPanel()" title="Page margins" id="margin-tb-btn">📐 Margins</button>
+            <button class="tb-btn" onclick="toggleRulerVisible()" title="Show/hide ruler" id="ruler-tb-btn">📏 Ruler</button>
+            <button class="tb-btn" onclick="toggleHeaderZoneVisible()" title="Show/hide page header" id="pagehdr-tb-btn">🏷️ Header</button>
           </div>
         </div>
-        <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="toggleMarginPanel()" title="Page margins" id="margin-tb-btn">📐 Margins</button>
       </div>
       <!-- Draw toolbar row -->
       <div id="draw-toolbar-row">
@@ -1190,7 +1214,8 @@
       <div class="statusbar">
         <span id="word-count">0 words</span>
         <span id="char-count">0 characters</span>
-        <span id="page-counter">Page 1 of 1</span>
+        <span id="reading-time">0 min read</span>
+        <span id="page-counter" style="display:none;">Page 1 of 1</span>
         <span id="last-saved"></span>
         <div id="hl-sb-wrap" style="position:relative;margin-left:auto;">
           <button class="convert-btn" onclick="toggleHlSb()" style="background:rgba(245,184,66,0.18);border-color:rgba(245,184,66,0.45);color:#fcd34d;">✦ Highlight ▾</button>
@@ -1578,7 +1603,7 @@ function manualSave() {
   }
   saveNotes();
   renderSidebar();
-  setSaved();
+  if (!_saveErrorMsg) setSaved();
   // Cloud-sync both notes
   if (note) _cloudSaveNote(note);
   if (rightNote) _cloudSaveNote(rightNote);
@@ -1601,7 +1626,7 @@ function saveLeftNote() {
   note.title = document.getElementById('note-title-input').value;
   note.updated = Date.now();
   saveNotes();
-  setSaved();
+  if (!_saveErrorMsg) setSaved();
   renderSidebar();
   const btn = document.getElementById('left-save-btn');
   if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '💾 Save'; }, 1500); }
@@ -1666,6 +1691,16 @@ let collapsedFolders = new Set();
 
 function loadNotes() {
   try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { notes = []; }
+  // Rehydrate notes whose content lives in IndexedDB (offloaded by a previous saveNotes()).
+  // Best-effort and async — openNote() has its own just-in-time fetch for whichever note
+  // is actually opened, so this just fills in the rest for later use (export, search, etc.).
+  notes.forEach(function(n) {
+    if (n._idbContent) {
+      _notesDbGet(n.id).then(function(content) {
+        if (content != null) { n.content = content; delete n._idbContent; }
+      });
+    }
+  });
 }
 
 function _stripImgSelection(html) {
@@ -1992,21 +2027,21 @@ function _healOversizedBlocks(html) {
 }
 
 // Build #pages-container from a pages array.
-// Wires up all events. Does NOT trigger reflow — caller must call _scheduleReflow().
+// Pageless: always exactly one page-box. `pagesArr` may still be a multi-entry array for
+// notes saved before this change (or ones that fell back to legacy single-string format) —
+// every entry is joined back into one flowing document, same as _flattenPagesContent does.
 function _buildPagesContainer(pagesArr, isDemo) {
   var container = document.getElementById('pages-container');
   if (!container) return;
   container.innerHTML = '';
   _activePageContent = null;
 
-  var arr = pagesArr.length ? pagesArr : [''];
-  arr.forEach(function(html, i) {
-    var pair = _createPageBox(i === 0);
-    pair.content.innerHTML = html || '';
-    if (isDemo) pair.box.classList.add('demo-page');
-    container.appendChild(pair.box);
-    if (i === 0) _activePageContent = pair.content;
-  });
+  var html = (pagesArr && pagesArr.length) ? pagesArr.join('') : '';
+  var pair = _createPageBox(true);
+  pair.content.innerHTML = html;
+  if (isDemo) pair.box.classList.add('demo-page');
+  container.appendChild(pair.box);
+  _activePageContent = pair.content;
   _applyMarginsToPageBoxes();
 }
 
@@ -2144,6 +2179,8 @@ function _pageContentTargetHeight(box) {
 }
 
 function _reflowPages() {
+  return; // Pageless mode: there is only ever one page-box, nothing to balance across pages.
+  // eslint-disable-next-line no-unreachable
   _inPageBreakApply = true;
   // Capture cursor node by reference before any DOM moves so we can
   // re-focus the correct page-content if reflow moves the cursor's block.
@@ -2406,8 +2443,7 @@ function _reflowPages() {
 
 var _reflowTimer = null;
 function _scheduleReflow() {
-  clearTimeout(_reflowTimer);
-  _reflowTimer = setTimeout(_reflowPages, 120);
+  return; // Pageless mode: no reflow engine to schedule.
 }
 
 // Legacy aliases used throughout the codebase
@@ -2418,13 +2454,10 @@ function schedulePageLines() { _scheduleReflow(); }
 function _onPageContentInput() {
   if (_inPageBreakApply) return;
   if (!activeId) return;
-  var note = notes.find(function(n) { return n.id === activeId; });
-  if (!note) return;
-  note.content = _serializePages();
-  note.updated = Date.now();
-  updateStats();
+  // Serializing the full page content (clone + walk + JSON.stringify) and recounting
+  // words is too expensive to run on every keystroke for a long note — both now happen
+  // inside scheduleSave()'s 500ms debounce instead of synchronously here.
   scheduleSave();
-  _scheduleReflow();
   _undoSchedule(); // debounced snapshot for regular typing
   // Auto-scroll cursor into view
   var sel = window.getSelection();
@@ -3333,15 +3366,109 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// ── IndexedDB: large note content (keeps localStorage well under its quota) ──
+// Mirrors the same open/put/get pattern vault.html already uses for file blobs.
+const NOTES_DB_NAME = 'gn-notes-db';
+const NOTES_DB_VER = 1;
+const NOTES_IDB_THRESHOLD = 200000; // ~200KB of HTML — above this, content lives in IndexedDB instead
+let _notesDbPromise = null;
+function _openNotesDB() {
+  if (_notesDbPromise) return _notesDbPromise;
+  _notesDbPromise = new Promise(function(resolve, reject) {
+    if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
+    var req = indexedDB.open(NOTES_DB_NAME, NOTES_DB_VER);
+    req.onupgradeneeded = function(e) {
+      var d = e.target.result;
+      if (!d.objectStoreNames.contains('content')) d.createObjectStore('content', { keyPath: 'id' });
+    };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+  return _notesDbPromise;
+}
+function _notesDbPut(id, content) {
+  return _openNotesDB().then(function(d) {
+    return new Promise(function(resolve, reject) {
+      var tx = d.transaction('content', 'readwrite');
+      var req = tx.objectStore('content').put({ id: id, content: content });
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
+  }).catch(function() {}); // best-effort; a failure here is surfaced via saveNotes()'s own catch
+}
+function _notesDbGet(id) {
+  return _openNotesDB().then(function(d) {
+    return new Promise(function(resolve, reject) {
+      var tx = d.transaction('content', 'readonly');
+      var req = tx.objectStore('content').get(id);
+      req.onsuccess = function() { resolve(req.result ? req.result.content : null); };
+      req.onerror = function() { reject(req.error); };
+    });
+  }).catch(function() { return null; });
+}
+function _notesDbDel(id) {
+  return _openNotesDB().then(function(d) {
+    return new Promise(function(resolve) {
+      var tx = d.transaction('content', 'readwrite');
+      var req = tx.objectStore('content').delete(id);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { resolve(); };
+    });
+  }).catch(function() {});
+}
+
+// Builds the array actually written to localStorage: any note whose content exceeds
+// NOTES_IDB_THRESHOLD gets its content offloaded to IndexedDB (fire-and-forget write)
+// and replaced in the localStorage copy with an empty placeholder + `_idbContent` flag.
+// The in-memory `notes` array itself is never touched, so the open editor never loses text.
+function _buildLiteNotesForStorage() {
+  return notes.map(function(n) {
+    if (n.content && n.content.length > NOTES_IDB_THRESHOLD) {
+      _notesDbPut(n.id, n.content);
+      var copy = {};
+      for (var k in n) copy[k] = n[k];
+      copy.content = '';
+      copy._idbContent = true;
+      return copy;
+    }
+    return n;
+  });
+}
+
 function saveNotes() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(_buildLiteNotesForStorage()));
+    setSaveErrorCleared();
+  } catch (e) {
+    // Quota exceeded even after offloading large notes — retry with ALL content offloaded
+    // to IndexedDB, so at least titles/metadata persist and nothing already-saved is lost.
+    try {
+      var allLite = notes.map(function(n) {
+        if (!n.content) return n;
+        _notesDbPut(n.id, n.content);
+        var copy = {};
+        for (var k in n) copy[k] = n[k];
+        copy.content = '';
+        copy._idbContent = true;
+        return copy;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allLite));
+      setSaveErrorCleared();
+    } catch (e2) {
+      setSaveError('Storage is full — your text is still here, but changes won’t survive a reload until space is freed up.');
+    }
+  }
 }
 
 function loadFolders() {
   try { folders = JSON.parse(localStorage.getItem(FOLDERS_KEY) || '[]'); } catch { folders = []; }
 }
 function saveFolders() {
-  localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+  try {
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+  } catch (e) {
+    setSaveError('Could not save folders — browser storage is full.');
+  }
 }
 
 function newFolder(parentId) {
@@ -3778,7 +3905,21 @@ function openNote(id) {
   activeId = id;
   const note = notes.find(n => n.id === id);
   if (!note) return;
+  // Large notes have their content offloaded to IndexedDB (see saveNotes/_notesDbGet) —
+  // fetch it before rendering. For every normal note this branch is skipped entirely,
+  // so openNote stays fully synchronous as before.
+  if (note._idbContent) {
+    _notesDbGet(note.id).then(function(content) {
+      if (content != null) note.content = content;
+      delete note._idbContent;
+      _openNoteRender(note);
+    });
+    return;
+  }
+  _openNoteRender(note);
+}
 
+function _openNoteRender(note) {
   document.getElementById('no-note-state').style.display = 'none';
   const ec = document.getElementById('editor-container');
   ec.style.display = 'flex';
@@ -3859,6 +4000,7 @@ function deleteNote(e, id) {
   notes = notes.filter(n => n.id !== id);
   saveNotes();
   _cloudDeleteNote(id);
+  _notesDbDel(id);
   if (activeId === id) {
     activeId = null;
     document.getElementById('editor-container').style.display = 'none';
@@ -3965,9 +4107,16 @@ function scheduleSave() {
   const _savedActiveId = activeId; // capture at schedule time to avoid switching-tab race
   saveTimer = setTimeout(() => {
     const note = _savedActiveId ? notes.find(n => n.id === _savedActiveId) : null;
+    // Expensive work (DOM serialize + word count) deferred here instead of running on
+    // every keystroke — see _onPageContentInput.
+    if (note && _savedActiveId === activeId) {
+      note.content = _serializePages();
+      note.updated = Date.now();
+      updateStats();
+    }
     saveNotes();
     renderSidebar();
-    setSaved();
+    if (!_saveErrorMsg) setSaved();
     if (note) { _cloudSaveNote(note); saveToHistory(note.folderId || null); }
   }, 500);
   _resetIdleSaveBadge();
@@ -3976,6 +4125,19 @@ function scheduleSave() {
 function setSaving() {
   document.getElementById('save-dot').className = 'save-dot saving';
   document.getElementById('save-label').textContent = 'Saving…';
+}
+
+// Third save-indicator state — surfaces storage failures instead of swallowing them.
+var _saveErrorMsg = null;
+function setSaveError(message) {
+  _saveErrorMsg = message || 'Error saving';
+  var dot = document.getElementById('save-dot');
+  var label = document.getElementById('save-label');
+  if (dot) { dot.className = 'save-dot error'; dot.title = _saveErrorMsg; }
+  if (label) { label.textContent = 'Error saving'; label.title = _saveErrorMsg; }
+}
+function setSaveErrorCleared() {
+  _saveErrorMsg = null;
 }
 
 // ── IDLE "LAST SAVED" BADGE — top-right of page 1 ──────────────────────────
@@ -4026,6 +4188,11 @@ function updateStats() {
   document.getElementById('word-count').textContent = words + (words === 1 ? ' word' : ' words');
   var chars = text.replace(/\n/g, '').length;
   document.getElementById('char-count').textContent = chars + (chars === 1 ? ' character' : ' characters');
+  var rtEl = document.getElementById('reading-time');
+  if (rtEl) {
+    var mins = Math.max(1, Math.ceil(words / 200));
+    rtEl.textContent = words === 0 ? '0 min read' : mins + ' min read';
+  }
   if (_splitActive) updatePaneStats();
 }
 
@@ -4066,13 +4233,47 @@ function toggleExportMenu() {
   const m = document.getElementById('export-menu');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
+// Top-bar "⋯" menu — holds Save, Copy, Read aloud, Record, Export, Import, My Notes.
+function toggleNpMoreMenu(forceClose) {
+  const m = document.getElementById('np-more-menu');
+  if (!m) return;
+  m.style.display = (forceClose === true || m.style.display === 'block') ? 'none' : 'block';
+}
+// Formatting-toolbar "More ▾" menu — quote/HR/clear/colors/font/photo/draw/math/margins/ruler/header.
+function toggleTbMoreMenu() {
+  const m = document.getElementById('tb-more-menu');
+  if (!m) return;
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+}
 document.addEventListener('click', e => {
   const wrap = document.getElementById('export-wrap');
   if (wrap && !wrap.contains(e.target)) document.getElementById('export-menu').style.display = 'none';
+  const moreWrap = document.getElementById('np-more-wrap');
+  if (moreWrap && !moreWrap.contains(e.target)) document.getElementById('np-more-menu').style.display = 'none';
+  const tbMoreWrap = document.getElementById('tb-more-wrap');
+  if (tbMoreWrap && !tbMoreWrap.contains(e.target)) document.getElementById('tb-more-menu').style.display = 'none';
   if (!e.target.closest('.folder-pick') && !e.target.closest('.note-move-btn')) {
     document.querySelectorAll('.folder-pick').forEach(m => m.style.display = 'none');
   }
 });
+
+// Ruler / page-header visibility — both hidden by default, toggled from More ▾,
+// preference remembered per-browser.
+function toggleRulerVisible() {
+  const on = document.body.classList.toggle('show-ruler');
+  try { localStorage.setItem('gn-np-show-ruler', on ? '1' : '0'); } catch (e) {}
+  if (on) setTimeout(buildRuler, 50);
+}
+function toggleHeaderZoneVisible() {
+  const on = document.body.classList.toggle('show-pagehdr');
+  try { localStorage.setItem('gn-np-show-pagehdr', on ? '1' : '0'); } catch (e) {}
+}
+(function _restoreChromePrefs() {
+  try {
+    if (localStorage.getItem('gn-np-show-ruler') === '1') document.body.classList.add('show-ruler');
+    if (localStorage.getItem('gn-np-show-pagehdr') === '1') document.body.classList.add('show-pagehdr');
+  } catch (e) {}
+})();
 
 function _closeExportMenu() { document.getElementById('export-menu').style.display = 'none'; }
 
@@ -6198,9 +6399,20 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     clearTimeout(saveTimer);
     clearTimeout(_rightSaveTimer);
+    // Content serialization is deferred off the per-keystroke path (see scheduleSave) —
+    // re-serialize here so Ctrl+S never saves stale content typed since the last debounce fired.
+    if (activeId) {
+      const _n = notes.find(n => n.id === activeId);
+      if (_n) { _n.content = _serializePages(); _n.updated = Date.now(); }
+    }
+    if (_splitActive && _rightNoteId) {
+      const _rn = notes.find(n => n.id === _rightNoteId);
+      if (_rn) { _rn.content = _serializePagesRight(); _rn.updated = Date.now(); }
+    }
+    updateStats();
     saveNotes();
     renderSidebar();
-    setSaved();
+    if (!_saveErrorMsg) setSaved();
     // Cloud-sync active note (and right pane if in split)
     if (activeId) { const _n = notes.find(n => n.id === activeId); if (_n) _cloudSaveNote(_n); }
     if (_splitActive && _rightNoteId) { const _rn = notes.find(n => n.id === _rightNoteId); if (_rn) _cloudSaveNote(_rn); }
@@ -6785,25 +6997,44 @@ function initCloudSync() {
   } catch(e) { console.warn('Cloud sync init failed:', e); }
 }
 
+function _welcomeNoteContent() {
+  return `<h1>Welcome to GeniusNotes AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p>`;
+}
+
 async function _seedWelcomeNote(uid) {
   try {
     const metaRef = _fbDb.doc(`users/${uid}/meta/welcome`);
     const snap = await metaRef.get();
-    if (snap.exists) return; // already seeded
+    const welcomeId = 'welcome-' + uid.slice(0, 8);
+
+    if (snap.exists) {
+      // Already seeded — only push an update if the guide content itself changed
+      // (GUIDE_VERSION bumped) and only to the one dedicated welcome note (deterministic
+      // id, not a random genId()), so a user's own notes are never touched.
+      const seenVersion = snap.data().version || 1;
+      if (seenVersion >= GUIDE_VERSION) return;
+      const noteRef = _fbDb.doc(`users/${uid}/notepad_notes/${welcomeId}`);
+      const noteSnap = await noteRef.get();
+      if (noteSnap.exists) {
+        await noteRef.set({ content: _welcomeNoteContent(), updated: Date.now() }, { merge: true });
+      }
+      await metaRef.set({ version: GUIDE_VERSION }, { merge: true });
+      return;
+    }
+
     const folderId = 'folder-commands-' + uid.slice(0, 8);
     const folder = { id: folderId, name: 'Prompt Guide', created: Date.now() };
-    const welcomeId = 'welcome-' + uid.slice(0, 8);
     const welcomeNote = {
       id: welcomeId,
       title: 'Getting Started — GeniusNotes AI',
-      content: `<h1>Welcome to GeniusNotes AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p>`,
+      content: _welcomeNoteContent(),
       folderId,
       created: Date.now(),
       updated: Date.now()
     };
     await _fbDb.doc(`users/${uid}/notepad_folders/${folderId}`).set(folder);
     await _fbDb.doc(`users/${uid}/notepad_notes/${welcomeId}`).set(welcomeNote);
-    await metaRef.set({ seeded: true, at: Date.now() });
+    await metaRef.set({ seeded: true, at: Date.now(), version: GUIDE_VERSION });
   } catch(e) {}
 }
 
@@ -6818,6 +7049,19 @@ function _startCloudListeners() {
         if (ch.type === 'removed') {
           const i = notes.findIndex(n => n.id === d.id);
           if (i >= 0 && d.id !== activeId) { notes.splice(i, 1); changed = true; }
+        } else if (d.chunked) {
+          // Content lives in a `chunks` subcollection — merge metadata now, fetch+fill content async.
+          const i = notes.findIndex(n => n.id === d.id);
+          if (i >= 0) { if (JSON.stringify(notes[i]) !== JSON.stringify(d)) { notes[i] = d; changed = true; } }
+          else { notes.push(d); changed = true; }
+          _cloudFetchChunkedContent(d.id).then(function(content) {
+            const j = notes.findIndex(n => n.id === d.id);
+            if (j >= 0) {
+              notes[j] = Object.assign({}, notes[j], { content: content });
+              saveNotes();
+              if (d.id === activeId) _openNoteRender(notes[j]);
+            }
+          });
         } else {
           const i = notes.findIndex(n => n.id === d.id);
           if (i >= 0) {
@@ -6855,8 +7099,13 @@ function _uploadLocalToCloud() {
   if (!_fbDb || !_fbUid) return;
   let histEntries = [];
   try { histEntries = JSON.parse(localStorage.getItem('gn-history-' + _fbUid) || '[]'); } catch {}
+  // Oversized notes go through _cloudSaveNote (which chunks content into a subcollection,
+  // safe for Firestore's 1MB doc limit); everything else batches normally as before.
+  const bigNotes = notes.filter(n => (n.content || '').length > CLOUD_CHUNK_THRESHOLD);
+  const smallNotes = notes.filter(n => (n.content || '').length <= CLOUD_CHUNK_THRESHOLD);
+  bigNotes.forEach(n => _cloudSaveNote(n));
   const all = [
-    ...notes.map(n => ({ path: `users/${_fbUid}/notepad_notes/${n.id}`, data: n })),
+    ...smallNotes.map(n => ({ path: `users/${_fbUid}/notepad_notes/${n.id}`, data: Object.assign({}, n, { chunked: false, chunkCount: 0 }) })),
     ...folders.map(f => ({ path: `users/${_fbUid}/notepad_folders/${f.id}`, data: f })),
     ...histEntries.filter(h => h && h.id).map(h => ({ path: `users/${_fbUid}/history/${h.id}`, data: h }))
   ];
@@ -6870,22 +7119,78 @@ function _uploadLocalToCloud() {
       .then(() => { if (i + 400 >= all.length) _setCloudIcon('☁️'); })
       .catch(() => _setCloudIcon('⚠️'));
   }
-  if (!all.length) _setCloudIcon('☁️');
+  if (!all.length && !bigNotes.length) _setCloudIcon('☁️');
+}
+
+// Firestore caps a document at 1MB. A note's `content` is almost always what pushes it
+// over, so a note bigger than CLOUD_CHUNK_THRESHOLD gets its content split into a `chunks`
+// subcollection instead of inlined on the parent doc (which just gets {chunked:true, chunkCount}).
+const CLOUD_CHUNK_THRESHOLD = 700000; // chars
+const CLOUD_CHUNK_SIZE = 500000;      // chars per chunk — safely under 1MB with field overhead
+let _cloudTooLargeWarned = false;
+
+function _cloudChunkContent(content) {
+  var chunks = [];
+  for (var i = 0; i < content.length; i += CLOUD_CHUNK_SIZE) chunks.push(content.slice(i, i + CLOUD_CHUNK_SIZE));
+  return chunks;
 }
 
 function _cloudSaveNote(note) {
   if (!_fbDb || !_fbUid || !note) return;
   _setCloudIcon('🔄');
-  _fbDb.doc(`users/${_fbUid}/notepad_notes/${note.id}`).set(note, { merge: true })
-    .then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
-  // Push to shared_notes so share.html sees changes in real-time
-  if (note.shareId && _fbDb) {
-    _fbDb.collection('shared_notes').doc(note.shareId).get().then(doc => {
-      if (doc.exists && doc.data().collaborative) {
-        doc.ref.update({ content: note.content || '', title: note.title || 'Untitled', lastEditedAt: Date.now() }).catch(() => {});
-      }
-    }).catch(() => {});
+  var content = note.content || '';
+  var docRef = _fbDb.doc(`users/${_fbUid}/notepad_notes/${note.id}`);
+
+  if (content.length > CLOUD_CHUNK_THRESHOLD) {
+    var chunks = _cloudChunkContent(content);
+    var parentDoc = Object.assign({}, note, { content: '', chunked: true, chunkCount: chunks.length });
+    var batch = _fbDb.batch();
+    chunks.forEach(function(chunkText, i) {
+      batch.set(docRef.collection('chunks').doc(String(i)), { i: i, text: chunkText });
+    });
+    batch.set(docRef, parentDoc, { merge: true });
+    batch.commit().then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
+  } else {
+    docRef.set(Object.assign({}, note, { chunked: false, chunkCount: 0 }), { merge: true })
+      .then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
   }
+
+  // Push to shared_notes so share.html sees changes in real-time. Firestore's 1MB limit
+  // applies here too — if the note is too large, skip the content push (title/metadata still
+  // update) and warn the user once instead of letting the write silently fail.
+  if (note.shareId && _fbDb) {
+    if (content.length > CLOUD_CHUNK_THRESHOLD) {
+      if (!_cloudTooLargeWarned) {
+        _cloudTooLargeWarned = true;
+        _showToast('This note is too large to live-share in full — the shared link will show an earlier snapshot until it’s shorter.');
+      }
+    } else {
+      _fbDb.collection('shared_notes').doc(note.shareId).get().then(doc => {
+        if (doc.exists && doc.data().collaborative) {
+          doc.ref.update({ content: content, title: note.title || 'Untitled', lastEditedAt: Date.now() }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+  }
+}
+
+// Reassembles a chunked note's full content from its `chunks` subcollection.
+function _cloudFetchChunkedContent(noteId) {
+  return _fbDb.doc(`users/${_fbUid}/notepad_notes/${noteId}`).collection('chunks').orderBy('i').get()
+    .then(function(snap) {
+      var parts = [];
+      snap.forEach(function(doc) { parts.push(doc.data().text || ''); });
+      return parts.join('');
+    }).catch(function() { return ''; });
+}
+
+// Minimal, dependency-free toast — reuses no existing component since none fit this one-off warning.
+function _showToast(message) {
+  var el = document.createElement('div');
+  el.textContent = message;
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;border:1px solid rgba(239,68,68,0.4);padding:10px 16px;border-radius:10px;font-size:0.82rem;max-width:420px;text-align:center;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
+  document.body.appendChild(el);
+  setTimeout(function() { el.remove(); }, 6000);
 }
 
 function _cloudDeleteNote(id) {
@@ -7190,12 +7495,13 @@ function _saveReturnNote() {
   if (activeId) localStorage.setItem('gn-notepad-return', activeId);
 }
 
+const GUIDE_VERSION = 2;
 const _DEMO_NOTE_ID = '__demo_commands__';
 const _DEMO_NOTE = {
   id: _DEMO_NOTE_ID,
   _isDemo: true,
   title: 'Prompt Guide',
-  content: `<h1>Prompt Guide</h1><p style="color:#8888aa;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
+  content: `<h1>Prompt Guide</h1><p style="color:#8888aa;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
   created: Date.now(),
   updated: Date.now()
 };
@@ -7418,20 +7724,22 @@ function _createRightPageBox(isFirst) {
   return { box: box, content: pc };
 }
 
+// Pageless: always exactly one right page-box, same join-back-into-one-flow approach as
+// the left pane's _buildPagesContainer (handles legacy multi-entry array format).
 function _buildPagesContainerRight(pagesArr) {
   var container = document.getElementById('pages-container-right');
   container.innerHTML = '';
-  if (!pagesArr || !pagesArr.length) pagesArr = [''];
-  for (var i = 0; i < pagesArr.length; i++) {
-    var pair = _createRightPageBox(i === 0);
-    pair.content.innerHTML = pagesArr[i] || '';
-    container.appendChild(pair.box);
-  }
-  // Reflow after layout is measured
-  requestAnimationFrame(_reflowPagesRight);
+  var html = (pagesArr && pagesArr.length) ? pagesArr.join('') : '';
+  var pair = _createRightPageBox(true);
+  pair.content.innerHTML = html;
+  container.appendChild(pair.box);
 }
 
+// No-op: pageless mode never balances content across pages (there's only ever one).
 function _reflowPagesRight() {
+  return;
+}
+function _reflowPagesRight_LEGACY_UNUSED() {
   var container = document.getElementById('pages-container-right');
   // Overflow pass: move blocks from full pages to the next
   for (var iteration = 0; iteration < 60; iteration++) {
@@ -7487,19 +7795,20 @@ function _getEditorRightText() {
 let _rightSaveTimer = null;
 function _onRightPageInput() {
   if (!_rightNoteId) return;
-  var note = notes.find(function(n) { return n.id === _rightNoteId; });
-  if (note) { note.content = _serializePagesRight(); note.updated = Date.now(); }
+  var _capturedId = _rightNoteId;
   setSaving();
   _resetIdleSaveBadge();
   clearTimeout(_rightSaveTimer);
-  var _capturedNote = note;
   _rightSaveTimer = setTimeout(function() {
+    // Deferred (not per-keystroke) for the same reason as the left pane's scheduleSave.
+    var note = notes.find(function(n) { return n.id === _capturedId; });
+    if (note) { note.content = _serializePagesRight(); note.updated = Date.now(); }
     saveNotes();
-    setSaved();
-    if (_capturedNote) _cloudSaveNote(_capturedNote);
+    if (!_saveErrorMsg) setSaved();
+    updateStats();
+    updatePaneStats();
+    if (note) _cloudSaveNote(note);
   }, 500);
-  updateStats();
-  updatePaneStats();
 }
 
 // Event delegation for slash commands / prompt on right page-content divs

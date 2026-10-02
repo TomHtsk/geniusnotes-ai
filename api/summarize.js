@@ -374,41 +374,8 @@ async function fetchTranscriptViaInnertube(videoId) {
   return { _captionUrl: baseUrl + fallbackSep + 'fmt=json3' };
 }
 
-async function fetchAudioAndTranscribeViaGroq(videoId) {
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) throw new Error('Groq key not configured');
-  const { Innertube } = await import('youtubei.js');
-  const opts = process.env.YT_COOKIE ? { cookie: process.env.YT_COOKIE } : {};
-  const yt = await Innertube.create(opts);
-  const stream = await yt.download(videoId, { type: 'audio', quality: 'best', format: 'mp4' });
-  const chunks = [];
-  let totalSize = 0;
-  for await (const chunk of stream) {
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    chunks.push(buf);
-    totalSize += buf.length;
-    if (totalSize > 24 * 1024 * 1024) throw new Error('Audio too large (>24MB). Try a shorter video.');
-  }
-  const audioBuffer = Buffer.concat(chunks);
-  if (audioBuffer.length < 1000) throw new Error('Audio file too small');
-  const form = new FormData();
-  form.append('file', new Blob([audioBuffer], { type: 'audio/mp4' }), 'audio.mp4');
-  form.append('model', 'whisper-large-v3');
-  form.append('response_format', 'text');
-  const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${groqKey}` },
-    body: form,
-    signal: AbortSignal.timeout(50000)
-  });
-  if (!whisperRes.ok) {
-    const e = await whisperRes.text();
-    throw new Error(`Whisper ${whisperRes.status}: ${e.slice(0, 200)}`);
-  }
-  const text = await whisperRes.text();
-  if (!text || text.length < 10) throw new Error('Empty transcription result');
-  return text.trim();
-}
+// Audio download + Whisper transcription was removed on purpose: NoteCaptain only reads
+// existing captions/transcripts and never downloads video or audio from YouTube.
 
 async function fetchFullTranscript(videoId) {
   const supadataKey = process.env.SUPADATA_API_KEY;
@@ -915,11 +882,6 @@ module.exports = async function handler(req, res) {
         } catch (e) { errors.supadata = e.message; }
       }
 
-      // 6. Audio → Groq Whisper (last resort: download audio and AI transcribe)
-      try {
-        const r = await fetchAudioAndTranscribeViaGroq(videoId);
-        if (r && r.length > 10) return res.status(200).json({ summary: r });
-      } catch (e) { errors.groq_whisper = e.message; }
 
       const isQuotaErr = Object.values(errors).some(m => /limit|quota/i.test(m));
       return res.status(500).json({

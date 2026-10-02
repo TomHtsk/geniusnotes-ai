@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
       subscription_data: { metadata: { uid } },
       metadata: { uid },
       success_url: `${base}/dashboard.html?pro=1`,
-      cancel_url: `${base}/#pricing`,
+      cancel_url: `${base}/pricing.html`,
     });
 
     return res.status(200).json({ url: session.url });

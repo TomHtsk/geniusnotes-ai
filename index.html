@@ -568,6 +568,8 @@
     .um-btn-disabled { opacity:0.38;cursor:not-allowed; }
     .um-convert-row { display:flex;flex-wrap:wrap;gap:7px; }
     .um-convert-btn { display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:9px;font-size:0.78rem;font-weight:700;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);cursor:not-allowed;font-family:inherit;position:relative; }
+    .um-convert-btn.enabled { cursor:pointer;color:rgba(255,255,255,0.9);background:rgba(124,58,237,0.15);border-color:rgba(124,58,237,0.35);transition:background 0.15s; }
+    .um-convert-btn.enabled:hover { background:rgba(124,58,237,0.28); }
     .um-soon { font-size:0.6rem;font-weight:800;color:#a78bfa;letter-spacing:0.04em;margin-left:2px;opacity:0.8; }
     /* Record mic button */
     .rec-mic-btn { width:72px;height:72px;border-radius:50%;border:none;background:#7c3aed;color:#fff;font-size:1.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;transition:background 0.2s,transform 0.1s;box-shadow:0 0 0 0 rgba(124,58,237,0.4); }
@@ -912,6 +914,71 @@ document.addEventListener('click', function (e) {
 
 // ── YouTube Transcribe ──
 let _ytText = '', _ytTitle = '';
+let _ytVideoTitle = '', _ytChannel = '', _ytPageUrl = '', _ytSourceLine = '';
+
+// Splits a flat caption blob into readable paragraphs: groups sentences ~4-6 at a
+// time, and forces a new paragraph at a detected "Speaker Name:" label so dialogue
+// doesn't run together with narration.
+function _cleanTranscriptText(raw) {
+  if (!raw) return '';
+  var text = raw.replace(/\s+/g, ' ').trim();
+  var speakerRe = /([A-Z][\w.'-]+(?: [A-Z][\w.'-]+){0,3}:)\s*/g;
+  text = text.replace(speakerRe, function (match, label, offset) {
+    return (offset > 0 ? '\u0000' : '') + label + ' ';
+  });
+  var segments = text.split('\u0000');
+  var paragraphs = [];
+  segments.forEach(function (segment) {
+    segment = segment.trim();
+    if (!segment) return;
+    var labelMatch = segment.match(/^([A-Z][\w.'-]+(?: [A-Z][\w.'-]+){0,3}:)\s*/);
+    var label = labelMatch ? labelMatch[1] : null;
+    var body = labelMatch ? segment.slice(labelMatch[0].length) : segment;
+    var sentences = body.match(/[^.!?]+[.!?]+(?:\s+|$)/g) || (body ? [body] : []);
+    if (!sentences.length) { if (label) paragraphs.push(label); return; }
+    var chunkSize = 5;
+    for (var i = 0; i < sentences.length; i += chunkSize) {
+      var chunk = sentences.slice(i, i + chunkSize).map(function (s) { return s.trim(); }).join(' ').trim();
+      if (!chunk) continue;
+      if (label && i === 0) chunk = label + ' ' + chunk;
+      paragraphs.push(chunk);
+    }
+  });
+  return paragraphs.join('\n\n');
+}
+
+function _applyYtMeta() {
+  _ytTitle = _ytVideoTitle || 'YouTube Transcript';
+  _ytSourceLine = 'Source: ' + (_ytVideoTitle || 'YouTube Video') + ' — ' + (_ytChannel || 'Unknown channel') + ' (' + _ytPageUrl + ')';
+  var titleEl = document.getElementById('yt-video-title');
+  var chanEl = document.getElementById('yt-video-channel');
+  var linkEl = document.getElementById('yt-watch-link');
+  if (titleEl) titleEl.textContent = _ytVideoTitle || 'YouTube Video';
+  if (chanEl) chanEl.textContent = _ytChannel || '';
+  if (linkEl) linkEl.href = _ytPageUrl || '#';
+}
+
+function _fetchYtOembed(url) {
+  fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url))
+    .then(function (r) { if (!r.ok) throw new Error('oembed failed'); return r.json(); })
+    .then(function (data) {
+      _ytVideoTitle = (data && data.title) || '';
+      _ytChannel = (data && data.author_name) || '';
+      _applyYtMeta();
+    })
+    .catch(function () { _applyYtMeta(); });
+}
+
+// Finishes a successful transcript fetch from any of the three sources below:
+// cleans the text, populates the preview, and shows the result step.
+function _finishYtTranscript(raw) {
+  _ytText = _cleanTranscriptText(raw);
+  document.getElementById('yt-preview-text').textContent = _ytText || '(No transcript found)';
+  document.getElementById('yt-step-proc').style.display = 'none';
+  document.getElementById('yt-step-result').style.display = '';
+  document.getElementById('yt-convert-row').style.display = '';
+  document.getElementById('yt-convert-panel').style.display = 'none';
+}
 
 async function _tryBrowserTranscript(vid) {
   // Attempt to fetch captions directly from the browser (user's IP + YouTube cookies)
@@ -935,7 +1002,9 @@ async function _tryBrowserTranscript(vid) {
 async function goYtTranscribe() {
   const url = document.getElementById('yt-url-input').value.trim();
   if (!url) return;
-  _ytTitle = 'YouTube Transcript';
+  _ytVideoTitle = ''; _ytChannel = ''; _ytPageUrl = url;
+  _applyYtMeta();
+  _fetchYtOembed(url);
   document.getElementById('yt-step-proc').style.display = '';
   document.getElementById('yt-step-result').style.display = 'none';
   document.getElementById('yt-modal').style.display = 'flex';
@@ -945,10 +1014,7 @@ async function goYtTranscribe() {
     if (m) {
       const clientText = await _tryBrowserTranscript(m[1]);
       if (clientText) {
-        _ytText = clientText;
-        document.getElementById('yt-preview-text').textContent = _ytText;
-        document.getElementById('yt-step-proc').style.display = 'none';
-        document.getElementById('yt-step-result').style.display = '';
+        _finishYtTranscript(clientText);
         return;
       }
     }
@@ -989,10 +1055,7 @@ async function goYtTranscribe() {
           const clientText = (captData.events || []).filter(e => e.segs)
             .map(e => e.segs.map(s => s.utf8 || '').join('')).join(' ').replace(/\s+/g, ' ').trim();
           if (clientText.length > 50) {
-            _ytText = clientText;
-            document.getElementById('yt-preview-text').textContent = _ytText;
-            document.getElementById('yt-step-proc').style.display = 'none';
-            document.getElementById('yt-step-result').style.display = '';
+            _finishYtTranscript(clientText);
             return;
           }
         }
@@ -1000,10 +1063,7 @@ async function goYtTranscribe() {
       throw new Error('Could not retrieve transcript. The video may have no captions. Try uploading the audio/video file directly.');
     }
 
-    _ytText = (d.summary || d.transcript || '').trim();
-    document.getElementById('yt-preview-text').textContent = _ytText || '(No transcript found)';
-    document.getElementById('yt-step-proc').style.display = 'none';
-    document.getElementById('yt-step-result').style.display = '';
+    _finishYtTranscript((d.summary || d.transcript || '').trim());
   } catch(err) {
     document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f87171;">${err.message}</span><br><br><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
   }
@@ -1022,12 +1082,167 @@ function ytImportToNotepad() {
   _doYtImportToNotepad();
 }
 function _doYtImportToNotepad() {
-  localStorage.setItem('gn-notepad-pending', _ytText);
+  const content = _ytText ? (_ytSourceLine + '\n\n' + _ytText) : _ytText;
+  localStorage.setItem('gn-notepad-pending', content);
   localStorage.setItem('gn-notepad-pending-title', _ytTitle);
   window.location.href = 'notepad.html';
 }
-function ytDownload(fmt) { _umDownloadGeneric(_ytText, _ytTitle, fmt); }
+function ytDownload(fmt) {
+  const content = _ytText ? (_ytSourceLine + '\n\n' + _ytText) : _ytText;
+  _umDownloadGeneric(content, _ytTitle, fmt);
+}
 document.getElementById('yt-url-input').addEventListener('keydown', e => { if (e.key === 'Enter') goYtTranscribe(); });
+
+// ── YouTube Convert (Cornell Notes / Flashcards / Summary / Study Guide / Outline) ──
+const YT_CONVERT_MODE = { cornell: 'cornell', summary: 'bullets', studyguide: 'studyguide', outline: 'outline' };
+const YT_CONVERT_VERB_LABEL = { cornell: 'Cornell Notes', summary: 'a summary', studyguide: 'a study guide', outline: 'an outline' };
+const YT_CONVERT_TITLE_LABEL = { cornell: 'Cornell Notes', summary: 'Summary', studyguide: 'Study Guide', outline: 'Outline' };
+const YT_CONVERT_MAX_CHARS = 12000;
+let _ytConvertResultText = '', _ytConvertKind = '';
+
+function ytConvertBack() {
+  document.getElementById('yt-convert-panel').style.display = 'none';
+  document.getElementById('yt-convert-row').style.display = '';
+}
+
+async function ytConvert(kind) {
+  if (!_ytText) return;
+
+  if (kind === 'flashcards') {
+    localStorage.setItem('gn-to-flashcards', _ytText);
+    window.open('create-deck.html', '_blank');
+    return;
+  }
+
+  const user = window._fauth && window._fauth.currentUser;
+  const realUser = user && !user.isAnonymous;
+  if (!realUser) {
+    if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to convert this transcript', () => ytConvert(kind));
+    return;
+  }
+
+  _ytConvertKind = kind;
+  document.getElementById('yt-convert-row').style.display = 'none';
+  document.getElementById('yt-convert-panel').style.display = '';
+  document.getElementById('yt-convert-loading').style.display = '';
+  document.getElementById('yt-convert-loading-text').textContent = 'Converting to ' + (YT_CONVERT_VERB_LABEL[kind] || kind) + '…';
+  document.getElementById('yt-convert-error').style.display = 'none';
+  document.getElementById('yt-convert-notice').style.display = 'none';
+  document.getElementById('yt-convert-output').style.display = 'none';
+  document.getElementById('yt-convert-actions').style.display = 'none';
+
+  let text = _ytText;
+  let truncated = false;
+  if (text.length > YT_CONVERT_MAX_CHARS) {
+    text = text.slice(0, YT_CONVERT_MAX_CHARS);
+    truncated = true;
+  }
+
+  try {
+    const resp = await _authFetch('/api/writing', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, mode: YT_CONVERT_MODE[kind] })
+    });
+    let d;
+    try { d = await resp.json(); } catch (_) { throw new Error(resp.status === 504 ? 'Request timed out — try again.' : `Server error (${resp.status}).`); }
+
+    if (resp.status === 401 && d.error === 'sign_in_required') {
+      ytConvertBack();
+      if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to convert this transcript', () => ytConvert(kind));
+      return;
+    }
+    if (resp.status === 402 && d.error === 'limit_reached') {
+      ytConvertBack();
+      if (window.gnShowUpgradeModal) window.gnShowUpgradeModal(Object.assign({}, d, { kind: 'writing' }));
+      return;
+    }
+    if (!resp.ok) throw new Error(d.error || 'Conversion failed.');
+
+    document.getElementById('yt-convert-loading').style.display = 'none';
+    if (truncated) {
+      const noticeEl = document.getElementById('yt-convert-notice');
+      noticeEl.style.display = '';
+      noticeEl.textContent = 'Note: the transcript was shortened to fit.';
+    }
+    const outputEl = document.getElementById('yt-convert-output');
+    outputEl.style.display = '';
+
+    if (kind === 'cornell') {
+      const parsed = _parseYtCornellResult(d.result || '');
+      if (parsed) {
+        outputEl.innerHTML = _renderYtCornellHTML(parsed);
+        _ytConvertResultText = _ytCornellToPlainText(parsed);
+      } else {
+        outputEl.textContent = d.result || '';
+        _ytConvertResultText = d.result || '';
+      }
+    } else {
+      outputEl.textContent = d.result || '';
+      _ytConvertResultText = d.result || '';
+    }
+    document.getElementById('yt-convert-actions').style.display = '';
+  } catch (err) {
+    document.getElementById('yt-convert-loading').style.display = 'none';
+    const errEl = document.getElementById('yt-convert-error');
+    errEl.style.display = '';
+    errEl.textContent = err.message || 'Something went wrong.';
+    document.getElementById('yt-convert-actions').style.display = '';
+  }
+}
+
+// Same tolerant parsing notepad.html's _runDocFormat uses for cornell mode's
+// JSON-text result: strip to the first {...last}, fix unescaped literal newlines
+// inside JSON string values, strip trailing commas before }/].
+function _parseYtCornellResult(raw) {
+  try {
+    const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+    if (start === -1 || end === -1) return null;
+    let jsonStr = raw.slice(start, end + 1);
+    jsonStr = jsonStr.replace(/:\s*"((?:[^"\\]|\\.)*)"/gs, (m, inner) =>
+      ': "' + inner.replace(/\r?\n/g, ' ').replace(/\t/g, ' ') + '"'
+    );
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(jsonStr);
+  } catch (e) { return null; }
+}
+
+function _escYt(s) { return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])); }
+
+function _renderYtCornellHTML(data) {
+  const rows = (data.rows || []).map(r =>
+    `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <div style="flex:0 0 32%;font-weight:700;color:#c4b5fd;">${_escYt(r.cue || '')}</div>
+      <div style="flex:1;color:rgba(255,255,255,0.8);">${_escYt(r.note || '')}</div>
+    </div>`
+  ).join('');
+  return `<div style="font-weight:800;color:#f0f0ff;margin-bottom:8px;">${_escYt(data.topic || 'Cornell Notes')}</div>` +
+    rows +
+    (data.summary ? `<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);"><strong style="color:#a78bfa;">Summary:</strong> ${_escYt(data.summary)}</div>` : '');
+}
+
+function _ytCornellToPlainText(data) {
+  let out = (data.topic || 'Cornell Notes') + '\n\n';
+  (data.rows || []).forEach(r => { out += (r.cue || '') + '\n' + (r.note || '') + '\n\n'; });
+  if (data.summary) out += 'Summary: ' + data.summary;
+  return out.trim();
+}
+
+function _doYtConvertImportToNotepad() {
+  if (!_ytConvertResultText) return;
+  const doImport = () => {
+    const content = _ytSourceLine + '\n\n' + _ytConvertResultText;
+    localStorage.setItem('gn-notepad-pending', content);
+    localStorage.setItem('gn-notepad-pending-title', (_ytVideoTitle || 'YouTube') + ' — ' + (YT_CONVERT_TITLE_LABEL[_ytConvertKind] || _ytConvertKind));
+    window.location.href = 'notepad.html';
+  };
+  const user = window._fauth && window._fauth.currentUser;
+  const realUser = user && !user.isAnonymous;
+  if (!realUser) {
+    if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to send this to your Notepad', doImport);
+    return;
+  }
+  doImport();
+}
 
 // ── Record Modal ──
 let _rmText = '', _rmRecognition = null, _rmRecording = false, _rmTimer = null, _rmSeconds = 0;
@@ -1210,6 +1425,13 @@ function _umDownloadGeneric(text, name, fmt) {
         </div>
       </div>
       <div id="yt-step-result" style="display:none;">
+        <div class="um-section" style="margin-bottom:14px;">
+          <div id="yt-video-title" style="font-size:0.95rem;font-weight:800;color:#f0f0ff;margin-bottom:3px;"></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:0.78rem;color:rgba(255,255,255,0.55);">
+            <span id="yt-video-channel"></span>
+            <a id="yt-watch-link" href="#" target="_blank" rel="noopener noreferrer" style="color:#a78bfa;font-weight:700;text-decoration:none;">Watch on YouTube ↗</a>
+          </div>
+        </div>
         <div class="um-section">
           <div class="um-result-label">TRANSCRIPT</div>
           <div class="um-preview" id="yt-preview-text"></div>
@@ -1224,13 +1446,26 @@ function _umDownloadGeneric(text, name, fmt) {
           </div>
         </div>
         <div class="um-section">
-          <div class="um-result-label" style="margin-bottom:10px;">CONVERT TO NOTE TYPE <span style="color:#7c3aed;font-size:0.62rem;margin-left:6px;">COMING SOON</span></div>
-          <div class="um-convert-row">
-            <button class="um-convert-btn">Cornell Notes<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Flashcards<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Summary<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Study Guide<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Outline<span class="um-soon">SOON</span></button>
+          <div class="um-result-label" style="margin-bottom:10px;">CONVERT TO NOTE TYPE</div>
+          <div class="um-convert-row" id="yt-convert-row">
+            <button class="um-convert-btn enabled" onclick="ytConvert('cornell')">Cornell Notes</button>
+            <button class="um-convert-btn enabled" onclick="ytConvert('flashcards')">Flashcards</button>
+            <button class="um-convert-btn enabled" onclick="ytConvert('summary')">Summary</button>
+            <button class="um-convert-btn enabled" onclick="ytConvert('studyguide')">Study Guide</button>
+            <button class="um-convert-btn enabled" onclick="ytConvert('outline')">Outline</button>
+          </div>
+          <div id="yt-convert-panel" style="display:none;margin-top:14px;">
+            <div id="yt-convert-loading" class="um-proc" style="display:none;">
+              <div class="um-spin"></div>
+              <div id="yt-convert-loading-text">Converting…</div>
+            </div>
+            <div id="yt-convert-error" style="display:none;color:#f87171;font-size:0.84rem;padding:8px 0 4px;"></div>
+            <div id="yt-convert-notice" style="display:none;color:#a78bfa;font-size:0.74rem;margin-bottom:8px;"></div>
+            <div id="yt-convert-output" class="um-preview" style="display:none;max-height:220px;"></div>
+            <div id="yt-convert-actions" class="um-actions" style="display:none;margin-top:10px;">
+              <button class="um-btn um-btn-purple" onclick="_doYtConvertImportToNotepad()">Import to Notepad</button>
+              <button class="um-btn um-btn-ghost" onclick="ytConvertBack()">← Back to transcript</button>
+            </div>
           </div>
         </div>
       </div>

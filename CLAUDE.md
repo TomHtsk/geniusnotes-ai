@@ -18,6 +18,10 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
 4. **Never trust the browser for plan/limits.** Plan and usage are checked server-side (`getUserPlan`, `checkAndIncrementUsage`, `checkYoutubeDailyLimit`, `checkGuestYoutubeLimit`).
 5. **Secrets only in Vercel env vars.** `FIREBASE_SERVICE_ACCOUNT` is parsed by `_parseServiceAccount` (tolerates extra text / base64).
 6. **AI provider is Groq** (OpenAI-compatible endpoint), not OpenAI. Transcription: Supadata (YouTube), Groq Whisper / AssemblyAI (audio).
+   - **All model names live in `api/_lib/models.js`** (`MODEL_LARGE`, `MODEL_SMALL`, `MODEL_VISION`, `MODEL_WHISPER`, `MODEL_WHISPER_TURBO`) — never hardcode a Groq model string in any `/api` file. Each has an optional env var override (`GROQ_MODEL_LARGE`, `GROQ_MODEL_SMALL`, `GROQ_MODEL_VISION`) so a future Groq deprecation is fixed in Vercel, not code.
+   - **Current models (as of Oct 2026 fix)**: `MODEL_LARGE = openai/gpt-oss-120b` (was `llama-3.3-70b-versatile`, shut down), `MODEL_SMALL = openai/gpt-oss-20b` (was `llama-3.1-8b-instant`, shut down). Both are **reasoning models** — every call site sets `include_reasoning: false` so `message.content` stays the final answer only, and `max_tokens` was raised ~50% across the board to leave room for internal reasoning. JSON-expecting calls (Cornell notes, citation, checker, textbook question-matching) add `response_format: { type: 'json_object' }` on top of the existing tolerant string-parsing fallback — only where the model is expected to return a single top-level JSON *object* (not an array, not plain text).
+   - **`MODEL_VISION` is a known, deferred gap** — still defaults to `meta-llama/llama-4-scout-17b-16e-instruct`, which is ALSO deprecated and currently broken (image upload/OCR, homework solver's image path, textbook question-image extraction). No vision-capable replacement was confirmed on Groq at fix time; user explicitly chose to revisit this later rather than guess. Fix by setting `GROQ_MODEL_VISION` in Vercel once a replacement model is confirmed — zero code changes needed.
+   - **Friendly errors**: every Groq-calling endpoint logs the real error server-side (`console.error`) and returns `"This AI feature is temporarily unavailable. Please try again soon."` (502) to the client when the error looks like a model-not-found/deprecation error (`isModelUnavailableError` in `models.js`, checks Groq's `error.code` first, falls back to message-text matching). Other errors (bad input, rate limits, timeouts) keep their existing specific messages.
 7. **Wikipedia content is CC BY-SA 4.0** — keep the attribution + license link on the result card, the full-screen reader, and notes sent to the Notepad.
 
 ### Plans and limits (`PLAN_LIMITS` in `api/_lib/auth.js`)
@@ -399,7 +403,7 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 ### api/writing.js key modes
 - `grammar`: minLen = 1 (no minimum)
 - `academic`: preserves original content, no fabricated citations, ~same length as input
-- `bullets`, `outline`, `studyguide`: use 70b model, 3000 max tokens (was 8b/2000)
+- `bullets`, `outline`, `studyguide`: use `MODEL_LARGE`, 4500 max tokens
 - `cornell`: 4000 max tokens, returns JSON `{topic, rows[], summary}`
 
 ### api/summarize.js
@@ -407,7 +411,7 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 
 ### api/extract.js
 - PPTX: `fileType:'pptx'` → JSZip → `<a:t>` XML extraction
-- Image OCR: Groq vision `meta-llama/llama-4-scout-17b-16e-instruct`
+- Image OCR: Groq vision `MODEL_VISION` — still the deprecated Scout model, deferred gap, see "AI provider" section above
 
 ---
 

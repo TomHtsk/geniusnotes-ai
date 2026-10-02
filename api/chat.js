@@ -5,6 +5,8 @@ const SYSTEM = `You are an expert AI study tutor for NoteCaptain AI. Help studen
 - Use **bold** for key terms
 - Be encouraging but academically rigorous`;
 
+const { MODEL_SMALL } = require('./_lib/models');
+
 async function groqFetch(body, apiKey) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -39,10 +41,11 @@ module.exports = async function handler(req, res) {
     if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
     const r = await groqFetch({
-      model: 'llama-3.1-8b-instant',
+      model: MODEL_SMALL,
       messages: [{ role: 'system', content: SYSTEM }, ...messages.slice(-20)],
-      max_tokens: 700,
+      max_tokens: 1000,
       temperature: 0.65,
+      include_reasoning: false,
     }, apiKey);
 
     const data = await r.json();

@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function ddgLookup(query) {
   try {
@@ -15,20 +16,26 @@ async function groqCall(prompt, apiKey) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: MODEL_LARGE,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 500,
-      temperature: 0.5
+      max_tokens: 750,
+      temperature: 0.5,
+      include_reasoning: false
     }),
     signal: AbortSignal.timeout(20000)
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error?.message || 'AI error');
+  if (!r.ok) {
+    console.error('Groq error (interpret):', data.error?.message);
+    const e = new Error(data.error?.message || 'AI error');
+    e.code = data.error?.code;
+    throw e;
+  }
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
 const _CHAT_SYSTEM = `You are an expert AI study tutor for NoteCaptain AI. Help students learn effectively.\n- Explain concepts clearly — start simple, build up\n- Use examples and real-world connections\n- Keep responses concise: 2-4 paragraphs or a short list\n- Use **bold** for key terms\n- Be encouraging but academically rigorous`;
-async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
+async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));const e=new Error(err.error?.message||`Groq ${r.status}`);e.code=err.error?.code;throw e;}}
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -47,12 +54,16 @@ module.exports = async function handler(req, res) {
     try {
       const { messages } = req.body;
       if (!Array.isArray(messages)||!messages.length) return res.status(400).json({ error: 'Missing messages' });
-      const r = await _chatGroq({model:'llama-3.1-8b-instant',messages:[{role:'system',content:_CHAT_SYSTEM},...messages.slice(-20)],max_tokens:700,temperature:0.65}, GROQ);
+      const r = await _chatGroq({model:MODEL_SMALL,messages:[{role:'system',content:_CHAT_SYSTEM},...messages.slice(-20)],max_tokens:1000,temperature:0.65,include_reasoning:false}, GROQ);
       const data = await r.json();
       const reply = data.choices?.[0]?.message?.content;
       if (!reply) return res.status(500).json({ error: 'No reply returned' });
       return res.status(200).json({ reply });
-    } catch(err) { return res.status(500).json({ error: err.message }); }
+    } catch(err) {
+      console.error('Groq error (chat):', err.message);
+      if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   const { text, mode, noteTitle, noteContext } = req.body || {};
@@ -90,6 +101,8 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ result });
   } catch(err) {
+    console.error('Groq error (interpret):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

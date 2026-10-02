@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -118,15 +119,23 @@ ${t}`
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: MODEL_LARGE,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.2
+        max_tokens: 3000,
+        temperature: 0.2,
+        include_reasoning: false,
+        response_format: { type: 'json_object' }
       })
     });
 
     const groqData = await groqRes.json();
-    if (!groqRes.ok) return res.status(500).json({ error: groqData.error?.message || 'Groq error' });
+    if (!groqRes.ok) {
+      console.error('Groq error (checker):', groqData.error?.message);
+      const e = new Error(groqData.error?.message || 'Groq error');
+      e.code = groqData.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: e.message });
+    }
 
     let raw = groqData.choices?.[0]?.message?.content?.trim() || '';
 
@@ -152,6 +161,8 @@ ${t}`
 
     return res.status(200).json(result);
   } catch (err) {
+    console.error('Groq error (checker):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

@@ -1,3 +1,5 @@
+const { MODEL_LARGE, MODEL_VISION } = require('./_lib/models');
+
 const TB_COLORS = ['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
 module.exports = async function handler(req, res) {
@@ -22,7 +24,7 @@ module.exports = async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
         body: JSON.stringify({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          model: MODEL_VISION,
           messages: [{ role: 'user', content: [
             { type: 'image_url', image_url: { url: `data:${questionsMime || 'image/jpeg'};base64,${questionsImage}` } },
             { type: 'text', text: 'Extract every question from this image. List each question on a new line, numbered (1. 2. 3. ...). Return ONLY the numbered questions — no other text.' }
@@ -59,7 +61,7 @@ Return ONLY valid JSON, no markdown fences:
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 2000, temperature: 0.1 })
+      body: JSON.stringify({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: 3000, temperature: 0.1, include_reasoning: false, response_format: { type: 'json_object' } })
     });
 
     const data = await r.json();

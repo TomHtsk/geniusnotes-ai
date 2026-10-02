@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 const MAX_CHARS = 15000;
 
@@ -80,13 +81,15 @@ async function groqFetch(body, apiKey) {
       continue;
     }
     const err = await r.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Groq ${r.status}`);
+    const e = new Error(err.error?.message || `Groq ${r.status}`);
+    e.code = err.error?.code;
+    throw e;
   }
 }
 
 // ── citation merged from api/citation.js ────────────────────────────────────
 const _CIT_STYLES={apa7:'APA 7th Edition',mla9:'MLA 9th Edition',chicago18:'Chicago 18th Edition (Notes-Bibliography)',turabian9:'Turabian 9th Edition',ieee:'IEEE Style'};
-async function _citGroq(b,k){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${k}`},body:JSON.stringify(b),signal:AbortSignal.timeout(25000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));throw new Error(err.error?.message||`Groq ${r.status}`);}}
+async function _citGroq(b,k){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${k}`},body:JSON.stringify(b),signal:AbortSignal.timeout(25000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));const e=new Error(err.error?.message||`Groq ${r.status}`);e.code=err.error?.code;throw e;}}
 
 // ── textbook merged from api/textbook.js ────────────────────────────────────
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
@@ -113,11 +116,15 @@ module.exports = async function handler(req, res) {
       if (!fieldLines.trim()) return res.status(400).json({ error: 'No source information provided.' });
       const styleName=_CIT_STYLES[style]||'APA 7th Edition';
       const prompt=`Generate a precisely formatted ${styleName} citation for this ${sourceType||'source'}.\n\n${fieldLines}\n\nReturn ONLY valid JSON:\n{"citation":"Full reference entry per ${styleName}","inText":"In-text or footnote format"}\n\n- Match ${styleName} punctuation, capitalization, italics (*Title*), and field order exactly\n- IEEE: use [1] format. Chicago/Turabian: footnote in inText. No text outside JSON.`;
-      const r=await _citGroq({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:400,temperature:0.05},GROQ);
+      const r=await _citGroq({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:600,temperature:0.05,include_reasoning:false,response_format:{type:'json_object'}},GROQ);
       const data=await r.json();const raw=data.choices?.[0]?.message?.content||'';const start=raw.indexOf('{'),end=raw.lastIndexOf('}');
       if(start===-1||end===-1)throw new Error('No JSON in response');
       return res.json(JSON.parse(raw.slice(start,end+1)));
-    } catch(err){ return res.status(500).json({ error: err.message||'Could not generate citation.' }); }
+    } catch(err){
+      console.error('Groq error (citation):', err.message);
+      if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: err.message||'Could not generate citation.' });
+    }
   }
 
   // textbook route (rewired from /api/textbook)
@@ -127,19 +134,26 @@ module.exports = async function handler(req, res) {
       if (!chapter) return res.status(400).json({ error: 'Chapter text is required' });
       let questions = (questionsText||'').trim();
       if (questionsImage&&!questions) {
-        const vRes=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',messages:[{role:'user',content:[{type:'image_url',image_url:{url:`data:${questionsMime||'image/jpeg'};base64,${questionsImage}`}},{type:'text',text:'Extract every question from this image. List each question on a new line, numbered (1. 2. 3. ...). Return ONLY the numbered questions — no other text.'}]}],max_tokens:800,temperature:0.1})});
-        const vData=await vRes.json();questions=vData.choices?.[0]?.message?.content?.trim()||'';
+        const vRes=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:MODEL_VISION,messages:[{role:'user',content:[{type:'image_url',image_url:{url:`data:${questionsMime||'image/jpeg'};base64,${questionsImage}`}},{type:'text',text:'Extract every question from this image. List each question on a new line, numbered (1. 2. 3. ...). Return ONLY the numbered questions — no other text.'}]}],max_tokens:800,temperature:0.1})});
+        const vData=await vRes.json();
+        if(!vRes.ok){ const e=new Error(vData.error?.message||`Groq ${vRes.status}`); e.code=vData.error?.code; throw e; }
+        questions=vData.choices?.[0]?.message?.content?.trim()||'';
         if(!questions)return res.status(400).json({error:'Could not extract questions from image.'});
       }
       if (!questions) return res.status(400).json({ error: 'No questions provided.' });
       const prompt=`You are a study assistant. A student has textbook questions and chapter text. For each question, find 1–3 short exact phrases or sentences from the chapter that directly answer or relate to that question. The phrases MUST be verbatim substrings of the chapter text (exact match, same spelling and punctuation).\n\nQUESTIONS:\n${questions}\n\nCHAPTER TEXT:\n${chapter.slice(0,18000)}\n\nReturn ONLY valid JSON, no markdown fences:\n{\n  "matches": [\n    { "question": "full question text", "phrases": ["exact phrase from chapter"] }\n  ]\n}`;
-      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:2000,temperature:0.1})});
-      const data=await r.json();if(!r.ok)return res.status(500).json({error:data.error?.message||'AI error'});
-      let raw=(data.choices?.[0]?.message?.content?.trim()||'').replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();const s=raw.indexOf('{'),e=raw.lastIndexOf('}');if(s!==-1&&e>s)raw=raw.slice(s,e+1);
+      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:3000,temperature:0.1,include_reasoning:false,response_format:{type:'json_object'}})});
+      const data=await r.json();
+      if(!r.ok){ console.error('Groq error (textbook):', data.error?.message); const e=new Error(data.error?.message||'AI error'); e.code=data.error?.code; if(isModelUnavailableError(e)) return res.status(502).json({error:FRIENDLY_AI_ERROR}); return res.status(500).json({error:e.message}); }
+      let raw=(data.choices?.[0]?.message?.content?.trim()||'').replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();const s=raw.indexOf('{'),e2=raw.lastIndexOf('}');if(s!==-1&&e2>s)raw=raw.slice(s,e2+1);
       let result;try{result=JSON.parse(raw);}catch{result=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}
       result.matches=(result.matches||[]).map((m,i)=>({...m,color:_TB_COLORS[i%_TB_COLORS.length]}));
       return res.status(200).json({matches:result.matches,questionsExtracted:questions});
-    } catch(err){ return res.status(500).json({ error: err.message }); }
+    } catch(err){
+      console.error('Groq error (textbook):', err.message);
+      if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   try {
@@ -165,28 +179,39 @@ TASK: Find every fact, definition, concept, example, number, name, formula, step
 Return the COMPLETE ORIGINAL TEXT with <mark> tags around every word, phrase, sentence, or passage that is missing from the Cornell Notes. Do not add commentary. Do not skip any part of the original text — return it in full with marks inserted.
 
 Output ONLY the marked original text, nothing else.`;
-      const r2 = await groqFetch({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:diffPrompt}], max_tokens:4000, temperature:0.1 }, GROQ);
+      const r2 = await groqFetch({ model:MODEL_LARGE, messages:[{role:'user',content:diffPrompt}], max_tokens:6000, temperature:0.1, include_reasoning:false }, GROQ);
       const d2 = await r2.json();
       const result = d2.choices?.[0]?.message?.content || '';
       return res.status(200).json({ result });
     }
 
     const isLargeMode = mode === 'code' || mode === 'format' || mode === 'docformat' || mode === 'academic' || mode === 'email' || mode === 'highlight' || mode === 'cornell' || mode === 'inline' || mode === 'bullets' || mode === 'outline' || mode === 'studyguide';
-    const maxTok = mode === 'cornell' ? 4000 : mode === 'docformat' ? 4000 : mode === 'highlight' ? 4000 : mode === 'academic' ? 3000 : mode === 'studyguide' ? 3000 : mode === 'inline' ? 2500 : isLargeMode ? 3000 : 2000;
-    const r = await groqFetch({
-      model: isLargeMode ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
+    const maxTok = mode === 'cornell' ? 6000 : mode === 'docformat' ? 6000 : mode === 'highlight' ? 6000 : mode === 'academic' ? 4500 : mode === 'studyguide' ? 4500 : mode === 'inline' ? 3800 : isLargeMode ? 4500 : 3000;
+    const reqBody = {
+      model: isLargeMode ? MODEL_LARGE : MODEL_SMALL,
       messages: [{ role: 'user', content: getPrompt(mode, text.trim(), tone) }],
       max_tokens: maxTok,
       temperature: mode === 'format' ? 0.2 : 0.4,
-    }, GROQ);
+      include_reasoning: false,
+    };
+    if (mode === 'cornell') reqBody.response_format = { type: 'json_object' };
+    const r = await groqFetch(reqBody, GROQ);
 
     const data = await r.json();
-    if (!r.ok) return res.status(500).json({ error: data.error?.message || 'AI error' });
+    if (!r.ok) {
+      console.error('Groq error (writing):', data.error?.message);
+      const e = new Error(data.error?.message || 'AI error');
+      e.code = data.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: e.message });
+    }
 
     const result = data.choices?.[0]?.message?.content?.trim();
     if (!result) return res.status(500).json({ error: 'No result returned' });
     return res.status(200).json({ result });
   } catch (err) {
+    console.error('Groq error (writing):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

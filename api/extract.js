@@ -1,13 +1,14 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function ocrImage(base64, mime, apiKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: MODEL_VISION,
       messages: [{
         role: 'user',
         content: [
@@ -20,7 +21,12 @@ async function ocrImage(base64, mime, apiKey) {
     })
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `Groq vision error ${res.status}`);
+  if (!res.ok) {
+    console.error('Groq error (extract/OCR):', data.error?.message);
+    const e = new Error(data.error?.message || `Groq vision error ${res.status}`);
+    e.code = data.error?.code;
+    throw e;
+  }
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 
@@ -113,6 +119,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ text: texts.join('\n\n'), method: 'ocr', pages: texts.length });
 
   } catch (err) {
+    console.error('Groq error (extract):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

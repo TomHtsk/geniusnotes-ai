@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function groqFetch(body, apiKey) {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -14,7 +15,9 @@ async function groqFetch(body, apiKey) {
       continue;
     }
     const err = await r.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Groq ${r.status}`);
+    const e = new Error(err.error?.message || `Groq ${r.status}`);
+    e.code = err.error?.code;
+    throw e;
   }
 }
 
@@ -36,10 +39,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const r = await groqFetch({
-      model: 'llama-3.1-8b-instant',
+      model: MODEL_SMALL,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2000,
+      max_tokens: 3000,
       temperature: 0.1,
+      include_reasoning: false,
     }, process.env.GROQ_API_KEY);
 
     const data = await r.json();
@@ -47,6 +51,8 @@ module.exports = async function handler(req, res) {
     if (!translation) return res.status(500).json({ error: 'No translation returned' });
     return res.status(200).json({ translation });
   } catch (err) {
+    console.error('Groq error (translate):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

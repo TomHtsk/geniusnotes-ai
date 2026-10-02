@@ -1,3 +1,5 @@
+import { MODEL_LARGE } from './_lib/models.js';
+
 const STYLE_NAMES = {
   apa7:      'APA 7th Edition',
   mla9:      'MLA 9th Edition',
@@ -73,10 +75,12 @@ Return ONLY valid JSON:
 
   try {
     const r = await groqFetch({
-      model: 'llama-3.3-70b-versatile',
+      model: MODEL_LARGE,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 400,
+      max_tokens: 600,
       temperature: 0.05,
+      include_reasoning: false,
+      response_format: { type: 'json_object' },
     }, apiKey);
 
     const data = await r.json();

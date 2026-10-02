@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_LARGE, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -24,9 +25,10 @@ module.exports = async function handler(req, res) {
         method: 'POST',
         headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: MODEL_LARGE,
           temperature: 0.15,
-          max_tokens: 2000,
+          max_tokens: 3000,
+          include_reasoning: false,
           messages: [
             {
               role: 'system',
@@ -62,9 +64,11 @@ FORMAT:
         })
       });
       const dd = await dr.json();
+      if (!dr.ok) console.error('Groq error (transcribe/label):', dd.error?.message);
       const labeled = dd.choices?.[0]?.message?.content?.trim();
       return res.status(200).json({ transcript: labeled || text });
-    } catch {
+    } catch (err) {
+      console.error('Groq error (transcribe/label):', err.message);
       return res.status(200).json({ transcript: text });
     }
   }
@@ -122,7 +126,7 @@ FORMAT:
     const ext = (mimeType || 'audio/webm').split('/')[1]?.split(';')[0] || 'webm';
     const blob = new Blob([buffer], { type: mimeType || 'audio/webm' });
     // Use full large-v3 for final transcriptions (realtime flag uses turbo)
-    const model = req.body.realtime ? 'whisper-large-v3-turbo' : 'whisper-large-v3';
+    const model = req.body.realtime ? MODEL_WHISPER_TURBO : MODEL_WHISPER;
     const form = new FormData();
     form.append('file', blob, `audio.${ext}`);
     form.append('model', model);
@@ -137,7 +141,13 @@ FORMAT:
       body: form
     });
     const data = await r.json();
-    if (!r.ok) return res.status(500).json({ error: data.error?.message || 'Transcription failed' });
+    if (!r.ok) {
+      console.error('Groq error (transcribe/whisper):', data.error?.message);
+      const e = new Error(data.error?.message || 'Transcription failed');
+      e.code = data.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: e.message });
+    }
 
     let transcript = data.text || '';
 
@@ -151,9 +161,10 @@ FORMAT:
           method: 'POST',
           headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: MODEL_LARGE,
             temperature: 0.2,
-            max_tokens: 2000,
+            max_tokens: 3000,
+            include_reasoning: false,
             messages: [
               {
                 role: 'system',
@@ -164,13 +175,16 @@ FORMAT:
           })
         });
         const dd = await dr.json();
+        if (!dr.ok) console.error('Groq error (transcribe/diarize-label):', dd.error?.message);
         const labeled = dd.choices?.[0]?.message?.content?.trim();
         if (labeled) transcript = labeled;
-      } catch {}
+      } catch (err) { console.error('Groq error (transcribe/diarize-label):', err.message); }
     }
 
     return res.status(200).json({ transcript });
   } catch (err) {
+    console.error('Groq error (transcribe):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

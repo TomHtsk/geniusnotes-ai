@@ -1,4 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -51,7 +52,9 @@ Return ONLY valid JSON (no markdown fences, no extra text):
         { type: 'image_url', image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${image}` } },
         { type: 'text', text: prompt }
       ]}];
-  const model = text ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-4-scout-17b-16e-instruct';
+  const model = text ? MODEL_LARGE : MODEL_VISION;
+  const reqBody = { model, messages, max_tokens: text ? 2700 : 1800, temperature: 0.1 };
+  if (text) reqBody.include_reasoning = false; // only the gpt-oss text model supports this param
 
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -60,11 +63,17 @@ Return ONLY valid JSON (no markdown fences, no extra text):
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`
       },
-      body: JSON.stringify({ model, messages, max_tokens: 1800, temperature: 0.1 })
+      body: JSON.stringify(reqBody)
     });
 
     const data = await r.json();
-    if (!r.ok) return res.status(500).json({ error: data.error?.message || 'Vision model error' });
+    if (!r.ok) {
+      console.error('Groq error (homework):', data.error?.message);
+      const e = new Error(data.error?.message || 'Vision model error');
+      e.code = data.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: e.message });
+    }
 
     let raw = data.choices?.[0]?.message?.content?.trim() || '';
 
@@ -95,6 +104,8 @@ Return ONLY valid JSON (no markdown fences, no extra text):
 
     return res.status(200).json(result);
   } catch (err) {
+    console.error('Groq error (homework):', err.message);
+    if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }
 };

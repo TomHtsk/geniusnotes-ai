@@ -1,4 +1,5 @@
 const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit } = require('./_lib/auth');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 function getVideoId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -785,13 +786,13 @@ module.exports = async function handler(req, res) {
     if (text) {
       if (mode === 'transcribe') return res.status(400).json({ error: 'Transcribe mode requires a YouTube URL.' });
       const prompt = getPrompt(mode, text, highlightPrompt, noteStyle, count);
-      const maxTok = mode === 'flashcards' ? 4000 : mode === 'highlight' ? 2000 : mode === 'notes' ? 2000 : 1500;
+      const maxTok = mode === 'flashcards' ? 6000 : mode === 'highlight' ? 3000 : mode === 'notes' ? 3000 : 2200;
       let groqRes, data;
       for (let attempt = 0; attempt < 2; attempt++) {
         groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3 })
+          body: JSON.stringify({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3, include_reasoning: false })
         });
         data = await groqRes.json();
         if (groqRes.status === 429 && attempt === 0) {
@@ -802,7 +803,13 @@ module.exports = async function handler(req, res) {
         }
         break;
       }
-      if (!groqRes.ok) return res.status(500).json({ error: data.error?.message || 'Groq error' });
+      if (!groqRes.ok) {
+        console.error('Groq error (summarize/text):', data.error?.message);
+        const e = new Error(data.error?.message || 'Groq error');
+        e.code = data.error?.code;
+        if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+        return res.status(500).json({ error: e.message });
+      }
       const summary = data.choices?.[0]?.message?.content;
       if (!summary) return res.status(500).json({ error: 'No result returned' });
 
@@ -904,15 +911,22 @@ module.exports = async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: MODEL_LARGE,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.3
+        max_tokens: 1500,
+        temperature: 0.3,
+        include_reasoning: false
       })
     });
 
     const data = await groqRes.json();
-    if (!groqRes.ok) return res.status(500).json({ error: data.error?.message || 'Groq error' });
+    if (!groqRes.ok) {
+      console.error('Groq error (summarize):', data.error?.message);
+      const e = new Error(data.error?.message || 'Groq error');
+      e.code = data.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(500).json({ error: e.message });
+    }
 
     const summary = data.choices?.[0]?.message?.content;
     if (!summary) return res.status(500).json({ error: 'No result returned' });

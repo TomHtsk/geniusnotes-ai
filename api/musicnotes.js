@@ -1,3 +1,5 @@
+import { MODEL_LARGE } from './_lib/models.js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -33,10 +35,11 @@ Output ONLY the ABC notation:`;
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: MODEL_LARGE,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1500,
-      temperature: 0.65
+      max_tokens: 2200,
+      temperature: 0.65,
+      include_reasoning: false
     })
   });
 

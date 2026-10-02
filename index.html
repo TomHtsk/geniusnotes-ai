@@ -753,6 +753,57 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
     </div>
   </div>
 
+  <!-- ── PRICING ── -->
+  <section id="pricing" style="max-width:900px;margin:0 auto;padding:64px 24px 80px;">
+    <h2 style="text-align:center;font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:40px;">Simple pricing</h2>
+    <div class="pricing-grid pricing-grid-3">
+      <div class="pricing-card">
+        <div class="pricing-plan">Free</div>
+        <div class="pricing-price">$0</div>
+        <div class="pricing-per">forever</div>
+        <ul class="pricing-features">
+          <li>Wikipedia search</li>
+          <li>3 YouTube conversions/day</li>
+          <li>Notepad &amp; Flashcards</li>
+          <li>10 AI actions/month</li>
+          <li>30 min lecture recording/month</li>
+        </ul>
+        <a href="signup.html" id="pricing-free-btn" class="btn-plan">Start free</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-plan">Pro Monthly</div>
+        <div class="pricing-price">$6.99<sub>/mo</sub></div>
+        <div class="pricing-per">billed monthly</div>
+        <ul class="pricing-features">
+          <li>Unlimited AI actions (fair use)</li>
+          <li>50 YouTube conversions/day</li>
+          <li>10 hrs lecture recording/month</li>
+          <li>Cloud sync</li>
+        </ul>
+        <button class="btn-plan" onclick="startProCheckout('monthly', this)">Go Pro</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Best value — $3.33/mo</div>
+        <div class="pricing-plan">Pro Yearly</div>
+        <div class="pricing-price">$39.99<sub>/yr</sub></div>
+        <div class="pricing-per">billed yearly</div>
+        <ul class="pricing-features">
+          <li>Unlimited AI actions (fair use)</li>
+          <li>50 YouTube conversions/day</li>
+          <li>10 hrs lecture recording/month</li>
+          <li>Cloud sync</li>
+        </ul>
+        <button class="btn-plan cta" onclick="startProCheckout('yearly', this)">Go Pro yearly</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:28px;font-size:0.86rem;color:var(--purple2);font-weight:600;">
+      🎉 Early supporter: use code <strong>EARLY</strong> at checkout for $4.99/month, locked in forever (first 100 users).
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:0.76rem;color:var(--muted);">
+      Secure checkout · Cancel anytime
+    </div>
+  </section>
+
 </main>
 
 <!-- ── FOOTER ── -->

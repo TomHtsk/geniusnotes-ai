@@ -9,6 +9,25 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Initialize Firebase as early as possible, right after the SDK scripts load —
+    // previously this only happened inside initCloudSync(), called at the very end
+    // of this page's ~7000-line script. If anything earlier in that script threw at
+    // runtime, initializeApp() never ran, firebase.apps.length stayed 0 forever, and
+    // js/auth-gate.js's gnGuardPage() retry loop spun on "Checking sign-in…" with no
+    // visible error. Doing it here decouples "can we check sign-in" from "did the
+    // rest of the page's note-loading logic succeed."
+    if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: 'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI',
+        authDomain: 'geniusnotes-ai.firebaseapp.com',
+        projectId: 'geniusnotes-ai',
+        storageBucket: 'geniusnotes-ai.firebasestorage.app',
+        messagingSenderId: '1041746856723',
+        appId: '1:1041746856723:web:fae9072e0292c3946068e6'
+      });
+    }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">

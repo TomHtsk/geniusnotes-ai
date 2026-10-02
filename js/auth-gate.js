@@ -14,7 +14,15 @@
   'use strict';
 
   function hasModular() { return !!(window._fauth && window._fbModular); }
-  function hasCompat() { return typeof firebase !== 'undefined' && firebase.auth; }
+  // The compat SDK script can be loaded long before the page calls firebase.initializeApp()
+  // (notepad.html initializes near the bottom of a very long page). Calling firebase.auth()
+  // before that throws "No Firebase App '[DEFAULT]'", which used to leave the full-page
+  // guard stuck on "Checking sign-in…" forever. Only treat compat as ready once an app exists.
+  function hasCompat() {
+    try {
+      return typeof firebase !== 'undefined' && !!firebase.auth && !!firebase.apps && firebase.apps.length > 0;
+    } catch (e) { return false; }
+  }
 
   function currentUser() {
     if (hasModular()) return window._fauth.currentUser;
@@ -37,7 +45,11 @@
       // Fire once immediately with whatever we already know, in case auth already resolved.
       if (window._fauth.currentUser !== undefined) cb(window._fauth.currentUser);
     } else if (hasCompat()) {
-      firebase.auth().onAuthStateChanged(cb);
+      try {
+        firebase.auth().onAuthStateChanged(cb);
+      } catch (e) {
+        setTimeout(function () { onAuthChange(cb); }, 150);
+      }
     } else {
       // Neither SDK loaded yet — try again shortly (covers the brief window before a
       // deferred module script or a later classic script finishes initializing Firebase).

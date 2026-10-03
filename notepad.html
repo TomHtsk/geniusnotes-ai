@@ -7231,7 +7231,9 @@ function initCloudSync() {
       }).catch(() => {});
     }
     firebase.auth().onAuthStateChanged(user => {
-      if (user) {
+      // Only a real account syncs. An anonymous session (created behind the scenes for the free
+      // YouTube converter) is treated as signed-out here, so a guest's notes stay in this browser.
+      if (user && !user.isAnonymous) {
         _fbUid = user.uid;
         // Notes made as a guest now belong to this account — drop the guest marker before upload.
         notes.forEach(n => { if (n && n._guest) delete n._guest; });
@@ -7257,15 +7259,9 @@ function initCloudSync() {
         if (_cloudUnsub) { _cloudUnsub(); _cloudUnsub = null; }
         if (_cloudFolderUnsub) { _cloudFolderUnsub(); _cloudFolderUnsub = null; }
         if (!_wasSignedIn && window.GN_LOCKS_ENABLED === false) {
-          // Guest (never signed in on this page load): keep only the notes this guest made
-          // in this browser. Anything left over from a signed-out account is still removed.
-          const _keep = notes.filter(n => n && (n._guest || n._isDemo));
-          localStorage.removeItem('gn-notepad-folders');
-          folders = [];
-          if (_keep.length !== notes.length) {
-            notes = _keep;
-            localStorage.setItem('gn-notepad-notes', JSON.stringify(notes.filter(n => n._guest)));
-          }
+          // Nobody was signed in on this page load (a guest): leave the notes and folders stored
+          // in this browser alone. Local data is only cleared at a real sign-out (the branch
+          // below), which uploads it to the account first — never silently on page load.
         } else {
           localStorage.removeItem('gn-notepad-notes');
           localStorage.removeItem('gn-notepad-folders');
@@ -7381,8 +7377,12 @@ function _uploadLocalToCloud() {
   try { histEntries = JSON.parse(localStorage.getItem('gn-history-' + _fbUid) || '[]'); } catch {}
   // Oversized notes go through _cloudSaveNote (which chunks content into a subcollection,
   // safe for Firestore's 1MB doc limit); everything else batches normally as before.
-  const bigNotes = notes.filter(n => (n.content || '').length > CLOUD_CHUNK_THRESHOLD);
-  const smallNotes = notes.filter(n => (n.content || '').length <= CLOUD_CHUNK_THRESHOLD);
+  // Skip the demo note, and any long note whose text is still being loaded from this browser's
+  // IndexedDB (`_idbContent`): its content is an empty placeholder right now, and uploading
+  // that would blank the copy in the cloud. It is uploaded normally the next time it is saved.
+  const ready = notes.filter(n => n && n.id && !n._isDemo && !n._idbContent);
+  const bigNotes = ready.filter(n => (n.content || '').length > CLOUD_CHUNK_THRESHOLD);
+  const smallNotes = ready.filter(n => (n.content || '').length <= CLOUD_CHUNK_THRESHOLD);
   bigNotes.forEach(n => _cloudSaveNote(n));
   const all = [
     ...smallNotes.map(n => ({ path: `users/${_fbUid}/notepad_notes/${n.id}`, data: Object.assign({}, n, { chunked: false, chunkCount: 0 }) })),
@@ -7863,8 +7863,14 @@ function _formatWikipediaNoteContent(text) {
   return html;
 }
 
-// Auto-load transcript sent from floating recorder or meetings Save
-(function() {
+// Opens the first note when the page loads (a transcript/article sent from another page, a
+// note picked elsewhere, or the most recent note).
+//
+// This used to run right here, immediately. Opening a note touches variables that are only
+// created further down this script (e.g. `_splitActive`), so it threw a ReferenceError and the
+// browser stopped running the rest of the script — including initCloudSync() just below. It is
+// now a named function that runs once the whole script has been read (see the call after it).
+function _gnOpenStartupNote() {
   const pending = localStorage.getItem('gn-notepad-pending');
   if (pending) {
     localStorage.removeItem('gn-notepad-pending');
@@ -7950,6 +7956,11 @@ function _formatWikipediaNoteContent(text) {
       })[0].id);
     }
   }
+}
+(function() {
+  const run = function() { try { _gnOpenStartupNote(); } catch (e) { console.error('Opening the startup note failed:', e); } };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
 })();
 
 if (typeof vaultIsSet === 'function' && vaultIsSet()) lockVault();

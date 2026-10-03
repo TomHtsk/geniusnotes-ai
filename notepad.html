@@ -959,6 +959,8 @@
     .np-sidebar .ftree-note.active { background: rgba(var(--accent-rgb),0.12); }
     .np-sidebar .ftree-note.active .ftree-note-title { color: var(--accent); font-weight: 600; }
     .np-sidebar .ftree-empty { padding: 0 8px; font-size: 0.8rem; color: var(--muted); }
+    .np-sidebar .ftree-newfolder { width: 100%; border: none; background: none; font-family: inherit; text-align: left; color: var(--accent); }
+    .np-sidebar .ftree-newfolder .ftree-name { color: var(--accent); font-weight: 600; }
     .sbx-menu { position: fixed; z-index: 9999; width: 240px; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(11,15,20,0.18); }
     .sbx-menu button { display: block; width: 100%; padding: 9px 10px; border: none; background: none; border-radius: 7px; text-align: left; font-family: inherit; font-size: 0.83rem; font-weight: 500; color: var(--text); cursor: pointer; }
     .sbx-menu button:hover { background: var(--surface2); }
@@ -3956,6 +3958,9 @@ function renderSbFolders() {
 
   html += _renderFolderTree(null, 0);
   if (!folders.length) html += '<div class="ftree-empty">No folders yet</div>';
+  // "New folder" sits just above Unfiled, at the end of the folder list.
+  html += `<button class="ftree-row ftree-newfolder" style="padding-left:8px;" onclick="newFolder()">
+    <span class="ftree-chev leaf"></span>${_SB_ICON.plus}<span class="ftree-name">New folder</span></button>`;
 
   // Unfiled notes section
   const unfiledNotes = notes.filter(n => !n.folderId || !folders.find(f => f.id === n.folderId));

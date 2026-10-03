@@ -915,7 +915,7 @@
     .np-sidebar > * { min-width: 0; flex-shrink: 0; }
     .sbx-brand { display: flex; align-items: center; gap: 9px; margin: 0 16px 16px; text-decoration: none; color: var(--text); font-family: var(--serif); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
     .sbx-brand img { width: 28px; height: 28px; object-fit: contain; }
-    .sbx-new { display: flex; align-items: center; justify-content: center; gap: 7px; height: 40px; margin: 0 16px 12px; border: none; border-radius: 10px; background: var(--primary-bg); color: var(--primary-text); font-family: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+    .sbx-new { display: flex; align-items: center; justify-content: center; gap: 7px; height: 40px; margin: 0 16px 20px; border: none; border-radius: 10px; background: var(--primary-bg); color: var(--primary-text); font-family: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
     .sbx-new:hover { opacity: 0.88; }
     .np-sidebar .sb-search { padding: 0 16px; border-bottom: none; margin-bottom: 20px; }
     .np-sidebar .sb-search-wrap { height: 38px; padding: 0 11px; border-radius: 10px; background: var(--surface2); }
@@ -959,6 +959,8 @@
     .np-sidebar .ftree-note.active { background: rgba(var(--accent-rgb),0.12); }
     .np-sidebar .ftree-note.active .ftree-note-title { color: var(--accent); font-weight: 600; }
     .np-sidebar .ftree-empty { padding: 0 8px; font-size: 0.8rem; color: var(--muted); }
+    .np-sidebar .ftree-sub { width: 100%; border: none; background: none; font-family: inherit; text-align: left; color: var(--accent); cursor: pointer; }
+    .np-sidebar .ftree-sub .ftree-name { color: var(--accent); font-size: 0.82rem; }
     /* Same look as the "New note" button (.sbx-new); the list's 8px padding + 8px margin lines it up */
     .np-sidebar .ftree-newfolder { display: flex; align-items: center; justify-content: center; gap: 7px; flex-shrink: 0; height: 40px; margin: 4px 8px; border: none; border-radius: 10px; background: var(--primary-bg); color: var(--primary-text); font-family: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
     .np-sidebar .ftree-newfolder:hover { opacity: 0.88; }
@@ -1055,10 +1057,6 @@
       <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
       <span>NoteCaptain</span>
     </a>
-    <button class="sbx-new" onclick="newNote()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      New note
-    </button>
     <!-- Search -->
     <div class="sb-search">
       <div class="sb-search-wrap">
@@ -1071,6 +1069,11 @@
       <a class="sbx-row" href="index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span class="sbx-row-name">Home</span></a>
       <a class="sbx-row" href="flashcards.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="14" height="11" rx="2"/><path d="M7 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3"/></svg><span class="sbx-row-name">Flashcards</span></a>
     </nav>
+    <!-- New note: sits just above the Folders heading -->
+    <button class="sbx-new" onclick="newNote()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      New note
+    </button>
     <!-- Search results (the flat notes list is only shown while searching) -->
     <div class="sb-section-hd" id="sb-notes-hd">
       <span class="sb-section-label">Search results</span>
@@ -3927,7 +3930,7 @@ function _renderFolderTree(parentId, depth) {
       ondragover="_ftreeDragOver(event)"
       ondragleave="_ftreeDragLeave(event)"
       ondrop="_ftreeDrop(event,'${f.id}')">
-      <span class="ftree-chev${hasKids?(isOpen?' open':''):' leaf'}">${_SB_ICON.chev}</span>
+      <span class="ftree-chev${isOpen?' open':''}">${_SB_ICON.chev}</span>
       ${_SB_ICON.folder}
       <span class="ftree-name">${escHtml(f.name)}</span>
       <button class="ftree-btn" onclick="event.stopPropagation();_ftreeShowAdd(event,'${f.id}')" title="New note or subfolder" aria-label="New note or subfolder">${_SB_ICON.plus}</button>
@@ -3937,6 +3940,8 @@ function _renderFolderTree(parentId, depth) {
     if (isOpen) {
       html += _renderFolderTree(f.id, depth + 1);
       [...fNotes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30 + indent); });
+      // Always-visible way to nest a folder inside this one (same as the hover "+" menu).
+      html += `<button class="ftree-row ftree-sub" style="padding-left:${30+indent}px;" onclick="newFolder('${f.id}')">${_SB_ICON.plus}<span class="ftree-name">New subfolder</span></button>`;
     }
   });
   return html;

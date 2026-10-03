@@ -1087,7 +1087,7 @@
     <!-- Folders section -->
     <div class="sb-folders">
       <div class="sb-section-hd">
-        <span class="sb-section-label">Folders</span>
+        <span class="sb-section-label">Your notes</span>
         <button class="sb-section-btn" id="folder-add-btn" onclick="newFolder()" title="New folder" aria-label="New folder">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         </button>
@@ -3893,7 +3893,7 @@ const _SB_ICON = {
   x: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   pen: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'
 };
-let _allNotesOpen = false; // "All notes" starts collapsed
+let _allNotesOpen = true; // "All notes" starts open: it is the list of every note, filed or not
 
 // One note row in the folder list: title on one line, lighter date underneath.
 function _ftreeNoteHtml(n, padLeft) {
@@ -3963,24 +3963,22 @@ function renderSbFolders() {
   </div>`;
   if (_allNotesOpen) [...notes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30); });
 
-  html += _renderFolderTree(null, 0);
-  if (!folders.length) html += '<div class="ftree-empty">No folders yet</div>';
-  // "New folder" sits just above Unfiled, at the end of the folder list.
+  // "New folder" button, then the "Folders" row. The row holds every folder (and their
+  // subfolders and notes) and can be collapsed. Dropping a folder on it moves that folder back
+  // to the top level. Notes that are in no folder are listed under "All notes".
   html += `<button class="ftree-newfolder" onclick="newFolder()">${_SB_ICON.plus}New folder</button>`;
-
-  // Unfiled notes section
-  const unfiledNotes = notes.filter(n => !n.folderId || !folders.find(f => f.id === n.folderId));
-  if (unfiledNotes.length) {
-    const unfiledOpen = !collapsedFolders.has('__unfiled__');
-    html += `<div class="ftree-row" style="padding-left:8px;"
-      onclick="toggleFolderCollapse('__unfiled__')"
-      ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
-      <span class="ftree-chev${unfiledOpen?' open':''}">${_SB_ICON.chev}</span>
-      ${_SB_ICON.tray}
-      <span class="ftree-name">Unfiled</span>
-      <span class="ftree-count">${unfiledNotes.length}</span>
-    </div>`;
-    if (unfiledOpen) [...unfiledNotes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30); });
+  const foldersOpen = !collapsedFolders.has('__folders__');
+  html += `<div class="ftree-row" style="padding-left:8px;"
+    onclick="toggleFolderCollapse('__folders__')"
+    ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
+    <span class="ftree-chev${foldersOpen?' open':''}">${_SB_ICON.chev}</span>
+    ${_SB_ICON.folder}
+    <span class="ftree-name">Folders</span>
+    <span class="ftree-count">${folders.length}</span>
+  </div>`;
+  if (foldersOpen) {
+    html += _renderFolderTree(null, 1);
+    if (!folders.length) html += '<div class="ftree-empty" style="padding-left:30px;">No folders yet</div>';
   }
   el.innerHTML = html;
 }

@@ -127,6 +127,10 @@
       .vault-wrap{padding:22px 14px 60px;}
       .media-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
     }
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 </head>
 <body>
@@ -142,7 +146,7 @@
 
 <nav>
   <a href="index.html" class="nav-back">← Home</a>
-  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">NoteCaptain <span class="ai">AI</span></a>
+  <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">NoteCaptain <span class="ai">AI</span></a>
   <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
 </nav>
 

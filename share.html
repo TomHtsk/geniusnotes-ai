@@ -60,12 +60,16 @@
     :root.light .note-title,:root.light #note-editor{color:#2a1f0a;}
     :root.light #note-editor h1,:root.light #note-editor h2,:root.light #note-editor h3{color:#1a1008;}
     :root.light .tb{border-color:rgba(0,0,0,0.12);color:#666;}
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 </head>
 <body>
 <nav>
   <a class="nav-logo" href="index.html">
-    <img src="images/logo.png" alt="logo">
+    <img class="logo-dk" src="images/logo-mark-white.png" alt="logo"><img class="logo-lt" src="images/logo-mark-dark.png" alt="logo">
     <span>NoteCaptain <span class="ai">AI</span></span>
   </a>
   <div class="nav-right">

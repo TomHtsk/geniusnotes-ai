@@ -102,6 +102,10 @@
       .capture-grid{grid-template-columns:repeat(2,1fr);}
       .cap-thumb{height:88px;font-size:1.6rem;}
     }
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
   <style>
     /* ── PAGE TAB BAR ── */
@@ -135,7 +139,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div style="display:flex;align-items:center;gap:8px;padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
-    <img src="images/logo.png" alt="GN" style="width:26px;height:26px;border-radius:7px;">
+    <img src="images/logo-mark-white.png" alt="GN" style="width:26px;height:26px;border-radius:7px;">
     <span style="font-size:0.88rem;font-weight:800;color:#f0f0ff;flex:1;">NoteCaptain <span style="color:#a78bfa;">AI</span></span>
     <a href="notepad.html" style="width:26px;height:26px;border-radius:7px;border:1px solid rgba(139,92,246,0.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;background:rgba(139,92,246,0.1);text-decoration:none;" title="New note">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -181,7 +185,7 @@
 <nav class="nav">
   <button class="nav-ham" onclick="toggleSidebar()">☰</button>
   <a class="nav-logo" href="index.html">
-    <img src="images/logo.png" alt="logo">
+    <img class="logo-dk" src="images/logo-mark-white.png" alt="logo"><img class="logo-lt" src="images/logo-mark-dark.png" alt="logo">
     <span class="nav-logo-text">NoteCaptain <span class="ai">AI</span></span>
   </a>
   <div class="nav-right">

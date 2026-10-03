@@ -143,6 +143,10 @@
     .sa-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 10px;}
     @keyframes spin{to{transform:rotate(360deg);}}
     @media(max-width:600px){.main{padding:28px 16px;}nav{padding:0 16px;}.decks-grid{grid-template-columns:1fr;}.flip-card{height:240px;}.flip-text{font-size:0.95rem;}.modal{padding:20px;}.sa-panel{padding:20px;}}
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
 </head>
@@ -152,7 +156,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
-    <div style="display:flex;align-items:center;gap:8px;"><img src="images/logo.png" alt="GN" style="width:26px;height:26px;border-radius:7px;"><span style="font-size:0.88rem;font-weight:800;color:#f0f0ff;">NoteCaptain <span style="color:#a78bfa;">AI</span></span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><img src="images/logo-mark-white.png" alt="GN" style="width:26px;height:26px;border-radius:7px;"><span style="font-size:0.88rem;font-weight:800;color:#f0f0ff;">NoteCaptain <span style="color:#a78bfa;">AI</span></span></div>
     <button class="sb-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sb-items">
@@ -171,7 +175,7 @@
     <button class="nav-hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
+    <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
   </div>
   <span></span>
 </nav>

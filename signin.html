@@ -66,12 +66,16 @@
     .switch { text-align: center; margin-top: 24px; font-size: 0.85rem; color: var(--muted); }
     .switch a { color: var(--purple2); text-decoration: none; font-weight: 600; }
     .switch a:hover { text-decoration: underline; }
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
+  <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
   <a href="signup.html" class="nav-link">Create account →</a>
 </nav>
 

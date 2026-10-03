@@ -13,6 +13,14 @@
 (function () {
   'use strict';
 
+  // Master switch for the sign-in locks on Notepad / My Notes / Flashcards.
+  //   false = guests can open and use those pages (their notes stay in this browser only)
+  //   true  = those pages and their nav links require a signed-in account (🔒)
+  // Items marked data-requires-auth="server" (Upload, Record Lecture) stay locked either
+  // way: they call /api endpoints that reject requests without a real account.
+  var LOCKS_ENABLED = false;
+  window.GN_LOCKS_ENABLED = LOCKS_ENABLED;
+
   function hasModular() { return !!(window._fauth && window._fbModular); }
   // The compat SDK script can be loaded long before the page calls firebase.initializeApp()
   // (notepad.html initializes near the bottom of a very long page). Calling firebase.auth()
@@ -237,6 +245,7 @@
   // inaccessible while signed out. Shows a full-screen overlay immediately (no flash
   // of real content) and removes it once a real signed-in user is confirmed.
   function gnGuardPage() {
+    if (!LOCKS_ENABLED) return;
     _injectStyles();
     var overlay = document.createElement('div');
     overlay.className = 'gn-ag-overlay';
@@ -270,10 +279,11 @@
   // Any element with [data-requires-auth] gets a 🔒 appended to its label and its
   // click intercepted while signed out; both are removed once a real user is signed in.
   function gnApplyLocks() {
-    var locked = !isRealUser(currentUser());
+    var signedOut = !isRealUser(currentUser());
     var els = document.querySelectorAll('[data-requires-auth]');
     for (var i = 0; i < els.length; i++) {
       (function (el) {
+        var locked = signedOut && (LOCKS_ENABLED || el.getAttribute('data-requires-auth') === 'server');
         if (locked) {
           if (!el.querySelector('.gn-lock-icon')) {
             var lock = document.createElement('span');

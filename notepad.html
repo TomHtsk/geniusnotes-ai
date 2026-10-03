@@ -836,6 +836,10 @@
     .vd-btn:hover { background:rgba(139,92,246,0.1); }
     .vd-del { color:#ff5555; }
 
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 </head>
 <body>
@@ -895,7 +899,7 @@
   <div class="np-sidebar" id="np-sidebar">
     <!-- Top header: logo + name + actions -->
     <div class="sb-top">
-      <div class="sb-logo"><img src="images/logo.png" alt="NoteCaptain"></div>
+      <div class="sb-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="NoteCaptain"><img class="logo-lt" src="images/logo-mark-dark.png" alt="NoteCaptain"></div>
       <span class="sb-name">NoteCaptain <span>AI</span></span>
       <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -3472,6 +3476,15 @@ function _buildLiteNotesForStorage() {
 }
 
 function saveNotes() {
+  // Signed-out guests: tag notes created during this visit so the auth listener keeps them
+  // in this browser (it removes anything untagged, e.g. left over from a signed-out account).
+  try {
+    if (!_fbUid && window.GN_LOCKS_ENABLED === false) {
+      notes.forEach(function(n) {
+        if (n && !n._guest && !n._isDemo && n.created >= performance.timeOrigin) n._guest = true;
+      });
+    }
+  } catch (e) {}
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(_buildLiteNotesForStorage()));
     setSaveErrorCleared();
@@ -3924,11 +3937,12 @@ function escHtml(s) {
 
 // ── OPEN / CREATE ──
 function newNote() {
-  if (!_fbUid) {
+  if (!_fbUid && window.GN_LOCKS_ENABLED !== false) {
     if (confirm('Sign in to create and save notes.\n\nGo to Sign In?')) window.location.href = 'signin.html';
     return;
   }
   const note = { id: genId(), title: '', content: '', created: Date.now(), updated: Date.now() };
+  if (!_fbUid) note._guest = true; // made while signed out — kept in this browser (see auth listener)
   notes.unshift(note);
   saveNotes();
   openNote(note.id);
@@ -7004,6 +7018,8 @@ function initCloudSync() {
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         _fbUid = user.uid;
+        // Notes made as a guest now belong to this account — drop the guest marker before upload.
+        notes.forEach(n => { if (n && n._guest) delete n._guest; });
         const _raw = user.displayName || user.email || '';
         _collabLabel = _raw.replace(/@.*/, '') || 'User';
         _setCloudIcon('☁️');
@@ -7020,13 +7036,26 @@ function initCloudSync() {
             batch.commit().catch(() => {});
           } catch(e) {}
         }
+        const _wasSignedIn = !!_fbUid;
         _fbUid = null;
         _setCloudIcon('');
         if (_cloudUnsub) { _cloudUnsub(); _cloudUnsub = null; }
         if (_cloudFolderUnsub) { _cloudFolderUnsub(); _cloudFolderUnsub = null; }
-        localStorage.removeItem('gn-notepad-notes');
-        localStorage.removeItem('gn-notepad-folders');
-        notes = []; folders = [];
+        if (!_wasSignedIn && window.GN_LOCKS_ENABLED === false) {
+          // Guest (never signed in on this page load): keep only the notes this guest made
+          // in this browser. Anything left over from a signed-out account is still removed.
+          const _keep = notes.filter(n => n && (n._guest || n._isDemo));
+          localStorage.removeItem('gn-notepad-folders');
+          folders = [];
+          if (_keep.length !== notes.length) {
+            notes = _keep;
+            localStorage.setItem('gn-notepad-notes', JSON.stringify(notes.filter(n => n._guest)));
+          }
+        } else {
+          localStorage.removeItem('gn-notepad-notes');
+          localStorage.removeItem('gn-notepad-folders');
+          notes = []; folders = [];
+        }
         renderSidebar();
       }
     });
@@ -7642,6 +7671,7 @@ function _formatWikipediaNoteContent(text) {
       updated: Date.now(),
       folderId: pendingFolder || null
     };
+    if (!_fbUid) note._guest = true;
     notes.unshift(note);
     saveNotes();
     renderSidebar();

@@ -125,6 +125,10 @@
     /* EMPTY */
     .empty-page{text-align:center;padding:60px 20px;color:var(--muted);}
     .empty-page .ei{font-size:2.5rem;margin-bottom:12px;}
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
   <script>if(localStorage.getItem('gn-theme')==='light'){document.documentElement.classList.add('light');document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('mn-theme-btn');if(b)b.textContent='🌙 Dark';});}</script>
 </head>
@@ -134,7 +138,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sb-hd">
-    <div class="sb-logo-row"><img src="images/logo.png" alt="NoteCaptain"><span>NoteCaptain <span style="color:#a78bfa;">AI</span></span></div>
+    <div class="sb-logo-row"><img src="images/logo-mark-white.png" alt="NoteCaptain"><span>NoteCaptain <span style="color:#a78bfa;">AI</span></span></div>
     <button class="sb-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sb-items">
@@ -153,7 +157,7 @@
     <span></span><span></span><span></span>
   </button>
   <a class="nav-center" href="index.html">
-    <img src="images/logo.png" alt="">
+    <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
     <span class="nav-center-text">NoteCaptain <span class="ai">AI</span></span>
   </a>
   <button class="nav-theme" id="mn-theme-btn" onclick="(function(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');document.getElementById('mn-theme-btn').textContent=l?'🌙 Dark':'☀️ Light';})()">☀️ Light</button>
@@ -276,7 +280,16 @@ const _MN_DEMO_NOTE = {
   updated: Date.now()
 };
 function getNotes(){
-  if (!_uid) return [_MN_DEMO_NOTE];
+  if (!_uid) {
+    // Guests see the notes they made in this browser (marked _guest by notepad.html).
+    if (window.GN_LOCKS_ENABLED === false) {
+      try {
+        const g = JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]').filter(n => n && n._guest);
+        if (g.length) return g;
+      } catch {}
+    }
+    return [_MN_DEMO_NOTE];
+  }
   try {
     return JSON.parse(localStorage.getItem('gn-notepad-notes') || '[]');
   } catch { return []; }

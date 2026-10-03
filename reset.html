@@ -52,12 +52,16 @@
 
     .back { display: block; text-align: center; margin-top: 20px; font-size: 0.83rem; color: var(--muted); text-decoration: none; }
     .back:hover { color: var(--purple2); }
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt{display:none!important;}
+    :root.light .logo-lt{display:block!important;}
+    :root.light .logo-dk{display:none!important;}
   </style>
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
 </head>
 <body>
 <nav>
-  <a href="index.html" class="nav-logo"><img src="images/logo.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
+  <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
 </nav>
 
 <div class="wrap">

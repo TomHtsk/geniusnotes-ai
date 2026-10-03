@@ -993,10 +993,6 @@
     <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
     <span class="np-brand-name">NoteCaptain</span>
   </a>
-  <a class="np-back" href="my-notes.html" aria-label="Back to your Logbook">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-    <span class="np-back-label">Logbook</span>
-  </a>
   <input id="note-title-input" class="np-title-input" type="text" placeholder="Note title" aria-label="Note title" oninput="onTitleChange()" />
   <div class="np-header-right">
     <button class="np-btn np-btn-primary" onclick="newNote()" title="Create a new note" aria-label="New note">
@@ -1037,8 +1033,6 @@
             <label class="np-import-item">Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
           </div>
         </div>
-        <div style="height:1px;background:var(--border);margin:5px 2px;"></div>
-        <button onclick="window.location.href='my-notes.html'" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Logbook</button>
       </div>
     </div>
   </div>
@@ -1071,7 +1065,6 @@
     <!-- Navigation -->
     <nav class="sbx-nav" aria-label="Pages">
       <a class="sbx-row" href="index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span class="sbx-row-name">Home</span></a>
-      <a class="sbx-row" href="my-notes.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 4v16M12.5 9h3"/></svg><span class="sbx-row-name">Logbook</span></a>
       <a class="sbx-row" href="flashcards.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="14" height="11" rx="2"/><path d="M7 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3"/></svg><span class="sbx-row-name">Flashcards</span></a>
     </nav>
     <!-- Search results (the flat notes list is only shown while searching) -->
@@ -1119,9 +1112,8 @@
     <div class="no-note" id="no-note-state">
       <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
       <h2>Ready when you are</h2>
-      <p>Open a note from your Logbook, or start a new one.</p>
+      <p>Open a note from the sidebar, or start a new one.</p>
       <button class="np-btn np-btn-primary" onclick="newNote()">New note</button>
-      <a href="my-notes.html">Open your Logbook</a>
     </div>
     <div id="editor-container" style="display:none;flex-direction:column;overflow:hidden;">
       <!-- Toolbar -->
@@ -7263,7 +7255,7 @@ function initCloudSync() {
 }
 
 function _welcomeNoteContent() {
-  return `<h1>Welcome to NoteCaptain AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud/Logbook live under the <strong>⋯</strong> menu at the top.</p>`;
+  return `<h1>Welcome to NoteCaptain AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud live under the <strong>⋯</strong> menu at the top.</p>`;
 }
 
 async function _seedWelcomeNote(uid) {
@@ -7766,7 +7758,7 @@ const _DEMO_NOTE = {
   id: _DEMO_NOTE_ID,
   _isDemo: true,
   title: 'Prompt Guide',
-  content: `<h1>Prompt Guide</h1><p style="color:#55606B;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud/Logbook live under the <strong>⋯</strong> menu at the top.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
+  content: `<h1>Prompt Guide</h1><p style="color:#55606B;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud live under the <strong>⋯</strong> menu at the top.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
   created: Date.now(),
   updated: Date.now()
 };
@@ -7878,7 +7870,7 @@ function _formatWikipediaNoteContent(text) {
     openNote(note.id);
     return;
   }
-  // "New note" / "Start a note" from the Logbook (my-notes.html): open a fresh, empty note.
+  // "New note" / "Start a note" requested by another page: open a fresh, empty note.
   const _newReq = localStorage.getItem('gn-notepad-new');
   if (_newReq) {
     localStorage.removeItem('gn-notepad-new');

@@ -1061,7 +1061,7 @@
     <div class="sb-search">
       <div class="sb-search-wrap">
         <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search your notes" aria-label="Search your notes" oninput="filterNotes(this.value)" />
+        <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search your notes/folders" aria-label="Search your notes and folders" oninput="filterNotes(this.value)" />
       </div>
     </div>
     <!-- Navigation -->
@@ -4122,11 +4122,25 @@ function renderSidebar() {
       return !searchQuery || n.title.toLowerCase().includes(q) || n.content.replace(/<[^>]+>/g,'').toLowerCase().includes(q);
     })
   );
-  if (!filtered.length) {
+  // Search also matches folder names; picking one clears the search and opens that folder.
+  const folderHits = !searchQuery ? '' : folders.filter(f => (f.name || '').toLowerCase().includes(q)).map(f =>
+    `<div class="ftree-row" style="padding-left:8px;" onclick="_openFolderFromSearch('${f.id}')">
+      ${_SB_ICON.folder}<span class="ftree-name">${escHtml(f.name)}</span><span class="ftree-count">${_ftreeCountAll(f.id)}</span>
+    </div>`).join('');
+  if (!filtered.length && !folderHits) {
     list.innerHTML = `<div class="empty-state">${searchQuery ? 'No matches' : _folderFilter ? 'No notes in folder' : 'No notes yet'}</div>`;
     return;
   }
-  list.innerHTML = filtered.map(n => renderNoteItem(n)).join('');
+  list.innerHTML = folderHits + filtered.map(n => renderNoteItem(n)).join('');
+}
+
+function _openFolderFromSearch(folderId) {
+  // Expand the folder and every folder above it, then go back to the folder list.
+  let f = folders.find(x => x.id === folderId), guard = 0;
+  while (f && guard++ < 30) { collapsedFolders.delete(f.id); f = f.parentId ? folders.find(x => x.id === f.parentId) : null; }
+  const input = document.getElementById('sb-search-input');
+  if (input) input.value = '';
+  filterNotes('');
 }
 
 function escHtml(s) {

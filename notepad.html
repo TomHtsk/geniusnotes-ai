@@ -907,6 +907,73 @@
     .no-note a { color: var(--accent); font-size: 0.84rem; font-weight: 600; text-decoration: none; }
     .no-note a:hover { text-decoration: underline; }
 
+    /* ── SIDEBAR (rebuilt Oct 2026) ─────────────────────────────────────────────
+       260px column, 16px inner padding. overflow:clip (not hidden) so the browser can never
+       scroll it sideways — that sideways scroll is what used to cut off the first letters.
+       The lists inside scroll on their own. */
+    .np-sidebar { width: 260px; min-width: 260px; overflow: hidden; overflow: clip; background: var(--surface); padding: 16px 0 0; }
+    .np-sidebar > * { min-width: 0; flex-shrink: 0; }
+    .sbx-brand { display: flex; align-items: center; gap: 9px; margin: 0 16px 16px; text-decoration: none; color: var(--text); font-family: var(--serif); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .sbx-brand img { width: 28px; height: 28px; object-fit: contain; }
+    .sbx-new { display: flex; align-items: center; justify-content: center; gap: 7px; height: 40px; margin: 0 16px 12px; border: none; border-radius: 10px; background: var(--primary-bg); color: var(--primary-text); font-family: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+    .sbx-new:hover { opacity: 0.88; }
+    .np-sidebar .sb-search { padding: 0 16px; border-bottom: none; margin-bottom: 20px; }
+    .np-sidebar .sb-search-wrap { height: 38px; padding: 0 11px; border-radius: 10px; background: var(--surface2); }
+    .np-sidebar .sb-search-wrap:focus-within { border-color: var(--accent); }
+    .np-sidebar .sb-search-input { font-size: 0.84rem; min-width: 0; }
+    .sbx-nav { display: flex; flex-direction: column; gap: 8px; padding: 0 8px; margin-bottom: 20px; }
+    .sbx-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px; border-radius: 8px; color: var(--text); font-size: 0.86rem; font-weight: 500; text-decoration: none; }
+    .sbx-row svg { flex-shrink: 0; color: var(--muted); }
+    .sbx-row:hover { background: var(--surface2); }
+    .sbx-row.active { background: rgba(var(--accent-rgb),0.12); color: var(--accent); font-weight: 600; }
+    .sbx-row.active svg { color: var(--accent); }
+    .sbx-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Section headings: small caps, 11px */
+    .np-sidebar .sb-section-hd { padding: 0 8px 8px 16px; gap: 2px; }
+    .np-sidebar .sb-section-label { flex: 1; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+    .np-sidebar .sb-section-btn { min-width: 28px; height: 28px; justify-content: center; border-radius: 7px; color: var(--muted); }
+    .np-sidebar .sb-section-btn:hover { background: var(--surface2); color: var(--text); }
+    /* Folder list: fills the rest of the column and scrolls on its own */
+    .np-sidebar .sb-folders { flex: 1 1 0; min-height: 0; max-height: none; border-top: none; display: flex; flex-direction: column; }
+    .np-sidebar #sb-folder-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 8px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .np-sidebar.searching .sb-folders { display: none; }
+    .np-sidebar .notes-list { flex: 1 1 0; min-height: 0; padding: 0 8px 16px; }
+    .np-sidebar .ftree-row, .np-sidebar .ftree-note { min-width: 0; min-height: 36px; padding-right: 8px; border-radius: 8px; gap: 8px; flex-shrink: 0; }
+    .np-sidebar .ftree-row:hover, .np-sidebar .ftree-note:hover { background: var(--surface2); }
+    .np-sidebar .ftree-row.drop-over { background: rgba(var(--accent-rgb),0.12); outline: 1.5px dashed var(--accent); outline-offset: -1px; }
+    .np-sidebar .ftree-chev { width: 14px; height: 14px; font-size: 0; color: var(--muted); }
+    .np-sidebar .ftree-chev:hover { background: none; }
+    .np-sidebar .ftree-icon { color: var(--muted); flex-shrink: 0; }
+    .np-sidebar .ftree-name { font-size: 0.86rem; font-weight: 500; min-width: 0; color: var(--text); }
+    .np-sidebar .ftree-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: rgba(var(--accent-rgb),0.12); color: var(--accent); font-size: 0.7rem; font-weight: 700; text-align: center; }
+    .np-sidebar .ftree-btn, .np-sidebar .ftree-note-btn { display: none; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border-radius: 6px; opacity: 1; }
+    .np-sidebar .ftree-row:hover .ftree-btn, .np-sidebar .ftree-row:focus-within .ftree-btn,
+    .np-sidebar .ftree-note:hover .ftree-note-btn, .np-sidebar .ftree-note:focus-within .ftree-note-btn { display: inline-flex; }
+    @media (hover: none) { .np-sidebar .ftree-btn, .np-sidebar .ftree-note-btn { display: inline-flex; } }
+    .np-sidebar .ftree-btn:hover, .np-sidebar .ftree-note-btn:hover { background: var(--border); color: var(--text); }
+    .np-sidebar .ftree-btn.del:hover, .np-sidebar .ftree-note-btn.del:hover { color: #B42318; }
+    .np-sidebar .ftree-note { padding-top: 5px; padding-bottom: 5px; }
+    .ftree-note-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .np-sidebar .ftree-note-title { display: block; font-size: 0.84rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ftree-note-date { font-size: 0.72rem; color: var(--muted); }
+    .np-sidebar .ftree-note.active { background: rgba(var(--accent-rgb),0.12); }
+    .np-sidebar .ftree-note.active .ftree-note-title { color: var(--accent); font-weight: 600; }
+    .np-sidebar .ftree-empty { padding: 0 8px; font-size: 0.8rem; color: var(--muted); }
+    .sbx-menu { position: fixed; z-index: 9999; width: 240px; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(11,15,20,0.18); }
+    .sbx-menu button { display: block; width: 100%; padding: 9px 10px; border: none; background: none; border-radius: 7px; text-align: left; font-family: inherit; font-size: 0.83rem; font-weight: 500; color: var(--text); cursor: pointer; }
+    .sbx-menu button:hover { background: var(--surface2); }
+    #np-sb-backdrop { display: none; }
+    /* With the sidebar open on desktop, the top bar hides its own logo and "New note" */
+    @media (min-width: 761px) {
+      body.rail-open .np-header .np-brand, body.rail-open .np-header .np-btn-primary { display: none; }
+    }
+    /* Phones: the sidebar slides over the page, with a dimmed backdrop */
+    @media (max-width: 760px) {
+      .np-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 800; width: 260px; min-width: 260px; max-width: 86vw; box-shadow: 0 0 40px rgba(11,15,20,0.3); transform: translateX(0); transition: transform 0.2s ease; }
+      .np-sidebar.hidden { width: 260px; min-width: 260px; opacity: 1; transform: translateX(-105%); box-shadow: none; }
+      .np-sidebar:not(.hidden) + #np-sb-backdrop { display: block; position: fixed; inset: 0; z-index: 790; background: rgba(11,15,20,0.45); }
+    }
+
     /* Logo: white mark on dark theme, dark mark on light theme */
     .logo-lt{display:none!important;}
     :root.light .logo-lt{display:block!important;}
@@ -986,37 +1053,31 @@
 
   <!-- SIDEBAR -->
   <div class="np-sidebar" id="np-sidebar">
-    <!-- Top header: logo + name + actions -->
-    <div class="sb-top">
-      <span class="sb-rail-title">Folders</span>
-      <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder" aria-label="Add new note or folder">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
+    <a class="sbx-brand" href="index.html" aria-label="NoteCaptain home">
+      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+      <span>NoteCaptain</span>
+    </a>
+    <button class="sbx-new" onclick="newNote()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      New note
+    </button>
     <!-- Search -->
     <div class="sb-search">
       <div class="sb-search-wrap">
-        <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search your notes" aria-label="Search your notes" oninput="filterNotes(this.value)" />
       </div>
     </div>
-    <!-- Quick nav -->
-    <div style="display:flex;gap:5px;padding:6px 10px 2px;flex-shrink:0;">
-      <a href="index.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
-      </a>
-      <a href="my-notes.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Logbook
-      </a>
-      <a href="flashcards.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="10" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg>Flashcards
-      </a>
-    </div>
-    <!-- Notes section -->
+    <!-- Navigation -->
+    <nav class="sbx-nav" aria-label="Pages">
+      <a class="sbx-row" href="index.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></svg><span class="sbx-row-name">Home</span></a>
+      <a class="sbx-row" href="my-notes.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 4v16M12.5 9h3"/></svg><span class="sbx-row-name">Logbook</span></a>
+      <a class="sbx-row" href="flashcards.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="14" height="11" rx="2"/><path d="M7 8V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3"/></svg><span class="sbx-row-name">Flashcards</span></a>
+    </nav>
+    <!-- Search results (the flat notes list is only shown while searching) -->
     <div class="sb-section-hd" id="sb-notes-hd">
       <span class="sb-section-label">Search results</span>
       <button class="sb-section-btn" id="sort-toggle-btn" onclick="cycleSortMode()" title="Change sort order">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
         <span id="sort-label">Recent</span>
       </button>
     </div>
@@ -1026,14 +1087,13 @@
     <!-- Folders section -->
     <div class="sb-folders">
       <div class="sb-section-hd">
-        <span class="sb-section-label">Your notes</span>
-        <button class="sb-section-btn" id="compare-pick-btn" onclick="toggleComparePicker()" title="Compare two notes side by side">Compare</button>
-        <button class="sb-section-btn" id="folder-sort-btn" onclick="cycleFolderSort()" title="Sort folders">
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6-6 6 6"/><path d="M6 15l6 6 6-6"/></svg>
-          <span id="folder-sort-label">A–Z</span>
+        <span class="sb-section-label">Folders</span>
+        <button class="sb-section-btn" id="folder-add-btn" onclick="newFolder()" title="New folder" aria-label="New folder">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         </button>
-        <button class="sb-section-btn" id="folder-add-btn" onclick="toggleFolderAreaMenu()" title="New note or folder">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <!-- id kept as compare-pick-btn: toggleComparePicker() anchors its note picker to this button -->
+        <button class="sb-section-btn" id="compare-pick-btn" onclick="toggleFolderMoreMenu(event)" title="Sort and compare" aria-label="Sort and compare options" aria-haspopup="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
         </button>
       </div>
       <div id="sb-folder-list"></div>
@@ -1050,6 +1110,9 @@
       </button>
     </div>
   </div>
+
+  <!-- Dimmed backdrop behind the sidebar on phones (tap to close) -->
+  <div id="np-sb-backdrop" onclick="toggleSidebar()"></div>
 
   <!-- EDITOR -->
   <div class="np-editor-area" id="editor-area">
@@ -1654,10 +1717,20 @@ let _sidebarVisible = window.innerWidth >= 768 && localStorage.getItem('gn-np-ra
 function _syncRailToggle() {
   const b = document.getElementById('np-rail-toggle');
   if (b) b.setAttribute('aria-expanded', _sidebarVisible ? 'true' : 'false');
+  // The sidebar has its own logo and "New note", so the top bar hides its copies while it is open.
+  document.body.classList.toggle('rail-open', _sidebarVisible);
+  var sb = document.getElementById('np-sidebar');
+  if (sb) sb.scrollLeft = 0;
 }
 (function() {
   if (!_sidebarVisible) document.getElementById('np-sidebar').classList.add('hidden');
   _syncRailToggle();
+  // On phones the sidebar is a slide-over: close it after a note is picked.
+  document.getElementById('np-sidebar').addEventListener('click', function(e) {
+    if (!_sidebarVisible || !window.matchMedia('(max-width: 760px)').matches) return;
+    if (e.target.closest('button') || !e.target.closest('.ftree-note, .note-item')) return;
+    toggleSidebar();
+  });
 })();
 function toggleSidebar() {
   _sidebarVisible = !_sidebarVisible;
@@ -3768,7 +3841,7 @@ const _FOLDER_COLORS = ['#8b5cf6','#4fc3f7','#34d399','#fbbf24','#f472b6','#fb92
 var _folderSort = 'name'; // 'name' | 'recent' | 'count'
 
 function cycleFolderSort() {
-  const modes = ['name','recent','count'];
+  const modes = ['name','recent'];
   _folderSort = modes[(modes.indexOf(_folderSort)+1) % modes.length];
   const labels = { name:'A–Z', recent:'Recent', count:'Count' };
   const el = document.getElementById('folder-sort-label');
@@ -3811,6 +3884,35 @@ function _ftreeIsDescendant(id, ancestorId) {
   return f && f.parentId ? _ftreeIsDescendant(f.parentId, ancestorId) : false;
 }
 
+// Small line icons drawn for the sidebar (no emoji, no icon packs).
+const _SB_ICON = {
+  chev: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+  folder: '<svg class="ftree-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  stack: '<svg class="ftree-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h14"/></svg>',
+  tray: '<svg class="ftree-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13l2-8h12l2 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>',
+  plus: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  x: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  pen: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'
+};
+let _allNotesOpen = false; // "All notes" starts collapsed
+
+// One note row in the folder list: title on one line, lighter date underneath.
+function _ftreeNoteHtml(n, padLeft) {
+  return `<div class="ftree-note${n.id===activeId?' active':''}"
+    style="padding-left:${padLeft}px;"
+    onclick="openNote('${n.id}')"
+    draggable="true"
+    ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
+    <span class="ftree-note-text">
+      <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
+      <span class="ftree-note-date">${fmtDate(n.updated||n.created||Date.now())}</span>
+    </span>
+    <button class="ftree-note-btn" onclick="event.stopPropagation();renameNoteInline(event,'${n.id}')" title="Rename" aria-label="Rename note">${_SB_ICON.pen}</button>
+    <button class="ftree-note-btn del" onclick="event.stopPropagation();deleteNote(event,'${n.id}')" title="Delete" aria-label="Delete note">${_SB_ICON.x}</button>
+  </div>`;
+}
+const _byRecent = (a,b) => (b.updated||0) - (a.updated||0);
+
 function _renderFolderTree(parentId, depth) {
   const indent = depth * 14;
   const children = _sortFolders(folders.filter(f => (f.parentId || null) === (parentId || null)));
@@ -3820,9 +3922,8 @@ function _renderFolderTree(parentId, depth) {
     const subFolders = folders.filter(sf => sf.parentId === f.id);
     const fNotes = notes.filter(n => n.folderId === f.id);
     const hasKids = subFolders.length > 0 || fNotes.length > 0;
-    const isActive = _folderFilter === f.id;
     const total = _ftreeCountAll(f.id);
-    html += `<div class="ftree-row${isActive?' active':''}"
+    html += `<div class="ftree-row"
       style="padding-left:${8+indent}px;"
       onclick="toggleFolderCollapse('${f.id}')"
       draggable="true"
@@ -3830,75 +3931,69 @@ function _renderFolderTree(parentId, depth) {
       ondragover="_ftreeDragOver(event)"
       ondragleave="_ftreeDragLeave(event)"
       ondrop="_ftreeDrop(event,'${f.id}')">
-      <span class="ftree-chev${hasKids?(isOpen?' open':''):' leaf'}" onclick="event.stopPropagation();toggleFolderCollapse('${f.id}')">▶</span>
-      <span class="ftree-icon">📁</span>
+      <span class="ftree-chev${hasKids?(isOpen?' open':''):' leaf'}">${_SB_ICON.chev}</span>
+      ${_SB_ICON.folder}
       <span class="ftree-name">${escHtml(f.name)}</span>
-      ${total?`<span class="ftree-count">${total}</span>`:''}
-      <button class="ftree-btn" onclick="event.stopPropagation();_ftreeShowAdd(event,'${f.id}')" title="New note or subfolder">+</button>
-      <button class="ftree-btn del" onclick="deleteFolder(event,'${f.id}')" title="Delete">✕</button>
+      <button class="ftree-btn" onclick="event.stopPropagation();_ftreeShowAdd(event,'${f.id}')" title="New note or subfolder" aria-label="New note or subfolder">${_SB_ICON.plus}</button>
+      <button class="ftree-btn del" onclick="deleteFolder(event,'${f.id}')" title="Delete folder" aria-label="Delete folder">${_SB_ICON.x}</button>
+      <span class="ftree-count">${total}</span>
     </div>`;
     if (isOpen) {
       html += _renderFolderTree(f.id, depth + 1);
-      if (fNotes.length) {
-        [...fNotes].sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(n => {
-          html += `<div class="ftree-note${n.id===activeId?' active':''}"
-            style="padding-left:${22+indent}px;"
-            onclick="openNote('${n.id}')"
-            draggable="true"
-            ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
-            <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
-            <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
-            <button class="ftree-note-btn" onclick="event.stopPropagation();renameNoteInline(event,'${n.id}')" title="Rename">✏</button>
-            <button class="ftree-note-btn del" onclick="event.stopPropagation();deleteNote(event,'${n.id}')" title="Delete">✕</button>
-          </div>`;
-        });
-      }
+      [...fNotes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30 + indent); });
     }
   });
   return html;
 }
 
+function toggleAllNotes() { _allNotesOpen = !_allNotesOpen; renderSbFolders(); }
+
 function renderSbFolders() {
   const el = document.getElementById('sb-folder-list');
   if (!el) return;
-  let html = `<div class="sb-folder-item" onclick="setFolderFilter(null)"
+  const realNotes = notes.filter(n => !n._isDemo);
+  // All notes: every note, newest first. Dropping a note here removes it from its folder.
+  let html = `<div class="ftree-row" style="padding-left:8px;" onclick="toggleAllNotes()"
     ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
-    <span class="sb-fdot" style="background:rgba(var(--accent-rgb),0.35);border:1.5px solid rgba(var(--accent-rgb),0.5);"></span>
-    <span class="sb-fname" style="${!_folderFilter?'color:var(--accent2);font-weight:600;':''}">All Notes</span>
-    <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;padding-right:4px;">${notes.length}</span>
+    <span class="ftree-chev${notes.length?(_allNotesOpen?' open':''):' leaf'}">${_SB_ICON.chev}</span>
+    ${_SB_ICON.stack}
+    <span class="ftree-name">All notes</span>
+    <span class="ftree-count">${realNotes.length}</span>
   </div>`;
+  if (_allNotesOpen) [...notes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30); });
+
   html += _renderFolderTree(null, 0);
-  if (!folders.length) html += '<div class="ftree-empty">No folders yet. Click + to create one.</div>';
+  if (!folders.length) html += '<div class="ftree-empty">No folders yet</div>';
 
   // Unfiled notes section
   const unfiledNotes = notes.filter(n => !n.folderId || !folders.find(f => f.id === n.folderId));
   if (unfiledNotes.length) {
     const unfiledOpen = !collapsedFolders.has('__unfiled__');
-    html += `<div class="ftree-row${_folderFilter==='__unfiled__'?' active':''}"
-      style="padding-left:8px;margin-top:4px;"
-      onclick="setFolderFilter('__unfiled__')"
+    html += `<div class="ftree-row" style="padding-left:8px;"
+      onclick="toggleFolderCollapse('__unfiled__')"
       ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
-      <span class="ftree-chev${unfiledOpen?' open':''}" onclick="event.stopPropagation();toggleFolderCollapse('__unfiled__')">▶</span>
-      <span class="ftree-icon">📄</span>
-      <span class="ftree-name" style="${_folderFilter==='__unfiled__'?'color:var(--accent2);':''}">Unfiled</span>
+      <span class="ftree-chev${unfiledOpen?' open':''}">${_SB_ICON.chev}</span>
+      ${_SB_ICON.tray}
+      <span class="ftree-name">Unfiled</span>
       <span class="ftree-count">${unfiledNotes.length}</span>
     </div>`;
-    if (unfiledOpen) {
-      [...unfiledNotes].sort((a,b)=>(b.updated||0)-(a.updated||0)).forEach(n => {
-        html += `<div class="ftree-note${n.id===activeId?' active':''}"
-          style="padding-left:22px;"
-          onclick="openNote('${n.id}')"
-          draggable="true"
-          ondragstart="_ftreeDragNoteStart(event,'${n.id}')">
-          <span style="font-size:0.68rem;opacity:0.4;flex-shrink:0;">📄</span>
-          <span class="ftree-note-title">${escHtml(n.title||'Untitled')}</span>
-          <button class="ftree-note-btn" onclick="event.stopPropagation();renameNoteInline(event,'${n.id}')" title="Rename">✏</button>
-          <button class="ftree-note-btn del" onclick="event.stopPropagation();deleteNote(event,'${n.id}')" title="Delete">✕</button>
-        </div>`;
-      });
-    }
+    if (unfiledOpen) [...unfiledNotes].sort(_byRecent).forEach(n => { html += _ftreeNoteHtml(n, 30); });
   }
   el.innerHTML = html;
+}
+
+// Folders "⋯" menu (sort + compare)
+function toggleFolderMoreMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('folder-more-menu');
+  if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
+  const r = document.getElementById('compare-pick-btn').getBoundingClientRect();
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 248)) + 'px';
+  menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', function _closeFMM(ev) {
+    if (!menu.contains(ev.target)) { menu.style.display = 'none'; document.removeEventListener('click', _closeFMM); }
+  }), 10);
 }
 
 // ── TREE ADD MENU ──
@@ -4053,6 +4148,9 @@ function newNote() {
 function openNote(id) {
   if (typeof _ttsStop === 'function') { window.speechSynthesis.cancel(); _ttsStop(); }
   activeId = id;
+  // Highlight the open note in the sidebar straight away (the full re-render further down
+  // in _openNoteRender is not always reached).
+  try { renderSbFolders(); } catch (e) {}
   const note = notes.find(n => n.id === id);
   if (!note) return;
   // Large notes have their content offloaded to IndexedDB (see saveNotes/_notesDbGet) —
@@ -9442,6 +9540,12 @@ function recInsertIntoNote() {
 <div id="ftree-add-menu" style="display:none;position:fixed;z-index:5000;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:158px;box-shadow:0 8px 28px rgba(0,0,0,0.5);">
   <button class="fp-opt" onclick="_ftreeAddNote()">📄 New Note here</button>
   <button class="fp-opt" onclick="_ftreeAddSubfolder()">📁 New Subfolder</button>
+</div>
+
+<!-- Folders "⋯" menu: sort + compare -->
+<div id="folder-more-menu" class="sbx-menu" style="display:none;">
+  <button onclick="event.stopPropagation();cycleFolderSort();">Sort: <span id="folder-sort-label">A–Z</span></button>
+  <button onclick="document.getElementById('folder-more-menu').style.display='none';toggleComparePicker();">Compare two notes side by side</button>
 </div>
 
 <!-- Folder-area + dropdown -->

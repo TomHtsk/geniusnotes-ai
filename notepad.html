@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Notepad — NoteCaptain AI</title>
+  <title>Notepad — NoteCaptain</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="/images/favicon.png" />
   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -39,21 +39,37 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <style>
+    /* NoteCaptain "logbook" palette: ink, white, fog grey, and one accent (deep sea teal).
+       --accent-rgb is the same accent as bare numbers, for rgba(var(--accent-rgb), 0.x) tints. */
     :root {
-      --bg: #06060F; --surface: #12121E; --surface2: #1a1a2e;
-      --border: rgba(255,255,255,0.08); --text: #E8E8F0; --muted: #6B6B80;
-      --purple: #8B5CF6; --purple2: #A78BFA; --cyan: #4FC3F7;
+      --bg: #0B0F14; --surface: #131A21; --surface2: #1A232C;
+      --border: rgba(255,255,255,0.11); --text: #E9EEF2; --muted: #9AA7B2;
+      --accent: #5CC4D0; --accent2: #7FD4DD; --accent-rgb: 92,196,208; --on-accent: #0B0F14;
+      --primary-bg: #FFFFFF; --primary-text: #0B0F14;
+      --cyan: #4FC3F7;
       --save: #28c840;
+      --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
       color-scheme: dark;
       /* Pageless document width/min-height (was fixed US-Letter paging; see .page-box below) */
       --page-w: 760px;
       --page-h: 1056px;  /* kept only as a comfortable min-height for a short/empty note */
     }
     :root.light {
-      --bg: #FAF9F6; --surface: #FFFFFF; --surface2: #EEEEF6;
-      --border: rgba(0,0,0,0.08); --text: #111120; --muted: #666688;
+      --bg: #F3F5F7; --surface: #FFFFFF; --surface2: #EDF0F3;
+      --border: #DCE1E6; --text: #0B0F14; --muted: #55606B;
+      --accent: #0F6E7A; --accent2: #0F6E7A; --accent-rgb: 15,110,122; --on-accent: #FFFFFF;
+      --primary-bg: #0B0F14; --primary-text: #FFFFFF;
       color-scheme: light;
     }
+    /* Panels that are dark in BOTH themes (popups, code views, modals) keep the bright teal,
+       otherwise the deep light-theme teal would be unreadable on them. */
+    #cmd-panel, #hl-sb-panel, #math-panel, #ai-inline-popup, #conv-panel, .cm-card, .gh-block,
+    #sel-popup, #interp-card, #rec-card, #split-swap-btn, #conv-menu, #cm-save-menu, #df-save-menu,
+    #img-ctx-menu, #doc-format-modal,
+    [style*="background:#131A21"], [style*="background:#1A232C"], [style*="background:#0d1117"] {
+      --accent: #5CC4D0; --accent2: #7FD4DD; --accent-rgb: 92,196,208; --on-accent: #0B0F14;
+    }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
@@ -71,7 +87,7 @@
       font-size: 1rem; flex-shrink: 0; line-height: 1;
       transition: background 0.12s, color 0.12s;
     }
-    .np-sidebar-toggle:hover { background: rgba(139,92,246,0.1); color: var(--text); }
+    .np-sidebar-toggle:hover { background: rgba(var(--accent-rgb),0.1); color: var(--text); }
     .np-doc-icon { font-size: 1rem; flex-shrink: 0; opacity: 0.65; margin-right: 2px; }
     .np-title-input {
       flex: 1; min-width: 0;
@@ -98,9 +114,9 @@
       font-family: inherit; transition: all 0.15s;
       display: flex; align-items: center; gap: 4px; white-space: nowrap;
     }
-    .np-btn:hover { border-color: var(--purple2); color: var(--text); }
-    .np-btn-primary { background: var(--purple); border-color: var(--purple); color: #fff; }
-    .np-btn-primary:hover { opacity: 0.85; border-color: var(--purple); color: #fff; }
+    .np-btn:hover { border-color: var(--accent2); color: var(--text); }
+    .np-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .np-btn-primary:hover { opacity: 0.85; border-color: var(--accent); color: #fff; }
     .np-close-btn {
       background: none; border: 1px solid var(--border);
       color: var(--muted); border-radius: 8px;
@@ -109,7 +125,7 @@
       cursor: pointer; font-size: 0.78rem; font-weight: 600; flex-shrink: 0;
       transition: all 0.15s; font-family: inherit; white-space: nowrap;
     }
-    .np-close-btn:hover { border-color: var(--purple2); color: var(--purple2); background: rgba(139,92,246,0.08); }
+    .np-close-btn:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(var(--accent-rgb),0.08); }
     .np-btn-label { }
     @media (max-width: 580px) { .np-btn-label { display: none; } .si-label { display: none; } }
 
@@ -128,13 +144,13 @@
     .sb-logo { width:26px; height:26px; border-radius:7px; overflow:hidden; flex-shrink:0; }
     .sb-logo img { width:100%; height:100%; object-fit:cover; }
     .sb-name { font-size:0.88rem; font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .sb-name span { background:linear-gradient(90deg,#a78bfa,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .sb-name span { background:linear-gradient(90deg,var(--accent2),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
     .sb-icon-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:5px; border-radius:7px; display:flex; align-items:center; justify-content:center; transition:background 0.12s,color 0.12s; flex-shrink:0; }
-    .sb-icon-btn:hover { background:rgba(139,92,246,0.12); color:var(--purple2); }
+    .sb-icon-btn:hover { background:rgba(var(--accent-rgb),0.12); color:var(--accent2); }
     /* Search */
     .sb-search { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
     .sb-search-wrap { display:flex; align-items:center; gap:7px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:7px 11px; transition:border-color 0.15s; }
-    .sb-search-wrap:focus-within { border-color:rgba(139,92,246,0.45); }
+    .sb-search-wrap:focus-within { border-color:rgba(var(--accent-rgb),0.45); }
     .sb-search-icon { color:var(--muted); flex-shrink:0; opacity:0.7; }
     .sb-search-input { flex:1; background:none; border:none; outline:none; font-size:0.81rem; color:var(--text); font-family:inherit; }
     .sb-search-input::placeholder { color:var(--muted); }
@@ -142,38 +158,38 @@
     .sb-section-hd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 3px; flex-shrink:0; }
     .sb-section-label { font-size:0.8rem; font-weight:800; color:var(--text); letter-spacing:-0.01em; }
     .sb-section-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:3px 5px; border-radius:6px; display:flex; align-items:center; gap:3px; font-size:0.72rem; font-weight:700; font-family:inherit; transition:color 0.12s,background 0.12s; }
-    .sb-section-btn:hover { color:var(--purple2); background:rgba(139,92,246,0.08); }
+    .sb-section-btn:hover { color:var(--accent2); background:rgba(var(--accent-rgb),0.08); }
     /* Notes list */
     .notes-list { flex:1; overflow-y:auto; padding:3px 6px; }
     .notes-list::-webkit-scrollbar { width:3px; }
-    .notes-list::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.2); border-radius:4px; }
+    .notes-list::-webkit-scrollbar-thumb { background:rgba(var(--accent-rgb),0.2); border-radius:4px; }
     /* Note items — clean rows */
     .note-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; cursor:pointer; margin-bottom:1px; position:relative; user-select:none; touch-action:none; transition:background 0.12s; }
     .note-item * { touch-action:none; user-select:none; }
     .note-item:hover { background:var(--surface2); }
-    .note-item.active { background:rgba(139,92,246,0.11); }
+    .note-item.active { background:rgba(var(--accent-rgb),0.11); }
     .note-item.dragging { opacity:0.3; cursor:grabbing; }
-    .note-item.drop-top { border-top:2px solid var(--purple) !important; }
-    .note-item.drop-bot { border-bottom:2px solid var(--purple) !important; }
-    .note-item.drop-mid { background:rgba(139,92,246,0.18)!important; outline:2px solid var(--purple); outline-offset:-2px; }
+    .note-item.drop-top { border-top:2px solid var(--accent) !important; }
+    .note-item.drop-bot { border-bottom:2px solid var(--accent) !important; }
+    .note-item.drop-mid { background:rgba(var(--accent-rgb),0.18)!important; outline:2px solid var(--accent); outline-offset:-2px; }
     .ni-icon { flex-shrink:0; color:var(--muted); opacity:0.55; display:flex; align-items:center; }
     .ni-text { flex:1; min-width:0; }
     .ni-title { font-size:0.83rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .note-item.active .ni-title { font-weight:600; color:var(--purple2); }
+    .note-item.active .ni-title { font-weight:600; color:var(--accent2); }
     .ni-date { font-size:0.66rem; color:var(--muted); margin-top:1px; }
     .ni-folder { font-size:0.62rem; color:var(--muted); margin-top:1px; opacity:0.7; }
     .note-rename-btn { position:absolute; right:30px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0; padding:2px 5px; border-radius:4px; transition:opacity 0.12s; color:var(--muted); }
     .note-item:hover .note-rename-btn { opacity:0.6; }
-    .note-rename-btn:hover { opacity:1!important; color:var(--purple2); background:rgba(139,92,246,0.08); }
+    .note-rename-btn:hover { opacity:1!important; color:var(--accent2); background:rgba(var(--accent-rgb),0.08); }
     .note-delete { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; border-left:1px solid rgba(255,255,255,0.07); color:var(--muted); cursor:pointer; font-size:0.8rem; opacity:0; transition:opacity 0.15s; padding:3px 6px 3px 8px; }
     .note-item:hover .note-delete { opacity:0.55; }
     .note-delete:hover { color:#ff5555; opacity:1!important; }
     .note-compare-btn { position:absolute;right:82px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.72rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
     .note-item:hover .note-compare-btn { opacity:0.7; }
-    .note-compare-btn:hover { opacity:1!important; color:var(--purple2); }
+    .note-compare-btn:hover { opacity:1!important; color:var(--accent2); }
     .note-move-btn { position:absolute;right:56px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;opacity:0;transition:opacity 0.12s;padding:2px 4px;z-index:2; }
     .note-item:hover .note-move-btn { opacity:0.7; }
-    .note-move-btn:hover { opacity:1!important; color:var(--purple2); }
+    .note-move-btn:hover { opacity:1!important; color:var(--accent2); }
     .note-item-preview,.note-item-date,.note-item-title-row,.note-item-title,.df-chip,.df-chip-active { display:none; }
     .note-folder-tag { display:none; }
     .empty-state { text-align:center; padding:28px 12px; color:var(--muted); font-size:0.8rem; }
@@ -181,7 +197,7 @@
     .sb-folders { border-top:1px solid var(--border); display:flex; flex-direction:column; min-height:0; max-height:45%; }
     #sb-folder-list { overflow-y:auto; flex:1; }
     #sb-folder-list::-webkit-scrollbar { width:3px; }
-    #sb-folder-list::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.2); border-radius:4px; }
+    #sb-folder-list::-webkit-scrollbar-thumb { background:rgba(var(--accent-rgb),0.2); border-radius:4px; }
     .sb-folder-item { display:flex; align-items:center; gap:10px; padding:7px 10px; margin:1px 6px; cursor:pointer; transition:background 0.12s; border-radius:8px; }
     .sb-folder-item:hover { background:var(--surface2); }
     .sb-folder-item:first-child { margin-top:2px; }
@@ -193,7 +209,7 @@
     /* Bottom bar */
     .sb-bottom { border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-around; padding:6px 4px; flex-shrink:0; }
     .sb-bot-btn { display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--muted); cursor:pointer; padding:7px 10px; border-radius:9px; font-size:0.58rem; font-weight:700; font-family:inherit; transition:background 0.15s,color 0.15s; text-transform:uppercase; letter-spacing:0.04em; }
-    .sb-bot-btn:hover { background:rgba(139,92,246,0.1); color:var(--purple2); }
+    .sb-bot-btn:hover { background:rgba(var(--accent-rgb),0.1); color:var(--accent2); }
     .sb-bot-btn svg { flex-shrink:0; }
     /* Hide old sidebar header elements */
     .sidebar-header,.sidebar-title,.btn-new,.search-box { display:none; }
@@ -201,16 +217,16 @@
     /* ── SIDEBAR DRAG ── */
     .note-drag-handle { cursor:grab; color:var(--muted); font-size:0.75rem; opacity:0; padding:0 3px; flex-shrink:0; transition:opacity 0.12s; }
     .note-item:hover .note-drag-handle { opacity:0.6; }
-    .note-item.drag-over-top { border-top:2px solid var(--purple) !important; }
-    .note-item.drag-over-bot { border-bottom:2px solid var(--purple) !important; }
+    .note-item.drag-over-top { border-top:2px solid var(--accent) !important; }
+    .note-item.drag-over-bot { border-bottom:2px solid var(--accent) !important; }
     .note-item.dragging { opacity:0.35; }
-    #drag-ghost { position:fixed; background:rgba(139,92,246,0.92); color:#fff; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:700; pointer-events:none; z-index:9999; box-shadow:0 4px 20px rgba(0,0,0,0.5); white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; display:none; }
+    #drag-ghost { position:fixed; background:rgba(var(--accent-rgb),0.92); color:#fff; padding:5px 12px; border-radius:8px; font-size:0.78rem; font-weight:700; pointer-events:none; z-index:9999; box-shadow:0 4px 20px rgba(0,0,0,0.5); white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; display:none; }
 
     /* ── EDITOR AREA ── */
     .np-editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; flex-shrink: 0; }
     .tb-btn { background: none; border: none; color: var(--muted); border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 0.85rem; font-family: inherit; transition: background 0.12s, color 0.12s; line-height: 1; }
-    .tb-btn:hover, .tb-btn.active { background: rgba(139,92,246,0.12); color: var(--purple2); }
+    .tb-btn:hover, .tb-btn.active { background: rgba(var(--accent-rgb),0.12); color: var(--accent2); }
     .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
     .editor-wrap { flex: 1; overflow-y: auto; padding: 48px 32px; scroll-behavior: smooth; background: #3a3a4a; position: relative; }
 
@@ -260,8 +276,8 @@
     .page-content h1:first-child, .page-content h2:first-child, .page-content p:first-child { margin-top: 0; }
     .page-content ul, .page-content ol { padding-left: 1.6em; margin: 0.5em 0; }
     .page-content li { margin-bottom: 0.25em; }
-    .page-content blockquote { border-left: 3px solid var(--purple2); padding-left: 16px; color: var(--muted); margin: 0.5em 0; }
-    .page-content a { color: var(--purple2); }
+    .page-content blockquote { border-left: 3px solid var(--accent2); padding-left: 16px; color: var(--muted); margin: 0.5em 0; }
+    .page-content a { color: var(--accent2); }
     .page-content hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
     .page-content img { border-radius: 8px; margin: 8px 0; display: block; max-width: 100%; }
     .page-content mark { background: rgba(245,184,66,0.38); color: inherit; padding: 1px 2px; border-radius: 3px; }
@@ -274,9 +290,9 @@
     /* ── SPLIT SCREEN ── */
     .editor-split-row { flex:1; display:flex; overflow:hidden; min-height:0; }
     .split-pane { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
-    .split-divider { width:5px; background:rgba(139,92,246,0.25); cursor:col-resize; flex-shrink:0; transition:background 0.15s; position:relative; }
-    .split-divider:hover, .split-divider.dragging { background:rgba(139,92,246,0.6); }
-    .right-pane { display:none; flex:1; flex-direction:column; overflow:hidden; min-width:0; border-left:1px solid rgba(139,92,246,0.25); }
+    .split-divider { width:5px; background:rgba(var(--accent-rgb),0.25); cursor:col-resize; flex-shrink:0; transition:background 0.15s; position:relative; }
+    .split-divider:hover, .split-divider.dragging { background:rgba(var(--accent-rgb),0.6); }
+    .right-pane { display:none; flex:1; flex-direction:column; overflow:hidden; min-width:0; border-left:1px solid rgba(var(--accent-rgb),0.25); }
     .right-pane.visible { display:flex; }
     .right-pane-hd { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
     .left-pane-hd { display:none; align-items:center; gap:6px; padding:6px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -287,41 +303,41 @@
     .pane-hd-wrap { display:flex; flex-direction:column; gap:0; flex:1; min-width:0; }
     .pane-stats { font-size:0.68rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-top:1px; opacity:0.8; }
     .rp-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:0.72rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.12s; flex-shrink:0; }
-    .rp-btn:hover { border-color:var(--purple); color:var(--purple2); }
+    .rp-btn:hover { border-color:var(--accent); color:var(--accent2); }
     .sort-btn { background:none; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:0.68rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.12s; }
-    .sort-btn:hover { border-color:var(--purple); color:var(--purple2); }
+    .sort-btn:hover { border-color:var(--accent); color:var(--accent2); }
     /* Detach floating panel */
-    #detach-panel { display:none; position:fixed; top:80px; right:24px; width:420px; max-width:92vw; height:55vh; background:var(--surface); border:1.5px solid rgba(139,92,246,0.45); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.7); z-index:7000; flex-direction:column; overflow:hidden; resize:both; }
+    #detach-panel { display:none; position:fixed; top:80px; right:24px; width:420px; max-width:92vw; height:55vh; background:var(--surface); border:1.5px solid rgba(var(--accent-rgb),0.45); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.7); z-index:7000; flex-direction:column; overflow:hidden; resize:both; }
     #detach-panel.on { display:flex; }
-    #detach-hd { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(139,92,246,0.08); border-bottom:1px solid var(--border); cursor:grab; user-select:none; flex-shrink:0; }
+    #detach-hd { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(var(--accent-rgb),0.08); border-bottom:1px solid var(--border); cursor:grab; user-select:none; flex-shrink:0; }
     #detach-hd:active { cursor:grabbing; }
-    #detach-title { font-size:0.8rem; font-weight:700; color:var(--purple2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #detach-title { font-size:0.8rem; font-weight:700; color:var(--accent2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #detach-body { flex:1; overflow-y:auto; padding:18px 20px; font-family:'Inter',system-ui,sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text); outline:none; }
     #detach-body:focus { outline:none; }
     .right-editor-wrap { flex:1; overflow-y:auto; padding:48px 32px; background:#3a3a4a; position:relative; }
     :root.light .right-editor-wrap { background: #b0b0b0; }
     #pages-container-right { display:flex; flex-direction:column; align-items:center; gap:32px; padding-bottom:80px; }
-    .split-drop-overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(139,92,246,0.1); border:3px dashed rgba(139,92,246,0.5); border-radius:6px; z-index:200; pointer-events:none; flex-direction:column; gap:10px; }
+    .split-drop-overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(var(--accent-rgb),0.1); border:3px dashed rgba(var(--accent-rgb),0.5); border-radius:6px; z-index:200; pointer-events:none; flex-direction:column; gap:10px; }
     .split-drop-overlay.show { display:flex; pointer-events:auto; cursor:copy; }
-    .split-drop-overlay span { font-size:0.85rem; font-weight:700; color:var(--purple2); }
-    .tb-split-btn { background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:var(--purple2); border-radius:6px; padding:4px 10px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .tb-split-btn:hover { background:rgba(139,92,246,0.22); }
-    .tb-split-btn.active { background:rgba(139,92,246,0.3); }
+    .split-drop-overlay span { font-size:0.85rem; font-weight:700; color:var(--accent2); }
+    .tb-split-btn { background:rgba(var(--accent-rgb),0.12); border:1px solid rgba(var(--accent-rgb),0.3); color:var(--accent2); border-radius:6px; padding:4px 10px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .tb-split-btn:hover { background:rgba(var(--accent-rgb),0.22); }
+    .tb-split-btn.active { background:rgba(var(--accent-rgb),0.3); }
     /* ── CMD PANEL (slash command preview) ── */
-    #cmd-panel { flex-shrink:0; max-height:0; overflow:hidden; transition:max-height 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.2s; background:#09091c; border-top:1px solid rgba(139,92,246,0); }
-    #cmd-panel.cmd-panel-open { max-height:230px; border-top-color:rgba(139,92,246,0.4); }
+    #cmd-panel { flex-shrink:0; max-height:0; overflow:hidden; transition:max-height 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.2s; background:#0B0F14; border-top:1px solid rgba(var(--accent-rgb),0); }
+    #cmd-panel.cmd-panel-open { max-height:230px; border-top-color:rgba(var(--accent-rgb),0.4); }
     #cmd-panel-inner { padding:16px 24px 18px; display:flex; flex-direction:column; gap:10px; }
     #cmd-panel-row1 { display:flex; align-items:center; justify-content:space-between; }
     #cmd-panel-left { display:flex; align-items:center; gap:10px; }
     #cmd-panel-icon { font-size:1.4rem; line-height:1; }
-    #cmd-panel-title { font-weight:600; color:#e0e0ff; font-size:0.95rem; }
+    #cmd-panel-title { font-weight:600; color:#E9EEF2; font-size:0.95rem; }
     #cmd-panel-desc { color:rgba(255,255,255,0.42); font-size:0.78rem; margin-top:2px; }
     #cmd-panel-hints { display:flex; align-items:center; gap:8px; }
-    .cmd-kbd { background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.32); border-radius:5px; padding:3px 9px; font-size:0.74rem; color:#a78bfa; font-family:inherit; }
-    #cmd-panel-preview { background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.15); border-radius:8px; padding:9px 14px; font-size:0.82rem; color:#a78bfa; font-family:inherit; letter-spacing:0.02em; }
-    #hl-sb-panel { display:none; position:absolute; bottom:calc(100% + 6px); right:0; width:270px; background:#181828; border:1px solid rgba(245,184,66,0.38); border-radius:12px; padding:12px; box-shadow:0 10px 32px rgba(0,0,0,0.7); z-index:300; }
-    #hl-sb-panel input { width:100%; padding:7px 10px; border-radius:8px; border:1px solid rgba(245,184,66,0.35); background:#0d0d1a; color:#e8e8f0; font-size:0.78rem; font-family:inherit; outline:none; margin-bottom:8px; box-sizing:border-box; }
-    #hl-sb-panel input::placeholder { color:#555577; }
+    .cmd-kbd { background:rgba(var(--accent-rgb),0.15); border:1px solid rgba(var(--accent-rgb),0.32); border-radius:5px; padding:3px 9px; font-size:0.74rem; color:var(--accent2); font-family:inherit; }
+    #cmd-panel-preview { background:rgba(var(--accent-rgb),0.06); border:1px solid rgba(var(--accent-rgb),0.15); border-radius:8px; padding:9px 14px; font-size:0.82rem; color:var(--accent2); font-family:inherit; letter-spacing:0.02em; }
+    #hl-sb-panel { display:none; position:absolute; bottom:calc(100% + 6px); right:0; width:270px; background:#18212A; border:1px solid rgba(245,184,66,0.38); border-radius:12px; padding:12px; box-shadow:0 10px 32px rgba(0,0,0,0.7); z-index:300; }
+    #hl-sb-panel input { width:100%; padding:7px 10px; border-radius:8px; border:1px solid rgba(245,184,66,0.35); background:#0E141A; color:#e8e8f0; font-size:0.78rem; font-family:inherit; outline:none; margin-bottom:8px; box-sizing:border-box; }
+    #hl-sb-panel input::placeholder { color:#6B7885; }
     mark.diff-mark { background:rgba(255,90,20,0.42); border-radius:2px; outline:1px solid rgba(255,90,20,0.25); }
     :root.light .editor-wrap { background: #b0b0b0; }
     .editor-wrap::-webkit-scrollbar { width: 6px; }
@@ -365,11 +381,11 @@
     :root:not(.light) .phb-options { color:#7ab4f5; }
     .math-eq { display:inline-block; padding:0 2px; margin:0 1px; cursor:pointer; vertical-align:middle; }
     .math-eq-block { display:block; padding:8px 0; margin:6px 0; text-align:center; cursor:pointer; }
-    .math-eq:hover { outline:1px dashed rgba(139,92,246,0.4); border-radius:3px; }
-    .math-eq-block:hover { outline:1px dashed rgba(139,92,246,0.4); border-radius:6px; }
+    .math-eq:hover { outline:1px dashed rgba(var(--accent-rgb),0.4); border-radius:3px; }
+    .math-eq-block:hover { outline:1px dashed rgba(var(--accent-rgb),0.4); border-radius:6px; }
     .cornell-block { display:block; margin:16px 0; font-family:'Georgia',serif; font-size:0.88rem; width:100%; box-sizing:border-box; }
-    .cornell-block:hover { outline:1px dashed rgba(139,92,246,0.3); border-radius:11px; }
-    .cn-cell[contenteditable="true"]:focus { outline:none; background:rgba(139,92,246,0.08); border-radius:3px; }
+    .cornell-block:hover { outline:1px dashed rgba(var(--accent-rgb),0.3); border-radius:11px; }
+    .cn-cell[contenteditable="true"]:focus { outline:none; background:rgba(var(--accent-rgb),0.08); border-radius:3px; }
     .cn-cell[contenteditable="true"] { min-height:1em; }
     .rc{position:absolute;pointer-events:none;z-index:100;}
     .rc-caret{display:inline-block;width:2px;height:1.2em;border-radius:1px;position:relative;animation:rc-blink 1.2s infinite;}
@@ -382,29 +398,29 @@
     .cornell-block.cn-recall-mode .cn-note.cn-revealed { filter:none; cursor:text; user-select:text; }
     .cn-recall-hint { display:none; font-size:0.7rem; font-style:italic; padding:5px 16px 6px; }
     .cornell-block.cn-recall-mode .cn-recall-hint { display:block; }
-    #math-panel { display:none; position:absolute; top:calc(100% + 6px); left:0; width:390px; background:#13132a; border:1px solid rgba(139,92,246,0.45); border-radius:14px; padding:0; box-shadow:0 12px 40px rgba(0,0,0,0.8); z-index:300; overflow:hidden; }
-    #math-panel-header { padding:10px 14px 0; border-bottom:1px solid rgba(139,92,246,0.15); padding-bottom:8px; }
-    #math-ai-wrap { padding:8px 12px; background:rgba(139,92,246,0.06); border-bottom:1px solid rgba(139,92,246,0.15); }
-    #math-ai-input { width:100%; box-sizing:border-box; background:transparent; border:none; outline:none; color:#e0e0ff; font-size:0.88rem; font-family:inherit; resize:none; min-height:54px; line-height:1.5; }
-    #math-ai-input::placeholder { color:rgba(167,139,250,0.35); font-style:italic; }
+    #math-panel { display:none; position:absolute; top:calc(100% + 6px); left:0; width:390px; background:#13132a; border:1px solid rgba(var(--accent-rgb),0.45); border-radius:14px; padding:0; box-shadow:0 12px 40px rgba(0,0,0,0.8); z-index:300; overflow:hidden; }
+    #math-panel-header { padding:10px 14px 0; border-bottom:1px solid rgba(var(--accent-rgb),0.15); padding-bottom:8px; }
+    #math-ai-wrap { padding:8px 12px; background:rgba(var(--accent-rgb),0.06); border-bottom:1px solid rgba(var(--accent-rgb),0.15); }
+    #math-ai-input { width:100%; box-sizing:border-box; background:transparent; border:none; outline:none; color:#E9EEF2; font-size:0.88rem; font-family:inherit; resize:none; min-height:54px; line-height:1.5; }
+    #math-ai-input::placeholder { color:rgba(var(--accent-rgb),0.35); font-style:italic; }
     #math-preview-row { min-height:28px; display:flex; align-items:center; gap:8px; padding-top:4px; }
-    #math-preview { color:#e0e0ff; font-size:1.05rem; }
-    #math-preview-status { color:rgba(167,139,250,0.55); font-size:0.72rem; font-style:italic; }
+    #math-preview { color:#E9EEF2; font-size:1.05rem; }
+    #math-preview-status { color:rgba(var(--accent-rgb),0.55); font-size:0.72rem; font-style:italic; }
     #math-panel-footer { padding:8px 12px; display:flex; align-items:center; gap:8px; }
-    .math-sym-tab { background:none; border:1px solid rgba(139,92,246,0.2); border-radius:5px; color:#7777aa; font-size:0.68rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; transition:all 0.12s; }
-    .math-sym-tab:hover { border-color:rgba(139,92,246,0.5); color:#a78bfa; }
-    .math-sym-tab-active { background:rgba(139,92,246,0.2); border-color:rgba(139,92,246,0.5); color:#a78bfa; }
-    .math-sym-btn { background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.18); border-radius:5px; color:#c4b5fd; font-size:0.78rem; padding:3px 5px; cursor:pointer; line-height:1; min-width:28px; min-height:26px; text-align:center; transition:all 0.1s; display:inline-flex; align-items:center; justify-content:center; }
-    .math-sym-btn:hover { background:rgba(139,92,246,0.25); border-color:rgba(139,92,246,0.5); }
-    .math-sym-btn .katex { color:#c4b5fd; font-size:0.82rem; }
-    .math-sym-btn:hover .katex { color:#e0e0ff; }
+    .math-sym-tab { background:none; border:1px solid rgba(var(--accent-rgb),0.2); border-radius:5px; color:#7777aa; font-size:0.68rem; font-weight:700; padding:3px 8px; cursor:pointer; font-family:inherit; transition:all 0.12s; }
+    .math-sym-tab:hover { border-color:rgba(var(--accent-rgb),0.5); color:var(--accent2); }
+    .math-sym-tab-active { background:rgba(var(--accent-rgb),0.2); border-color:rgba(var(--accent-rgb),0.5); color:var(--accent2); }
+    .math-sym-btn { background:rgba(var(--accent-rgb),0.08); border:1px solid rgba(var(--accent-rgb),0.18); border-radius:5px; color:var(--accent2); font-size:0.78rem; padding:3px 5px; cursor:pointer; line-height:1; min-width:28px; min-height:26px; text-align:center; transition:all 0.1s; display:inline-flex; align-items:center; justify-content:center; }
+    .math-sym-btn:hover { background:rgba(var(--accent-rgb),0.25); border-color:rgba(var(--accent-rgb),0.5); }
+    .math-sym-btn .katex { color:var(--accent2); font-size:0.82rem; }
+    .math-sym-btn:hover .katex { color:#E9EEF2; }
     /* AI inline prompt */
-    .ai-prompt-marker { color:#a78bfa; font-style:italic; background:rgba(139,92,246,0.12); border-radius:3px; padding:0 2px; }
-    .ai-cmd-span { color:#a78bfa; }
-    #ai-inline-popup { display:none; position:fixed; background:#0d0d1f; border:1px solid rgba(139,92,246,0.55); border-radius:14px; padding:14px 15px; width:310px; box-shadow:0 10px 40px rgba(0,0,0,0.9); z-index:4000; }
-    #ai-inline-input { width:100%; box-sizing:border-box; background:rgba(139,92,246,0.07); border:1px solid rgba(139,92,246,0.28); border-radius:8px; color:#e0e0ff; font-size:0.84rem; font-family:inherit; padding:8px 10px; resize:none; outline:none; min-height:56px; line-height:1.5; }
-    #ai-inline-input::placeholder { color:rgba(167,139,250,0.38); font-style:italic; }
-    #ai-inline-input:focus { border-color:rgba(139,92,246,0.6); }
+    .ai-prompt-marker { color:var(--accent2); font-style:italic; background:rgba(var(--accent-rgb),0.12); border-radius:3px; padding:0 2px; }
+    .ai-cmd-span { color:var(--accent2); }
+    #ai-inline-popup { display:none; position:fixed; background:#0d0d1f; border:1px solid rgba(var(--accent-rgb),0.55); border-radius:14px; padding:14px 15px; width:310px; box-shadow:0 10px 40px rgba(0,0,0,0.9); z-index:4000; }
+    #ai-inline-input { width:100%; box-sizing:border-box; background:rgba(var(--accent-rgb),0.07); border:1px solid rgba(var(--accent-rgb),0.28); border-radius:8px; color:#E9EEF2; font-size:0.84rem; font-family:inherit; padding:8px 10px; resize:none; outline:none; min-height:56px; line-height:1.5; }
+    #ai-inline-input::placeholder { color:rgba(var(--accent-rgb),0.38); font-style:italic; }
+    #ai-inline-input:focus { border-color:rgba(var(--accent-rgb),0.6); }
     #draw-toolbar-row { display:none; align-items:center; gap:7px; padding:5px 14px; border-bottom:1px solid rgba(255,140,50,0.25); background:rgba(255,140,50,0.06); flex-wrap:wrap; }
     #draw-overlay { position:fixed; pointer-events:none; z-index:500; display:none; cursor:crosshair; touch-action:none; }
     /* #editor is now a hidden proxy — actual content lives in .page-content divs inside #pages-container */
@@ -416,29 +432,29 @@
     /* ── MARGIN PANEL ── */
     #margin-panel {
       display: none; position: fixed; top: 80px; right: 16px; z-index: 700;
-      background: #181828; border: 1px solid rgba(139,92,246,0.35);
+      background: #18212A; border: 1px solid rgba(var(--accent-rgb),0.35);
       border-radius: 12px; padding: 14px 16px; width: 220px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.7);
       font-size: 0.78rem; font-family: inherit;
     }
-    :root.light #margin-panel { background: #f4f4fc; border-color: rgba(139,92,246,0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    :root.light #margin-panel { background: #f4f4fc; border-color: rgba(var(--accent-rgb),0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
     #margin-panel.open { display: block; }
-    #margin-panel h4 { margin: 0 0 10px; font-size: 0.8rem; font-weight: 700; color: #a78bfa; }
+    #margin-panel h4 { margin: 0 0 10px; font-size: 0.8rem; font-weight: 700; color: var(--accent2); }
     .mg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .mg-label { color: rgba(200,200,230,0.7); width: 56px; flex-shrink: 0; }
-    :root.light .mg-label { color: rgba(50,50,90,0.7); }
-    .mg-input { flex: 1; background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); border-radius: 6px; color: #e0e0ff; font-size: 0.78rem; font-family: inherit; padding: 4px 8px; outline: none; width: 100%; box-sizing: border-box; }
-    :root.light .mg-input { background: rgba(139,92,246,0.05); color: #222; border-color: rgba(139,92,246,0.2); }
-    .mg-unit { color: rgba(200,200,230,0.5); font-size: 0.7rem; flex-shrink: 0; }
-    .mg-apply { width: 100%; margin-top: 10px; padding: 6px; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); border-radius: 7px; color: #a78bfa; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.15s; }
-    .mg-apply:hover { background: rgba(139,92,246,0.35); }
-    .mg-reset { width: 100%; margin-top: 5px; padding: 5px; background: none; border: 1px solid rgba(139,92,246,0.15); border-radius: 7px; color: rgba(167,139,250,0.6); font-size: 0.72rem; cursor: pointer; font-family: inherit; }
-    .mg-reset:hover { border-color: rgba(139,92,246,0.3); color: #a78bfa; }
+    .mg-label { color: rgba(201,211,219,0.7); width: 56px; flex-shrink: 0; }
+    :root.light .mg-label { color: rgba(40,52,62,0.7); }
+    .mg-input { flex: 1; background: rgba(var(--accent-rgb),0.08); border: 1px solid rgba(var(--accent-rgb),0.25); border-radius: 6px; color: #E9EEF2; font-size: 0.78rem; font-family: inherit; padding: 4px 8px; outline: none; width: 100%; box-sizing: border-box; }
+    :root.light .mg-input { background: rgba(var(--accent-rgb),0.05); color: #222; border-color: rgba(var(--accent-rgb),0.2); }
+    .mg-unit { color: rgba(201,211,219,0.5); font-size: 0.7rem; flex-shrink: 0; }
+    .mg-apply { width: 100%; margin-top: 10px; padding: 6px; background: rgba(var(--accent-rgb),0.2); border: 1px solid rgba(var(--accent-rgb),0.4); border-radius: 7px; color: var(--accent2); font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .mg-apply:hover { background: rgba(var(--accent-rgb),0.35); }
+    .mg-reset { width: 100%; margin-top: 5px; padding: 5px; background: none; border: 1px solid rgba(var(--accent-rgb),0.15); border-radius: 7px; color: rgba(var(--accent-rgb),0.6); font-size: 0.72rem; cursor: pointer; font-family: inherit; }
+    .mg-reset:hover { border-color: rgba(var(--accent-rgb),0.3); color: var(--accent2); }
 
     /* ── RULER ── */
     #doc-ruler, #doc-ruler-right {
       flex-shrink: 0; height: 26px; overflow: hidden; position: relative;
-      background: #1c1c2e; border-top: 1px solid rgba(139,92,246,0.15); border-bottom: 1px solid rgba(139,92,246,0.15);
+      background: #1c1c2e; border-top: 1px solid rgba(var(--accent-rgb),0.15); border-bottom: 1px solid rgba(var(--accent-rgb),0.15);
     }
     /* Ruler hidden by default (toggle: More ▾ → Ruler); body.show-ruler reveals it */
     body:not(.show-ruler) #doc-ruler, body:not(.show-ruler) #doc-ruler-right { display: none; }
@@ -449,7 +465,7 @@
     #doc-ruler-track, #doc-ruler-track-right { position: relative; max-width: var(--page-w); margin: 0 auto; height: 100%; }
     .ruler-margin { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.22); }
     :root.light .ruler-margin { background: rgba(0,0,0,0.1); }
-    .ruler-content-zone { position: absolute; top: 0; bottom: 0; background: rgba(139,92,246,0.07); }
+    .ruler-content-zone { position: absolute; top: 0; bottom: 0; background: rgba(var(--accent-rgb),0.07); }
     .ruler-tick { position: absolute; bottom: 0; width: 1px; background: rgba(255,255,255,0.55); }
     .ruler-tick-half { position: absolute; bottom: 0; width: 1px; background: rgba(255,255,255,0.28); }
     :root.light .ruler-tick { background: rgba(0,0,0,0.5); }
@@ -461,20 +477,20 @@
     #doc-statusbar {
       position: fixed; bottom: 14px; right: 16px; z-index: 600;
       display: flex; align-items: center; gap: 5px;
-      background: rgba(18,18,32,0.9); border: 1px solid rgba(139,92,246,0.18);
+      background: rgba(18,18,32,0.9); border: 1px solid rgba(var(--accent-rgb),0.18);
       border-radius: 20px; padding: 3px 10px;
       backdrop-filter: blur(8px);
       font-size: 0.72rem; font-family: inherit;
     }
-    :root.light #doc-statusbar { background: rgba(235,235,250,0.93); border-color: rgba(139,92,246,0.2); }
-    #page-counter { color: rgba(190,190,230,0.7); white-space: nowrap; }
-    :root.light #page-counter { color: rgba(50,50,90,0.65); }
-    .zoom-sep { width: 1px; height: 11px; background: rgba(139,92,246,0.25); margin: 0 2px; }
-    .zoom-btn { background: none; border: none; color: rgba(190,190,230,0.7); cursor: pointer; font-size: 1rem; padding: 0 4px; border-radius: 4px; line-height: 1; }
-    .zoom-btn:hover { background: rgba(139,92,246,0.2); color: #a78bfa; }
-    :root.light .zoom-btn { color: rgba(50,50,90,0.65); }
-    #zoom-label { color: rgba(190,190,230,0.7); min-width: 36px; text-align: center; font-size: 0.72rem; }
-    :root.light #zoom-label { color: rgba(50,50,90,0.65); }
+    :root.light #doc-statusbar { background: rgba(235,235,250,0.93); border-color: rgba(var(--accent-rgb),0.2); }
+    #page-counter { color: rgba(201,211,219,0.7); white-space: nowrap; }
+    :root.light #page-counter { color: rgba(40,52,62,0.65); }
+    .zoom-sep { width: 1px; height: 11px; background: rgba(var(--accent-rgb),0.25); margin: 0 2px; }
+    .zoom-btn { background: none; border: none; color: rgba(201,211,219,0.7); cursor: pointer; font-size: 1rem; padding: 0 4px; border-radius: 4px; line-height: 1; }
+    .zoom-btn:hover { background: rgba(var(--accent-rgb),0.2); color: var(--accent2); }
+    :root.light .zoom-btn { color: rgba(40,52,62,0.65); }
+    #zoom-label { color: rgba(201,211,219,0.7); min-width: 36px; text-align: center; font-size: 0.72rem; }
+    :root.light #zoom-label { color: rgba(40,52,62,0.65); }
 
     /* ── PRINT ── */
     @media print {
@@ -491,9 +507,9 @@
     /* page-content typography (also applies to legacy #editor references) */
     .page-content * { transition: none; }
     .img-wrap { display:inline-block; position:relative; line-height:0; vertical-align:middle; margin: 4px 0; }
-    .img-wrap.selected { outline:2px solid #8B5CF6; }
+    .img-wrap.selected { outline:2px solid var(--accent); }
     .img-wrap img { display:block; max-width:none; border-radius:6px; cursor:move; }
-    .img-handle { position:absolute; width:10px; height:10px; background:#8B5CF6; border:2px solid #fff; border-radius:2px; z-index:10; }
+    .img-handle { position:absolute; width:10px; height:10px; background:var(--accent); border:2px solid #fff; border-radius:2px; z-index:10; }
     .img-handle[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
     .img-handle[data-pos="n"]  { top:-5px; left:calc(50% - 5px); cursor:n-resize; }
     .img-handle[data-pos="ne"] { top:-5px; right:-5px; cursor:ne-resize; }
@@ -502,71 +518,71 @@
     .img-handle[data-pos="s"]  { bottom:-5px; left:calc(50% - 5px); cursor:s-resize; }
     .img-handle[data-pos="sw"] { bottom:-5px; left:-5px; cursor:sw-resize; }
     .img-handle[data-pos="w"]  { top:calc(50% - 5px); left:-5px; cursor:w-resize; }
-    .img-draw-btn { position:absolute; top:4px; right:4px; width:28px; height:28px; background:rgba(139,92,246,0.9); border:none; border-radius:7px; color:#fff; font-size:0.88rem; cursor:pointer; z-index:11; display:none; align-items:center; justify-content:center; line-height:1; padding:0; }
+    .img-draw-btn { position:absolute; top:4px; right:4px; width:28px; height:28px; background:rgba(var(--accent-rgb),0.9); border:none; border-radius:7px; color:#fff; font-size:0.88rem; cursor:pointer; z-index:11; display:none; align-items:center; justify-content:center; line-height:1; padding:0; }
     .img-hl-btn { top:36px; background:rgba(245,158,11,0.9); }
     .img-wrap.selected .img-draw-btn { display:flex; }
     .img-ctx-item { display:block; width:100%; padding:9px 16px; border:none; background:none; color:#e8e8f0; font-size:0.83rem; text-align:left; cursor:pointer; font-family:inherit; box-sizing:border-box; }
-    .img-ctx-item:hover { background:rgba(139,92,246,0.2); color:#a78bfa; }
+    .img-ctx-item:hover { background:rgba(var(--accent-rgb),0.2); color:var(--accent2); }
     .no-note { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 12px; }
     .no-note-icon { font-size: 2.5rem; opacity: 0.4; }
     .no-note p { font-size: 0.9rem; }
     .statusbar { padding: 5px 40px; font-size: 0.72rem; color: var(--muted); border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 20px; flex-shrink: 0; align-items: center; }
-    .convert-btn { background: var(--purple); color: #fff; border: none; border-radius: 7px; padding: 4px 12px; font-size: 0.74rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.15s; display: flex; align-items: center; gap: 5px; white-space:nowrap; }
+    .convert-btn { background: var(--accent); color: var(--on-accent); border: none; border-radius: 7px; padding: 4px 12px; font-size: 0.74rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.15s; display: flex; align-items: center; gap: 5px; white-space:nowrap; }
     .convert-btn:hover { opacity: 0.85; }
     /* Convert Side Panel */
     #editor-main-wrap { flex:1; display:flex; flex-direction:row; overflow:hidden; min-height:0; }
-    #conv-panel { width:0; min-width:0; overflow:hidden; flex-shrink:0; transition:width 0.28s cubic-bezier(0.4,0,0.2,1); background:#0d0d1a; border-left:1px solid rgba(139,92,246,0.18); display:flex; flex-direction:column; }
+    #conv-panel { width:0; min-width:0; overflow:hidden; flex-shrink:0; transition:width 0.28s cubic-bezier(0.4,0,0.2,1); background:#0E141A; border-left:1px solid rgba(var(--accent-rgb),0.18); display:flex; flex-direction:column; }
     #conv-panel.cp-open { width:370px; min-width:370px; }
-    #cp-header { padding:12px 14px 10px; display:flex; align-items:center; gap:8px; border-bottom:1px solid rgba(139,92,246,0.12); flex-shrink:0; background:#0d0d1a; }
+    #cp-header { padding:12px 14px 10px; display:flex; align-items:center; gap:8px; border-bottom:1px solid rgba(var(--accent-rgb),0.12); flex-shrink:0; background:#0E141A; }
     #cp-header .cp-logo { font-size:1.05rem; }
-    #cp-header .cp-title { font-size:0.9rem; font-weight:700; color:#e0e0ff; flex:1; }
+    #cp-header .cp-title { font-size:0.9rem; font-weight:700; color:#E9EEF2; flex:1; }
     #cp-header .cp-hdr-btn { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:4px 9px; font-size:0.74rem; font-weight:600; color:#a8a8d0; cursor:pointer; font-family:inherit; transition:background 0.12s; }
-    #cp-header .cp-hdr-btn:hover { background:rgba(139,92,246,0.2); color:#c4b5fd; }
+    #cp-header .cp-hdr-btn:hover { background:rgba(var(--accent-rgb),0.2); color:var(--accent2); }
     #cp-header .cp-close { background:none; border:none; color:#555; font-size:1rem; cursor:pointer; padding:3px 7px; border-radius:5px; transition:color 0.12s; line-height:1; }
     #cp-header .cp-close:hover { color:#ff5f57; }
-    #cp-picks { padding:10px 10px 8px; display:grid; grid-template-columns:1fr 1fr; gap:5px; flex-shrink:0; border-bottom:1px solid rgba(139,92,246,0.1); background:#0d0d1a; }
-    .cp-pick { background:rgba(139,92,246,0.09); border:1px solid rgba(139,92,246,0.22); border-radius:8px; padding:8px 9px; font-size:0.73rem; font-weight:600; color:#c4b5fd; cursor:pointer; font-family:inherit; text-align:left; transition:background 0.12s,border-color 0.12s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .cp-pick:hover { background:rgba(139,92,246,0.22); border-color:rgba(139,92,246,0.45); }
+    #cp-picks { padding:10px 10px 8px; display:grid; grid-template-columns:1fr 1fr; gap:5px; flex-shrink:0; border-bottom:1px solid rgba(var(--accent-rgb),0.1); background:#0E141A; }
+    .cp-pick { background:rgba(var(--accent-rgb),0.09); border:1px solid rgba(var(--accent-rgb),0.22); border-radius:8px; padding:8px 9px; font-size:0.73rem; font-weight:600; color:var(--accent2); cursor:pointer; font-family:inherit; text-align:left; transition:background 0.12s,border-color 0.12s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cp-pick:hover { background:rgba(var(--accent-rgb),0.22); border-color:rgba(var(--accent-rgb),0.45); }
     .cp-pick:disabled { opacity:0.45; cursor:default; }
     #cp-messages { flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:10px; min-height:0; }
     #cp-messages::-webkit-scrollbar { width:4px; }
-    #cp-messages::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.3); border-radius:2px; }
-    #cp-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:24px; color:#3a3a5a; text-align:center; }
+    #cp-messages::-webkit-scrollbar-thumb { background:rgba(var(--accent-rgb),0.3); border-radius:2px; }
+    #cp-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; padding:24px; color:#33414D; text-align:center; }
     #cp-empty .cp-empty-icon { font-size:2rem; opacity:0.35; }
     #cp-empty .cp-empty-title { font-size:0.83rem; font-weight:600; color:#55557a; }
-    #cp-empty .cp-empty-sub { font-size:0.72rem; color:#3a3a5a; line-height:1.5; max-width:220px; }
-    .cp-user-msg { align-self:flex-end; background:rgba(139,92,246,0.22); border:1px solid rgba(139,92,246,0.3); border-radius:12px 12px 3px 12px; padding:7px 12px; font-size:0.79rem; color:#d8d8f0; max-width:90%; word-break:break-word; }
-    .cp-ai-msg { align-self:stretch; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:3px 12px 12px 12px; padding:11px 12px; font-size:0.78rem; color:#d8d8f0; }
+    #cp-empty .cp-empty-sub { font-size:0.72rem; color:#33414D; line-height:1.5; max-width:220px; }
+    .cp-user-msg { align-self:flex-end; background:rgba(var(--accent-rgb),0.22); border:1px solid rgba(var(--accent-rgb),0.3); border-radius:12px 12px 3px 12px; padding:7px 12px; font-size:0.79rem; color:#D8E0E6; max-width:90%; word-break:break-word; }
+    .cp-ai-msg { align-self:stretch; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:3px 12px 12px 12px; padding:11px 12px; font-size:0.78rem; color:#D8E0E6; }
     .cp-ai-content { line-height:1.65; white-space:pre-wrap; word-break:break-word; max-height:340px; overflow-y:auto; }
     .cp-ai-content::-webkit-scrollbar { width:3px; }
-    .cp-ai-content::-webkit-scrollbar-thumb { background:rgba(139,92,246,0.3); border-radius:2px; }
+    .cp-ai-content::-webkit-scrollbar-thumb { background:rgba(var(--accent-rgb),0.3); border-radius:2px; }
     .cp-ai-actions { display:flex; gap:6px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); flex-wrap:wrap; }
-    .cp-ai-act-btn { background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.25); border-radius:6px; padding:4px 9px; font-size:0.69rem; font-weight:600; color:#a78bfa; cursor:pointer; font-family:inherit; transition:background 0.12s; }
-    .cp-ai-act-btn:hover { background:rgba(139,92,246,0.25); }
+    .cp-ai-act-btn { background:rgba(var(--accent-rgb),0.12); border:1px solid rgba(var(--accent-rgb),0.25); border-radius:6px; padding:4px 9px; font-size:0.69rem; font-weight:600; color:var(--accent2); cursor:pointer; font-family:inherit; transition:background 0.12s; }
+    .cp-ai-act-btn:hover { background:rgba(var(--accent-rgb),0.25); }
     .cp-ai-loading { color:#5a5a8a; font-style:italic; animation:cp-pulse 1.2s ease-in-out infinite; }
     @keyframes cp-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
-    #cp-input-wrap { padding:10px 12px 12px; border-top:1px solid rgba(139,92,246,0.12); flex-shrink:0; background:#0d0d1a; display:flex; flex-direction:column; gap:7px; }
+    #cp-input-wrap { padding:10px 12px 12px; border-top:1px solid rgba(var(--accent-rgb),0.12); flex-shrink:0; background:#0E141A; display:flex; flex-direction:column; gap:7px; }
     #cp-note-ctx { font-size:0.67rem; color:#4a4a6a; padding:4px 8px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.06); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     #cp-input-row { display:flex; gap:6px; align-items:flex-end; }
-    #cp-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(139,92,246,0.25); border-radius:10px; padding:9px 12px; font-size:0.81rem; color:#e0e0ff; font-family:inherit; resize:none; outline:none; min-height:38px; max-height:100px; line-height:1.4; overflow-y:auto; transition:border-color 0.12s; }
-    #cp-input:focus { border-color:rgba(139,92,246,0.55); }
-    #cp-input::placeholder { color:#3a3a5a; }
-    #cp-send { background:rgba(139,92,246,0.6); border:none; border-radius:9px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1rem; color:#fff; transition:background 0.12s; flex-shrink:0; }
-    #cp-send:hover { background:rgba(139,92,246,0.85); }
-    #cp-send:disabled { background:rgba(139,92,246,0.18); cursor:default; color:#444; }
+    #cp-input { flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(var(--accent-rgb),0.25); border-radius:10px; padding:9px 12px; font-size:0.81rem; color:#E9EEF2; font-family:inherit; resize:none; outline:none; min-height:38px; max-height:100px; line-height:1.4; overflow-y:auto; transition:border-color 0.12s; }
+    #cp-input:focus { border-color:rgba(var(--accent-rgb),0.55); }
+    #cp-input::placeholder { color:#33414D; }
+    #cp-send { background:rgba(var(--accent-rgb),0.6); border:none; border-radius:9px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1rem; color:#fff; transition:background 0.12s; flex-shrink:0; }
+    #cp-send:hover { background:rgba(var(--accent-rgb),0.85); }
+    #cp-send:disabled { background:rgba(var(--accent-rgb),0.18); cursor:default; color:#444; }
     #conv-panel.cp-full { width:100% !important; min-width:0 !important; }
     #editor-main-wrap.cp-panel-full #editor-split-row { width:0; min-width:0; overflow:hidden; flex:none; }
     /* Code modal */
     #code-modal { display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,0.78); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
     #code-modal.open { display:flex; }
-    .cm-card { background:#0e0e1a; border:1px solid rgba(139,92,246,0.35); border-radius:16px; width:min(760px,94vw); max-height:86vh; display:flex; flex-direction:column; box-shadow:0 24px 80px rgba(0,0,0,0.7); overflow:hidden; }
+    .cm-card { background:#0e0e1a; border:1px solid rgba(var(--accent-rgb),0.35); border-radius:16px; width:min(760px,94vw); max-height:86vh; display:flex; flex-direction:column; box-shadow:0 24px 80px rgba(0,0,0,0.7); overflow:hidden; }
     .cm-topbar { display:flex; align-items:center; gap:10px; padding:14px 18px; background:#131320; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
     .cm-dots { display:flex; gap:6px; flex-shrink:0; }
     .cm-dot { width:11px; height:11px; border-radius:50%; }
     .cm-dot-r { background:#ff5f57; } .cm-dot-y { background:#ffbd2e; } .cm-dot-g { background:#28c840; }
-    .cm-lang-tag { background:rgba(139,92,246,0.18); border:1px solid rgba(139,92,246,0.3); color:var(--purple2); font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:100px; letter-spacing:0.04em; }
+    .cm-lang-tag { background:rgba(var(--accent-rgb),0.18); border:1px solid rgba(var(--accent-rgb),0.3); color:var(--accent2); font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:100px; letter-spacing:0.04em; }
     .cm-title { font-size:0.88rem; font-weight:700; flex:1; color:#ccc; }
-    .cm-lang-sel { background:#1a1a2e; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:5px 10px; font-size:0.78rem; color:#c8c8f0; font-family:inherit; cursor:pointer; outline:none; }
+    .cm-lang-sel { background:#1A232C; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:5px 10px; font-size:0.78rem; color:#C9D3DB; font-family:inherit; cursor:pointer; outline:none; }
     .cm-code-wrap { flex:1; overflow-y:auto; position:relative; min-height:180px; }
     .cm-code-wrap::-webkit-scrollbar { width:5px; } .cm-code-wrap::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:4px; }
     .cm-code-wrap pre { margin:0; padding:20px 22px; font-family:'Courier New','Fira Code',monospace; font-size:0.84rem; line-height:1.7; background:#0d1117 !important; border-radius:0; }
@@ -576,16 +592,16 @@
     .cm-toolbar { display:flex; align-items:center; gap:8px; padding:12px 18px; background:#131320; border-top:1px solid rgba(255,255,255,0.06); flex-shrink:0; flex-wrap:wrap; }
     .cm-status { font-size:0.72rem; color:#888; flex:1; min-width:0; }
     .cm-btn { display:flex; align-items:center; gap:5px; padding:7px 14px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#ccc; transition:all 0.15s; white-space:nowrap; }
-    .cm-btn:hover { background:rgba(139,92,246,0.15); border-color:rgba(139,92,246,0.4); color:#c8b4fa; }
-    .cm-btn-primary { background:var(--purple); border-color:var(--purple); color:#fff; }
-    .cm-btn-primary:hover { opacity:0.88; color:#fff; border-color:var(--purple); }
+    .cm-btn:hover { background:rgba(var(--accent-rgb),0.15); border-color:rgba(var(--accent-rgb),0.4); color:#c8b4fa; }
+    .cm-btn-primary { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+    .cm-btn-primary:hover { opacity:0.88; color:#fff; border-color:var(--accent); }
     .cm-btn-hl { border-color:rgba(40,200,64,0.4); color:#28c840; }
     .cm-btn-hl:hover { background:rgba(40,200,64,0.1); border-color:#28c840; color:#28c840; }
     .cm-legend { display:none; align-items:center; gap:14px; padding:8px 18px; background:#0d1117; border-top:1px solid rgba(255,255,255,0.04); font-size:0.72rem; color:#888; flex-shrink:0; }
     .cm-legend.show { display:flex; }
     .cm-legend-item { display:flex; align-items:center; gap:5px; }
     .cm-legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
-    .cm-input-area { width:100%; box-sizing:border-box; padding:16px 22px; font-family:'Courier New','Fira Code',monospace; font-size:0.83rem; line-height:1.65; background:#080810; color:#c8c8f0; border:none; border-bottom:1px solid rgba(255,255,255,0.08); resize:none; height:140px; outline:none; flex-shrink:0; }
+    .cm-input-area { width:100%; box-sizing:border-box; padding:16px 22px; font-family:'Courier New','Fira Code',monospace; font-size:0.83rem; line-height:1.65; background:#080810; color:#C9D3DB; border:none; border-bottom:1px solid rgba(255,255,255,0.08); resize:none; height:140px; outline:none; flex-shrink:0; }
     .cm-input-area::placeholder { color:#444; }
     .cm-divider { padding:5px 18px; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; color:#555; background:#0e0e1a; border-bottom:1px solid rgba(255,255,255,0.05); text-transform:uppercase; flex-shrink:0; }
     /* Program Formatter */
@@ -594,14 +610,14 @@
     .pf-output-area { flex:1; overflow-y:auto; padding:20px 24px; font-size:0.83rem; line-height:1.72; color:#c4c4e0; min-height:200px; }
     .pf-output-area::-webkit-scrollbar { width:5px; } .pf-output-area::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:4px; }
     .pf-output-area .pf-placeholder { color:#444; font-size:0.8rem; text-align:center; margin-top:40px; }
-    .pf-h1 { font-size:1.05rem; font-weight:800; color:#a78bfa; margin:22px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(139,92,246,0.22); }
+    .pf-h1 { font-size:1.05rem; font-weight:800; color:var(--accent2); margin:22px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(var(--accent-rgb),0.22); }
     .pf-h1:first-child { margin-top:0; }
-    .pf-h2 { font-size:0.88rem; font-weight:700; color:#c4b5fd; margin:16px 0 5px; }
+    .pf-h2 { font-size:0.88rem; font-weight:700; color:var(--accent2); margin:16px 0 5px; }
     .pf-h3 { font-size:0.82rem; font-weight:700; color:#a0a0c8; margin:12px 0 4px; }
     .pf-p { margin:0 0 8px; }
     .pf-ul { padding-left:18px; margin:4px 0 10px; }
     .pf-ul li { margin-bottom:3px; }
-    .pf-inline-code { background:rgba(139,92,246,0.14); padding:1px 6px; border-radius:4px; font-family:'Courier New',monospace; font-size:0.8em; color:#c4b5fd; }
+    .pf-inline-code { background:rgba(var(--accent-rgb),0.14); padding:1px 6px; border-radius:4px; font-family:'Courier New',monospace; font-size:0.8em; color:var(--accent2); }
     /* GitHub dark code block */
     .gh-block { background:#0d1117; border:1px solid #30363d; border-radius:8px; margin:10px 0 14px; overflow:hidden; font-family:'SFMono-Regular','Fira Code',Consolas,monospace; font-size:0.76rem; line-height:1.5; }
     .gh-bh { background:#161b22; padding:5px 14px; border-bottom:1px solid #30363d; font-size:0.67rem; font-weight:700; color:#8b949e; text-transform:uppercase; letter-spacing:0.07em; }
@@ -621,8 +637,8 @@
     /* Preview pane */
     .gh-preview { overflow-y:auto; padding:0; background:#0d1117; }
     .gh-preview::-webkit-scrollbar { width:5px; } .gh-preview::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:4px; }
-    .conv-save-item { padding:9px 14px; border-radius:7px; font-size:0.78rem; font-weight:600; color:#c8c8f0; cursor:pointer; transition:background 0.12s; }
-    .conv-save-item:hover { background:rgba(139,92,246,0.18); color:#e0d4ff; }
+    .conv-save-item { padding:9px 14px; border-radius:7px; font-size:0.78rem; font-weight:600; color:#C9D3DB; cursor:pointer; transition:background 0.12s; }
+    .conv-save-item:hover { background:rgba(var(--accent-rgb),0.18); color:#e0d4ff; }
 
 
     /* Folder system */
@@ -636,26 +652,26 @@
     .folder-del-btn{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.78rem;padding:2px 5px;flex-shrink:0;transition:opacity 0.12s,color 0.12s;}
     .folder-hdr:hover .folder-del-btn{opacity:1;}
     .folder-del-btn:hover{color:#ff5555;}
-    .folder-add-note-btn{opacity:0;background:none;border:none;color:var(--purple2);cursor:pointer;font-size:0.9rem;padding:2px 5px;flex-shrink:0;transition:opacity 0.12s;font-weight:700;}
+    .folder-add-note-btn{opacity:0;background:none;border:none;color:var(--accent2);cursor:pointer;font-size:0.9rem;padding:2px 5px;flex-shrink:0;transition:opacity 0.12s;font-weight:700;}
     .folder-hdr:hover .folder-add-note-btn{opacity:1;}
     .folder-notes-sub{padding-left:12px;}
     .unfiled-sep{font-size:0.63rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding:10px 14px 3px;opacity:0.55;}
     .folder-pick{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:2000;display:none;}
     .fp-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:none;background:none;color:var(--text);font-size:0.78rem;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:background 0.12s;}
-    .fp-opt:hover{background:rgba(139,92,246,0.1);}
-    .fp-opt.fp-current{color:var(--purple2);}
+    .fp-opt:hover{background:rgba(var(--accent-rgb),0.1);}
+    .fp-opt.fp-current{color:var(--accent2);}
     /* ── FOLDER TREE ── */
     .ftree-row{display:flex;align-items:center;gap:2px;padding:4px 6px;border-radius:7px;cursor:pointer;transition:background 0.12s;user-select:none;}
     .ftree-row:hover{background:rgba(255,255,255,0.05);}
-    .ftree-row.active{background:rgba(139,92,246,0.15);}
-    .ftree-row.drop-over{background:rgba(139,92,246,0.18);outline:1.5px dashed rgba(139,92,246,0.55);outline-offset:-1px;}
+    .ftree-row.active{background:rgba(var(--accent-rgb),0.15);}
+    .ftree-row.drop-over{background:rgba(var(--accent-rgb),0.18);outline:1.5px dashed rgba(var(--accent-rgb),0.55);outline-offset:-1px;}
     .ftree-chev{width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.5rem;transition:transform 0.15s;border-radius:3px;}
     .ftree-chev:hover{background:rgba(255,255,255,0.1);}
     .ftree-chev.open{transform:rotate(90deg);}
     .ftree-chev.leaf{visibility:hidden;pointer-events:none;}
     .ftree-icon{font-size:0.82rem;flex-shrink:0;line-height:1;}
     .ftree-name{font-size:0.81rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .ftree-row.active .ftree-name{color:var(--purple2);}
+    .ftree-row.active .ftree-name{color:var(--accent2);}
     .ftree-count{font-size:0.62rem;color:var(--muted);flex-shrink:0;}
     .ftree-btn{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:0.72rem;flex-shrink:0;transition:opacity 0.12s,color 0.12s,background 0.12s;}
     .ftree-row:hover .ftree-btn{opacity:1;}
@@ -663,21 +679,21 @@
     .ftree-btn.del:hover{color:#ff5555;}
     .ftree-note{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background 0.12s;position:relative;}
     .ftree-note:hover{background:rgba(255,255,255,0.04);}
-    .ftree-note.active{background:rgba(139,92,246,0.1);}
+    .ftree-note.active{background:rgba(var(--accent-rgb),0.1);}
     .ftree-note-title{font-size:0.77rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .ftree-note.active .ftree-note-title{color:var(--purple2);}
+    .ftree-note.active .ftree-note-title{color:var(--accent2);}
     .ftree-note-btn{opacity:0;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:4px;font-size:0.68rem;flex-shrink:0;transition:opacity 0.12s,color 0.12s;}
     .ftree-note:hover .ftree-note-btn{opacity:1;}
     .ftree-note-btn:hover{background:rgba(255,255,255,0.08);color:var(--text);}
     .ftree-note-btn.del:hover{color:#ff5555;}
     .ftree-empty{font-size:0.75rem;color:var(--muted);padding:6px 10px;}
-    .note-folder-tag{font-size:0.6rem;color:var(--purple2);background:rgba(139,92,246,0.1);padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .note-folder-tag{font-size:0.6rem;color:var(--accent2);background:rgba(var(--accent-rgb),0.1);padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
     /* ── SELECTION POPUP ── */
-    #sel-popup { display:none; position:fixed; z-index:900; background:#1e1e32; border:1px solid rgba(139,92,246,0.5); border-radius:10px; padding:4px; gap:4px; box-shadow:0 8px 28px rgba(0,0,0,0.6); align-items:center; }
+    #sel-popup { display:none; position:fixed; z-index:900; background:#1F2A34; border:1px solid rgba(var(--accent-rgb),0.5); border-radius:10px; padding:4px; gap:4px; box-shadow:0 8px 28px rgba(0,0,0,0.6); align-items:center; }
     .sel-btn { display:flex; align-items:center; gap:5px; padding:7px 13px; border:none; border-radius:7px; font-size:0.77rem; font-weight:700; cursor:pointer; font-family:inherit; transition:background 0.12s; white-space:nowrap; }
-    .sel-btn-interpret { background:rgba(139,92,246,0.18); color:#c4b5fd; }
-    .sel-btn-interpret:hover { background:rgba(139,92,246,0.35); }
+    .sel-btn-interpret { background:rgba(var(--accent-rgb),0.18); color:var(--accent2); }
+    .sel-btn-interpret:hover { background:rgba(var(--accent-rgb),0.35); }
     .sel-btn-define { background:rgba(245,200,66,0.12); color:#fcd34d; }
     .sel-btn-define:hover { background:rgba(245,200,66,0.25); }
     .sel-btn-comprehend { background:rgba(79,195,247,0.12); color:#7dd3fc; }
@@ -716,11 +732,11 @@
     #sticky-drop-del { padding:6px 10px; border:none; border-radius:7px; background:rgba(180,0,0,0.12); color:#8b0000; font-size:0.77rem; font-weight:800; cursor:pointer; font-family:inherit; }
     #sticky-drop-del:hover { background:rgba(180,0,0,0.22); }
     /* Result card */
-    #interp-card { display:none; position:fixed; z-index:950; width:min(400px,90vw); background:#12121e; border:1px solid rgba(139,92,246,0.4); border-radius:14px; box-shadow:0 16px 48px rgba(0,0,0,0.7); overflow:hidden; }
+    #interp-card { display:none; position:fixed; z-index:950; width:min(400px,90vw); background:#131A21; border:1px solid rgba(var(--accent-rgb),0.4); border-radius:14px; box-shadow:0 16px 48px rgba(0,0,0,0.7); overflow:hidden; }
     .ic-header { display:flex; align-items:center; gap:8px; padding:10px 14px 8px; border-bottom:1px solid rgba(255,255,255,0.06); }
     .ic-mode-badge { font-size:0.68rem; font-weight:700; padding:2px 9px; border-radius:100px; letter-spacing:0.04em; text-transform:uppercase; }
     .ic-badge-define { background:rgba(245,200,66,0.15); color:#fcd34d; }
-    .ic-badge-interpret { background:rgba(139,92,246,0.2); color:#c4b5fd; }
+    .ic-badge-interpret { background:rgba(var(--accent-rgb),0.2); color:var(--accent2); }
     .ic-badge-comprehend { background:rgba(79,195,247,0.15); color:#7dd3fc; }
     .ic-badge-grammar { background:rgba(16,185,129,0.15); color:#6ee7b7; }
     .ic-selected-text { font-size:0.72rem; color:#6b6b90; font-style:italic; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -729,33 +745,33 @@
     .ic-body { padding:14px 16px; font-size:0.84rem; line-height:1.72; color:#c8c8e8; max-height:260px; overflow-y:auto; }
     .ic-body::-webkit-scrollbar { width:4px; } .ic-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:4px; }
     .ic-loading { display:flex; align-items:center; gap:8px; color:#666; font-size:0.8rem; padding:14px 16px; }
-    .ic-spin { width:14px; height:14px; border:2px solid rgba(139,92,246,0.3); border-top-color:#8b5cf6; border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+    .ic-spin { width:14px; height:14px; border:2px solid rgba(var(--accent-rgb),0.3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
     /* ── FONT FAMILY ── */
     #ff-wrap { position:relative; display:inline-flex; align-items:center; }
     #ff-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:600; padding:3px 7px; cursor:pointer; font-family:inherit; min-width:72px; text-align:left; transition:border-color 0.12s; display:flex; align-items:center; justify-content:space-between; gap:4px; }
-    #ff-display:hover { border-color:var(--purple); color:var(--purple2); }
-    #ff-popup { display:none; position:absolute; top:calc(100% + 5px); left:0; background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:180px; }
+    #ff-display:hover { border-color:var(--accent); color:var(--accent2); }
+    #ff-popup { display:none; position:absolute; top:calc(100% + 5px); left:0; background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:180px; }
     #ff-popup.on { display:block; }
     .ff-opt { display:block; width:100%; text-align:left; padding:6px 12px; border:none; background:none; color:var(--text); cursor:pointer; border-radius:6px; font-size:0.82rem; transition:background 0.1s; }
-    .ff-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
-    .ff-opt.active { background:rgba(139,92,246,0.2); color:var(--purple2); }
+    .ff-opt:hover { background:rgba(var(--accent-rgb),0.15); color:var(--accent2); }
+    .ff-opt.active { background:rgba(var(--accent-rgb),0.2); color:var(--accent2); }
 
     /* ── FONT SIZE ── */
     #fs-wrap { position:relative; display:inline-flex; align-items:center; }
     #fs-display { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; font-weight:700; padding:3px 6px; cursor:pointer; font-family:inherit; min-width:36px; text-align:center; transition:border-color 0.12s; display:flex; align-items:center; gap:3px; }
-    #fs-display:hover { border-color:var(--purple); color:var(--purple2); }
-    #fs-popup { display:none; position:absolute; top:calc(100% + 5px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:80px; }
+    #fs-display:hover { border-color:var(--accent); color:var(--accent2); }
+    #fs-popup { display:none; position:absolute; top:calc(100% + 5px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.35); border-radius:10px; padding:5px; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,0.25); min-width:80px; }
     #fs-popup.on { display:block; }
     .fs-opt { display:block; width:100%; text-align:center; padding:5px 10px; border:none; background:none; color:var(--text); font-family:inherit; cursor:pointer; border-radius:6px; font-size:0.8rem; font-weight:600; transition:background 0.1s; }
-    .fs-opt:hover { background:rgba(139,92,246,0.15); color:var(--purple2); }
-    .fs-opt.active { background:rgba(139,92,246,0.2); color:var(--purple2); }
+    .fs-opt:hover { background:rgba(var(--accent-rgb),0.15); color:var(--accent2); }
+    .fs-opt.active { background:rgba(var(--accent-rgb),0.2); color:var(--accent2); }
     #fs-custom-row { display:flex; gap:4px; padding:4px 6px 2px; border-top:1px solid var(--border); margin-top:2px; }
     #fs-custom-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.75rem; padding:3px 6px; font-family:inherit; outline:none; width:44px; }
 
     /* ── COLOR PICKERS ── */
-    .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.25); width:176px; }
+    .color-picker-pop { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.35); border-radius:12px; padding:10px; z-index:500; box-shadow:0 8px 32px rgba(0,0,0,0.25); width:176px; }
     .color-picker-pop .cp-label { font-size:0.64rem; font-weight:700; color:var(--muted); letter-spacing:0.07em; margin-bottom:7px; text-transform:uppercase; }
     .color-picker-pop .cp-swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; margin-bottom:8px; }
     .color-picker-pop .cp-swatch { width:18px; height:18px; border-radius:4px; cursor:pointer; border:2px solid transparent; transition:transform 0.1s,border-color 0.1s; flex-shrink:0; }
@@ -769,7 +785,7 @@
     /* ── RECORD MODAL ── */
     #rec-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:8000; align-items:center; justify-content:center; }
     #rec-modal.on { display:flex; }
-    #rec-card { background:#12121E; border:1.5px solid rgba(239,68,68,0.5); border-radius:18px; width:420px; max-width:96vw; padding:22px 22px 18px; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
+    #rec-card { background:#131A21; border:1.5px solid rgba(239,68,68,0.5); border-radius:18px; width:420px; max-width:96vw; padding:22px 22px 18px; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
     #rec-title { font-size:0.88rem; font-weight:700; color:#f87171; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
     #rec-dot { width:9px; height:9px; border-radius:50%; background:#f87171; animation:rpulse 1.2s ease-in-out infinite; flex-shrink:0; display:none; }
     #rec-dot.on { display:block; }
@@ -777,9 +793,9 @@
     #rec-timer { font-size:0.78rem; font-weight:700; color:#888; font-variant-numeric:tabular-nums; margin-left:auto; }
     #rec-live-box { background:rgba(0,0,0,0.35); border-radius:10px; padding:12px 14px; min-height:80px; max-height:160px; overflow-y:auto; margin-bottom:14px; font-size:0.82rem; line-height:1.7; }
     #rec-live-final { color:#e8e8f0; white-space:pre-wrap; word-break:break-word; }
-    #rec-live-interim { color:#555577; font-style:italic; }
+    #rec-live-interim { color:#6B7885; font-style:italic; }
     #rec-placeholder { color:#333355; font-style:italic; font-size:0.78rem; }
-    #rec-status { font-size:0.72rem; color:#555577; margin-bottom:12px; min-height:16px; }
+    #rec-status { font-size:0.72rem; color:#6B7885; margin-bottom:12px; min-height:16px; }
     #rec-actions { display:flex; gap:8px; }
     #rec-start-btn { flex:1; background:#f87171; color:#fff; border:none; border-radius:10px; padding:9px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
     #rec-start-btn:hover { background:#ef4444; }
@@ -788,8 +804,8 @@
     #rec-stop-btn:hover { background:rgba(239,68,68,0.28); }
     #rec-save-actions { display:none; gap:8px; margin-top:8px; }
     #rec-save-actions.on { display:flex; }
-    #rec-save-btn, #rec-insert-btn { flex:1; background:rgba(139,92,246,0.18); border:1.5px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:10px; padding:9px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; }
-    #rec-save-btn:hover, #rec-insert-btn:hover { background:rgba(139,92,246,0.3); }
+    #rec-save-btn, #rec-insert-btn { flex:1; background:rgba(var(--accent-rgb),0.18); border:1.5px solid rgba(var(--accent-rgb),0.4); color:var(--accent2); border-radius:10px; padding:9px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; }
+    #rec-save-btn:hover, #rec-insert-btn:hover { background:rgba(var(--accent-rgb),0.3); }
     #rec-cancel-btn { background:none; border:1.5px solid rgba(255,255,255,0.1); color:#555; border-radius:10px; padding:9px 14px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
     #rec-cancel-btn:hover { border-color:rgba(255,255,255,0.2); color:#888; }
     #rec-redo-btn { flex:1; display:none; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,255,255,0.15); color:#aaa; border-radius:10px; padding:9px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; }
@@ -798,7 +814,7 @@
     .np-import-menu { display:none; position:absolute; top:calc(100% + 6px); right:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:5px; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:200; }
     .np-import-menu.on { display:block; }
     .np-import-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 12px; border:none; background:none; color:var(--text); font-size:0.81rem; font-weight:600; border-radius:7px; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .np-import-item:hover { background:rgba(139,92,246,0.1); }
+    .np-import-item:hover { background:rgba(var(--accent-rgb),0.1); }
 
     /* Mobile */
     @media (max-width: 640px) {
@@ -815,26 +831,81 @@
     .cp-title { font-size:1rem; font-weight:800; margin-bottom:4px; }
     .cp-sub { font-size:0.78rem; color:var(--muted); margin-bottom:16px; }
     .cp-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:0.9rem; color:var(--text); font-family:inherit; outline:none; }
-    .cp-input:focus { border-color:rgba(139,92,246,0.5); }
+    .cp-input:focus { border-color:rgba(var(--accent-rgb),0.5); }
     .cp-row { display:flex; gap:8px; margin-top:16px; }
     .cp-btn { flex:1; padding:10px; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; font-family:inherit; border:none; }
     .cp-cancel { background:none; border:1px solid var(--border); color:var(--muted); }
     .cp-cancel:hover { color:var(--text); }
-    .cp-ok { background:var(--purple); color:#fff; }
+    .cp-ok { background:var(--accent); color:var(--on-accent); }
     .cp-ok:hover { opacity:0.85; }
     #save-dest-modal.open { display:flex !important; }
-    .sd-card { background:var(--surface); border:1px solid rgba(139,92,246,0.3); border-radius:16px; padding:22px 20px; width:310px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+    .sd-card { background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.3); border-radius:16px; padding:22px 20px; width:310px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
     .sd-title { font-size:1rem; font-weight:700; color:var(--text); margin-bottom:3px; }
     .sd-sub { font-size:0.76rem; color:var(--muted); margin-bottom:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .sd-list { display:flex; flex-direction:column; gap:5px; max-height:220px; overflow-y:auto; margin-bottom:12px; }
     .sd-opt { display:block; width:100%; text-align:left; padding:10px 13px; border:1px solid var(--border); background:none; color:var(--text); font-size:0.83rem; font-weight:600; border-radius:9px; cursor:pointer; font-family:inherit; transition:all 0.12s; }
-    .sd-opt:hover { background:rgba(139,92,246,0.12); border-color:var(--purple); color:var(--purple2); }
-    .sd-opt.sd-current { border-color:var(--purple); color:var(--purple2); background:rgba(139,92,246,0.1); }
+    .sd-opt:hover { background:rgba(var(--accent-rgb),0.12); border-color:var(--accent); color:var(--accent2); }
+    .sd-opt.sd-current { border-color:var(--accent); color:var(--accent2); background:rgba(var(--accent-rgb),0.1); }
     .sd-cancel { width:100%; padding:9px; border:1px solid var(--border); background:none; color:var(--muted); border-radius:8px; cursor:pointer; font-family:inherit; font-size:0.78rem; font-weight:600; transition:all 0.12s; }
-    .sd-cancel:hover { color:var(--text); border-color:rgba(139,92,246,0.4); }
+    .sd-cancel:hover { color:var(--text); border-color:rgba(var(--accent-rgb),0.4); }
 
-    .vd-btn:hover { background:rgba(139,92,246,0.1); }
+    .vd-btn:hover { background:rgba(var(--accent-rgb),0.1); }
     .vd-del { color:#ff5555; }
+
+    /* ── LOGBOOK LOOK (Oct 2026 redesign) — overrides for the top bar, folder rail and page ── */
+    .np-header { height: 58px; gap: 10px; padding: 0 16px; border-bottom: none; }
+    .np-sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 10px; }
+    .np-sidebar-toggle:hover { background: var(--surface2); }
+    .np-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex-shrink: 0; }
+    .np-brand img { width: 28px; height: 28px; object-fit: contain; }
+    .np-brand-name { font-family: var(--serif); font-size: 1.08rem; font-weight: 700; letter-spacing: -0.01em; }
+    .np-back { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border-radius: 10px; font-size: 0.82rem; font-weight: 600; color: var(--accent); text-decoration: none; flex-shrink: 0; white-space: nowrap; }
+    .np-back:hover { background: rgba(var(--accent-rgb),0.1); }
+    .np-title-input { font-family: var(--serif); font-size: 1.1rem; font-weight: 600; height: 36px; padding: 0 8px; border-radius: 8px; }
+    .np-title-input:focus { background: var(--surface2); }
+    .np-btn { height: 34px; padding: 0 12px; border-radius: 10px; font-size: 0.8rem; color: var(--text); }
+    .np-btn:hover { border-color: var(--border); background: var(--surface2); }
+    .np-btn-primary, .np-btn-primary:hover { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-text); }
+    .np-btn-primary:hover { opacity: 0.88; }
+    /* Signature detail: a thin wave line under the top bar, echoing the waves in the logo */
+    .np-wave { display: block; flex-shrink: 0; width: 100%; height: 9px; color: var(--accent); opacity: 0.5; background: var(--surface); }
+    @media (max-width: 760px) {
+      .np-brand-name, .np-back-label { display: none; }
+      .np-header { height: auto; flex-wrap: wrap; padding: 8px 10px; row-gap: 4px; }
+      .np-title-input { order: 10; flex-basis: 100%; }
+      .np-header-right { margin-left: auto; }
+    }
+    /* Phones: use the screen width for writing instead of print-style margins */
+    @media (max-width: 640px) {
+      .editor-wrap, .right-editor-wrap { padding: 14px 8px 40px; }
+      .page-box { padding-left: 20px !important; padding-right: 20px !important; padding-top: 28px !important; }
+      .statusbar { padding: 5px 10px; gap: 10px; flex-wrap: wrap; }
+      #tb-more-menu { left: auto !important; right: 0; min-width: 0 !important; max-width: calc(100vw - 24px); }
+    }
+    #cmd-panel { background-clip: padding-box; }
+    :root.light #hl-sb-wrap > button { color: #7A4F00 !important; }
+    /* Folder rail: slimmer, folders only. The flat notes list only appears as search results. */
+    .np-sidebar { width: 248px; min-width: 248px; }
+    .sb-top { padding: 12px 14px 10px; }
+    .sb-rail-title { flex: 1; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+    .np-sidebar:not(.searching) #sb-notes-hd, .np-sidebar:not(.searching) #notes-list { display: none; }
+    .np-sidebar:not(.searching) .sb-folders { flex: 1; max-height: none; border-top: none; }
+    .sb-bottom { display: none; }
+    .note-item.active { background: rgba(var(--accent-rgb),0.12); }
+    /* Writing surface: a white page on fog grey, rounded, soft shadow */
+    .editor-wrap, .right-editor-wrap, :root.light .editor-wrap, :root.light .right-editor-wrap { background: var(--bg); }
+    .page-box, :root.light .page-box { border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 1px 2px rgba(11,15,20,0.05), 0 8px 24px rgba(11,15,20,0.07); }
+    .page-content h1, .page-content h2 { font-family: var(--serif); letter-spacing: -0.01em; }
+    .toolbar { padding: 6px 16px; }
+    .tb-btn { color: var(--text); }
+    /* Record is not offered on this page (the feature lives on the homepage) */
+    .editor-record-fab-wrap { display: none !important; }
+    /* Empty state */
+    .no-note img { width: 76px; height: 76px; object-fit: contain; opacity: 0.9; }
+    .no-note h2 { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--text); }
+    .no-note .np-btn { height: 38px; padding: 0 16px; font-size: 0.86rem; }
+    .no-note a { color: var(--accent); font-size: 0.84rem; font-weight: 600; text-decoration: none; }
+    .no-note a:hover { text-decoration: underline; }
 
     /* Logo: white mark on dark theme, dark mark on light theme */
     .logo-lt{display:none!important;}
@@ -848,49 +919,67 @@
 
 <!-- HEADER -->
 <div class="np-header">
-  <button class="np-sidebar-toggle" onclick="toggleSidebar()" title="Toggle notes list">☰</button>
-  <button class="np-btn np-btn-primary" onclick="newNote()" title="Create new note" style="padding:5px 12px;font-size:0.8rem;white-space:nowrap;">+ New</button>
-  <span class="np-doc-icon">📄</span>
-  <input id="note-title-input" class="np-title-input" type="text" placeholder="Note title…" oninput="onTitleChange()" />
+  <button class="np-sidebar-toggle" id="np-rail-toggle" onclick="toggleSidebar()" title="Folders" aria-label="Show or hide folders">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h13"/></svg>
+  </button>
+  <a class="np-brand" href="index.html" aria-label="NoteCaptain home">
+    <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+    <span class="np-brand-name">NoteCaptain</span>
+  </a>
+  <a class="np-back" href="my-notes.html" aria-label="Back to your Logbook">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    <span class="np-back-label">Logbook</span>
+  </a>
+  <input id="note-title-input" class="np-title-input" type="text" placeholder="Note title" aria-label="Note title" oninput="onTitleChange()" />
   <div class="np-header-right">
+    <button class="np-btn np-btn-primary" onclick="newNote()" title="Create a new note" aria-label="New note">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="np-btn-label">New note</span>
+    </button>
     <div class="save-indicator">
       <div class="save-dot" id="save-dot"></div>
       <span id="save-label" class="si-label">Saved</span>
       <span id="cloud-indicator" style="font-size:0.8rem;margin-left:4px;opacity:0.6;display:none;" title="Cloud sync"></span>
     </div>
-    <button onclick="openShareModal()" class="np-btn" title="Share note" style="color:#34d399;">🔗 <span class="np-btn-label">Share</span></button>
+    <button onclick="openShareModal()" class="np-btn" title="Share note">Share</button>
+    <button class="np-btn" id="np-theme-btn" onclick="toggleNpTheme()" aria-label="Switch between light and dark mode">Dark</button>
     <!-- Save button removed from always-visible chrome — autosave + Ctrl+S cover it (see
          manualSave()'s keydown binding); it's still reachable, see #save-btn inside ⋯ below. -->
     <div style="position:relative;" id="np-more-wrap">
-      <button onclick="toggleNpMoreMenu()" id="np-more-btn" class="np-btn" title="More">⋯</button>
+      <button onclick="toggleNpMoreMenu()" id="np-more-btn" class="np-btn" title="More" aria-label="More options">⋯</button>
       <div id="np-more-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;">
-        <button id="save-btn" onclick="manualSave()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">💾 Save</button>
-        <button onclick="copyNote()" id="copy-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📋 Copy</button>
-        <button id="tts-btn" onclick="toggleTTS()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🔊 Read aloud</button>
-        <button onclick="openRecModal()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🎙 Record</button>
+        <button id="save-btn" onclick="manualSave()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Save</button>
+        <button onclick="copyNote()" id="copy-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Copy</button>
+        <button id="tts-btn" onclick="toggleTTS()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Read aloud</button>
+        <!-- Record removed from the Notepad (hidden, not deleted — the feature lives on the homepage) -->
+        <button onclick="openRecModal()" hidden style="display:none;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Record</button>
         <div style="height:1px;background:var(--border);margin:5px 2px;"></div>
         <div style="position:relative;" id="export-wrap">
-          <button onclick="toggleExportMenu()" id="export-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">⬇ Export <span style="float:right;opacity:0.6;">▸</span></button>
+          <button onclick="toggleExportMenu()" id="export-btn" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Export <span style="float:right;opacity:0.6;">▸</span></button>
           <div id="export-menu" style="display:none;position:absolute;top:0;right:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:168px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:201;">
-            <button onclick="exportDoc()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📄 Word (.docx)</button>
-            <button onclick="exportPdf()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">🖨️ PDF</button>
-            <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📃 Text (.txt)</button>
-            <button onclick="exportGoogleDocs()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📝 Google Docs</button>
+            <button onclick="exportDoc()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Word (.docx)</button>
+            <button onclick="exportPdf()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">PDF</button>
+            <button onclick="exportTxt()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Text (.txt)</button>
+            <button onclick="exportGoogleDocs()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Google Docs</button>
           </div>
         </div>
         <div style="position:relative;" id="import-wrap">
-          <button onclick="toggleImportMenu()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📂 Import <span style="float:right;opacity:0.6;">▸</span></button>
+          <button onclick="toggleImportMenu()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Import <span style="float:right;opacity:0.6;">▸</span></button>
           <div class="np-import-menu" id="import-menu" style="top:0;right:calc(100% + 6px);left:auto;">
-            <label class="np-import-item">📄 Document (.txt/.docx/.pdf)<input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
-            <label class="np-import-item">🎬 Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
+            <label class="np-import-item">Document (.txt/.docx/.pdf)<input type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="importDoc(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
+            <label class="np-import-item">Video Recording (.mp4/.mov/.webm)<input type="file" accept="video/*,.mp4,.mov,.webm,.mkv" style="display:none" onchange="importVideo(this);toggleImportMenu();toggleNpMoreMenu(true)"></label>
           </div>
         </div>
         <div style="height:1px;background:var(--border);margin:5px 2px;"></div>
-        <button onclick="window.location.href='my-notes.html'" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">📂 My Notes</button>
+        <button onclick="window.location.href='my-notes.html'" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:var(--text);font-size:0.81rem;font-weight:600;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">Logbook</button>
       </div>
     </div>
   </div>
 </div>
+<svg class="np-wave" aria-hidden="true" focusable="false">
+  <defs><pattern id="nc-wave" width="56" height="9" patternUnits="userSpaceOnUse"><path d="M0 5.5 Q 14 0.5 28 5.5 T 56 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></pattern></defs>
+  <rect width="100%" height="9" fill="url(#nc-wave)"/>
+</svg>
 
 <!-- BODY -->
 <div class="np-body">
@@ -899,9 +988,8 @@
   <div class="np-sidebar" id="np-sidebar">
     <!-- Top header: logo + name + actions -->
     <div class="sb-top">
-      <div class="sb-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="NoteCaptain"><img class="logo-lt" src="images/logo-mark-dark.png" alt="NoteCaptain"></div>
-      <span class="sb-name">NoteCaptain <span>AI</span></span>
-      <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder">
+      <span class="sb-rail-title">Folders</span>
+      <button class="sb-icon-btn" id="add-note-btn" onclick="toggleNewNoteMenu()" title="Add new note or folder" aria-label="Add new note or folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
@@ -909,25 +997,24 @@
     <div class="sb-search">
       <div class="sb-search-wrap">
         <svg class="sb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search by title" oninput="filterNotes(this.value)" />
+        <input class="sb-search-input" id="sb-search-input" type="text" placeholder="Search your notes" aria-label="Search your notes" oninput="filterNotes(this.value)" />
       </div>
     </div>
     <!-- Quick nav -->
     <div style="display:flex;gap:5px;padding:6px 10px 2px;flex-shrink:0;">
-      <a href="index.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+      <a href="index.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
       </a>
-      <a href="my-notes.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>My Notes
+      <a href="my-notes.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Logbook
       </a>
-      <a href="flashcards.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(139,92,246,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+      <a href="flashcards.html" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 5px;border-radius:8px;font-size:0.7rem;font-weight:700;color:var(--muted);text-decoration:none;background:rgba(255,255,255,0.04);transition:background 0.12s,color 0.12s;white-space:nowrap;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="10" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg>Flashcards
       </a>
     </div>
     <!-- Notes section -->
-    <div class="sb-section-hd">
-      <span class="sb-section-label">Notes</span>
-      <button class="sb-section-btn" id="compare-pick-btn" onclick="toggleComparePicker()" title="Compare two notes side by side" style="margin-right:4px;">⊞</button>
+    <div class="sb-section-hd" id="sb-notes-hd">
+      <span class="sb-section-label">Search results</span>
       <button class="sb-section-btn" id="sort-toggle-btn" onclick="cycleSortMode()" title="Change sort order">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
         <span id="sort-label">Recent</span>
@@ -939,7 +1026,8 @@
     <!-- Folders section -->
     <div class="sb-folders">
       <div class="sb-section-hd">
-        <span class="sb-section-label">Folders</span>
+        <span class="sb-section-label">Your notes</span>
+        <button class="sb-section-btn" id="compare-pick-btn" onclick="toggleComparePicker()" title="Compare two notes side by side">Compare</button>
         <button class="sb-section-btn" id="folder-sort-btn" onclick="cycleFolderSort()" title="Sort folders">
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6-6 6 6"/><path d="M6 15l6 6 6-6"/></svg>
           <span id="folder-sort-label">A–Z</span>
@@ -956,7 +1044,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         Study
       </button>
-      <button class="sb-bot-btn" onclick="toggleNpTheme()" id="np-theme-btn" title="Toggle theme">
+      <button class="sb-bot-btn" onclick="toggleNpTheme()" title="Toggle theme">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         Theme
       </button>
@@ -966,10 +1054,11 @@
   <!-- EDITOR -->
   <div class="np-editor-area" id="editor-area">
     <div class="no-note" id="no-note-state">
-      <div class="no-note-icon">📝</div>
-      <p>Select a note or create a new one</p>
-      <button onclick="newNote()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;">+ Add Note</button>
-      <a href="my-notes.html" style="font-size:0.8rem;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:5px;margin-top:4px;">📂 Open My Notes</a>
+      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+      <h2>Ready when you are</h2>
+      <p>Open a note from your Logbook, or start a new one.</p>
+      <button class="np-btn np-btn-primary" onclick="newNote()">New note</button>
+      <a href="my-notes.html">Open your Logbook</a>
     </div>
     <div id="editor-container" style="display:none;flex-direction:column;overflow:hidden;">
       <!-- Toolbar -->
@@ -1003,7 +1092,7 @@
         <!-- Everything else lives in More ▾ — same buttons/handlers, just relocated -->
         <div style="position:relative;" id="tb-more-wrap">
           <button class="tb-btn" onclick="toggleTbMoreMenu()" id="tb-more-btn">More ▾</button>
-          <div id="tb-more-menu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+          <div id="tb-more-menu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;flex-wrap:wrap;gap:4px;align-items:center;">
             <button class="tb-btn" onclick="fmt('formatBlock','p')" title="Normal text">¶ Normal</button>
             <button class="tb-btn" onclick="fmt('formatBlock','blockquote')" title="Blockquote">" Quote</button>
             <button class="tb-btn" onclick="insertHR()" title="Divider">— HR</button>
@@ -1072,7 +1161,7 @@
               <!-- math panel below -->
               <div id="math-panel">
                 <div id="math-panel-header">
-                  <div style="font-size:0.68rem;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin-bottom:7px;">∑ MATH EQUATION</div>
+                  <div style="font-size:0.68rem;font-weight:700;color:var(--accent2);letter-spacing:0.08em;margin-bottom:7px;">∑ MATH EQUATION</div>
                   <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
                     <button class="math-sym-tab math-sym-tab-active" data-tab="basic"  onclick="setMathTab('basic')">Basic</button>
                     <button class="math-sym-tab" data-tab="greek"  onclick="setMathTab('greek')">Greek</button>
@@ -1093,10 +1182,10 @@
                 </div>
                 <div id="math-panel-footer">
                   <label style="font-size:0.72rem;color:#888;display:flex;align-items:center;gap:5px;cursor:pointer;">
-                    <input type="checkbox" id="math-display" style="accent-color:#8B5CF6;" onchange="_mathTryPreview()"> Display block
+                    <input type="checkbox" id="math-display" style="accent-color:var(--accent);" onchange="_mathTryPreview()"> Display block
                   </label>
                   <button onclick="_mathSolveHomework()" id="math-convert-btn" style="padding:6px 14px;background:rgba(79,195,247,0.12);border:1px solid rgba(79,195,247,0.35);border-radius:8px;color:#4fc3f7;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">🧠 Solve</button>
-                  <button onclick="insertMathEq()" style="padding:6px 16px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.45);border-radius:8px;color:#a78bfa;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Insert →</button>
+                  <button onclick="insertMathEq()" style="padding:6px 16px;background:rgba(var(--accent-rgb),0.2);border:1px solid rgba(var(--accent-rgb),0.45);border-radius:8px;color:var(--accent2);font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Insert →</button>
                 </div>
               </div>
             </div>
@@ -1161,7 +1250,7 @@
         </div>
         <!-- Split divider -->
         <div class="split-divider" id="split-divider" style="display:none;" onmousedown="startSplitResize(event)">
-          <button id="split-swap-btn" title="Swap left and right editors" onclick="swapSplitEditors()" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a2e;border:1px solid rgba(139,92,246,0.5);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.85rem;color:#a78bfa;z-index:10;transition:background 0.15s;padding:0;line-height:1;" onmouseover="this.style.background='rgba(139,92,246,0.3)'" onmouseout="this.style.background='#1a1a2e'">⇄</button>
+          <button id="split-swap-btn" title="Swap left and right editors" onclick="swapSplitEditors()" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1A232C;border:1px solid rgba(var(--accent-rgb),0.5);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.85rem;color:var(--accent2);z-index:10;transition:background 0.15s;padding:0;line-height:1;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.3)'" onmouseout="this.style.background='#1A232C'">⇄</button>
         </div>
         <!-- Right pane (split view) -->
         <div class="right-pane" id="right-pane">
@@ -1259,15 +1348,15 @@
         </div>
         <div id="conv-wrap" style="position:relative;">
           <button class="convert-btn" onclick="openConvPanel()">⚡ Convert</button>
-          <div id="conv-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px;min-width:220px;z-index:300;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openCodeConvert()">🍪 Format Code <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /format code</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="sendNoteToFlashcards()">🃏 Flashcards <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /flashcards</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('academic')">🎓 Academic <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /academic</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('cornell')">📋 Cornell Notes <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /cornellnotes</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('bullets')">• Bullet Points <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /bullets</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('outline')">≡ Outline <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /outline</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('studyguide')">📚 Study Guide <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /studyguide</span></div>
-            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''" onclick="openHomeworkSolver()">🧠 Homework Solver <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /solve</span></div>
+          <div id="conv-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1A232C;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:10px;padding:4px;min-width:220px;z-index:300;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openCodeConvert()">🍪 Format Code <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /format code</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="sendNoteToFlashcards()">🃏 Flashcards <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /flashcards</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('academic')">🎓 Academic <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /academic</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('cornell')">📋 Cornell Notes <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /cornellnotes</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('bullets')">• Bullet Points <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /bullets</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('outline')">≡ Outline <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /outline</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openDocFormat('studyguide')">📚 Study Guide <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /studyguide</span></div>
+            <div style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''" onclick="openHomeworkSolver()">🧠 Homework Solver <span style="font-size:0.65rem;color:#555;font-family:monospace;">type /solve</span></div>
           </div>
         </div>
       </div>
@@ -1312,7 +1401,7 @@
       <button id="copy-code-btn" onclick="copyCodeResult()" class="cm-btn">📋 Copy</button>
       <div style="position:relative;">
         <button onclick="toggleSaveMenu()" class="cm-btn" id="save-menu-btn">💾 Save ▾</button>
-        <div id="cm-save-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px;min-width:170px;z-index:400;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
+        <div id="cm-save-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1A232C;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:10px;padding:4px;min-width:170px;z-index:400;box-shadow:0 8px 28px rgba(0,0,0,0.6);">
           <div class="conv-save-item" onclick="saveCodeToDesktop('html-view')">🌐 GitHub View (.html)</div>
           <div class="conv-save-item" onclick="saveCodeToDesktop('code')">📄 Code file (.js/.py…)</div>
           <div class="conv-save-item" onclick="saveCodeToDesktop('txt')">📃 Plain text (.txt)</div>
@@ -1329,7 +1418,7 @@
 <!-- HOMEWORK SOLVER MODAL -->
 <!-- SHARE MODAL -->
 <div id="share-modal" onclick="if(event.target===this)closeShareModal()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#12121e;border:1px solid rgba(52,211,153,0.3);border-radius:16px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 64px rgba(0,0,0,0.7);">
+  <div style="background:#131A21;border:1px solid rgba(52,211,153,0.3);border-radius:16px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 64px rgba(0,0,0,0.7);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <div style="font-size:1rem;font-weight:700;color:#e0e0f0;">🔗 Share Note</div>
       <button onclick="closeShareModal()" style="background:none;border:none;color:#666;cursor:pointer;font-size:1.1rem;padding:2px 6px;">✕</button>
@@ -1342,7 +1431,7 @@
         <span>View Only</span>
         <span style="font-size:0.65rem;font-weight:400;color:#555;">Read-only link</span>
       </button>
-      <button onclick="generateShareLink(true)" id="share-btn-collab" style="background:rgba(139,92,246,0.12);border:1.5px solid rgba(139,92,246,0.4);border-radius:10px;color:#a78bfa;font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
+      <button onclick="generateShareLink(true)" id="share-btn-collab" style="background:rgba(var(--accent-rgb),0.12);border:1.5px solid rgba(var(--accent-rgb),0.4);border-radius:10px;color:var(--accent2);font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
         <span style="font-size:1.3rem;">🔴</span>
         <span>Live Collaboration</span>
         <span style="font-size:0.65rem;font-weight:400;color:#555;">Both can edit in real-time</span>
@@ -1351,9 +1440,9 @@
 
     <div id="share-status" style="font-size:0.82rem;color:#34d399;margin-bottom:10px;min-height:18px;"></div>
     <div style="display:flex;gap:8px;margin-bottom:14px;">
-      <input id="share-link-input" readonly style="flex:1;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;font-size:0.78rem;color:#c8c8f0;font-family:monospace;outline:none;" placeholder="Click a button above to generate…">
+      <input id="share-link-input" readonly style="flex:1;background:#1A232C;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;font-size:0.78rem;color:#C9D3DB;font-family:monospace;outline:none;" placeholder="Click a button above to generate…">
       <button onclick="copyShareLink()" id="share-copy-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);border-radius:8px;color:#34d399;font-size:0.78rem;font-weight:700;padding:9px 14px;cursor:pointer;font-family:inherit;white-space:nowrap;">Copy</button>
-      <button onclick="openShareInTab()" title="Open in new tab" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);border-radius:8px;color:#a78bfa;font-size:0.9rem;padding:9px 12px;cursor:pointer;">↗</button>
+      <button onclick="openShareInTab()" title="Open in new tab" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:8px;color:var(--accent2);font-size:0.9rem;padding:9px 12px;cursor:pointer;">↗</button>
     </div>
     <input type="hidden" id="share-collab-toggle">
     <button onclick="revokeShareLink()" style="background:rgba(255,80,80,0.06);border:1px solid rgba(255,80,80,0.2);border-radius:8px;color:#ff8080;font-size:0.73rem;font-weight:700;padding:6px 14px;cursor:pointer;font-family:inherit;">🗑 Revoke Link</button>
@@ -1361,54 +1450,54 @@
 </div>
 
 <div id="hw-solver-modal" onclick="if(event.target===this)closeHwSolver()" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,0.78);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#12121e;border:1px solid rgba(139,92,246,0.35);border-radius:16px;width:min(700px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
+  <div style="background:#131A21;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:16px;width:min(700px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
       <span style="font-size:1.1rem;">🧠</span>
-      <span style="font-size:0.9rem;font-weight:700;color:#e0e0ff;">Homework Solver</span>
-      <span id="hw-status" style="font-size:0.72rem;color:#8888aa;margin-left:4px;"></span>
+      <span style="font-size:0.9rem;font-weight:700;color:#E9EEF2;">Homework Solver</span>
+      <span id="hw-status" style="font-size:0.72rem;color:#9AA7B2;margin-left:4px;"></span>
       <button onclick="closeHwSolver()" style="margin-left:auto;background:none;border:none;color:#666;font-size:1.1rem;cursor:pointer;padding:4px 8px;border-radius:6px;" onmouseover="this.style.color='#ff5f57'" onmouseout="this.style.color='#666'">✕</button>
     </div>
-    <div id="hw-result" style="flex:1;overflow-y:auto;padding:22px 28px;min-height:180px;color:#d8d8f0;font-size:0.88rem;line-height:1.8;">
+    <div id="hw-result" style="flex:1;overflow-y:auto;padding:22px 28px;min-height:180px;color:#D8E0E6;font-size:0.88rem;line-height:1.8;">
       <span style="color:#555;font-style:italic;">Analyzing your note…</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
-      <button id="hw-copy-btn" onclick="copyHwResult()" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);color:#a78bfa;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copy</button>
-      <button onclick="insertHwIntoNote()" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);color:#a78bfa;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Insert into Note</button>
+      <button id="hw-copy-btn" onclick="copyHwResult()" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);color:var(--accent2);border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copy</button>
+      <button onclick="insertHwIntoNote()" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);color:var(--accent2);border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Insert into Note</button>
     </div>
   </div>
 </div>
 
 <!-- ACADEMIC / EMAIL FORMAT MODAL -->
 <div id="doc-format-modal" onclick="if(event.target===this)closeDocModal()" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,0.96);flex-direction:column;align-items:center;justify-content:center;">
-  <div style="background:#12121e;border:1px solid rgba(139,92,246,0.35);border-radius:16px;width:min(720px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
+  <div style="background:#131A21;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:16px;width:min(720px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;flex-wrap:wrap;">
       <span id="df-mode-icon" style="font-size:1.1rem;">🎓</span>
-      <span id="df-mode-label" style="font-size:0.9rem;font-weight:700;color:#e0e0ff;">Academic Formatting</span>
+      <span id="df-mode-label" style="font-size:0.9rem;font-weight:700;color:#E9EEF2;">Academic Formatting</span>
       <!-- Citation style chips — only shown for academic mode -->
       <div id="df-style-chips" style="display:flex;gap:6px;margin-left:4px;">
         <button class="df-chip df-chip-active" data-style="APA"     onclick="selectAcadStyle('APA')">APA</button>
         <button class="df-chip"                data-style="MLA"     onclick="selectAcadStyle('MLA')">MLA</button>
         <button class="df-chip"                data-style="Chicago" onclick="selectAcadStyle('Chicago')">Chicago</button>
       </div>
-      <span id="df-status" style="font-size:0.72rem;color:#8888aa;margin-left:auto;"></span>
+      <span id="df-status" style="font-size:0.72rem;color:#9AA7B2;margin-left:auto;"></span>
       <button onclick="closeDocModal()" style="background:none;border:none;color:#666;font-size:1.1rem;cursor:pointer;padding:4px 8px;border-radius:6px;transition:color 0.12s;" onmouseover="this.style.color='#ff5f57'" onmouseout="this.style.color='#666'">✕</button>
     </div>
     <!-- Preview -->
-    <div id="df-preview" style="flex:1;overflow-y:auto;padding:28px 36px;font-size:0.88rem;line-height:1.8;color:#d8d8f0;font-family:'Georgia',serif;white-space:pre-wrap;word-break:break-word;min-height:200px;">
+    <div id="df-preview" style="flex:1;overflow-y:auto;padding:28px 36px;font-size:0.88rem;line-height:1.8;color:#D8E0E6;font-family:'Georgia',serif;white-space:pre-wrap;word-break:break-word;min-height:200px;">
       <span style="color:#555;font-style:italic;">Your formatted document will appear here…</span>
     </div>
     <!-- Footer -->
     <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;flex-wrap:wrap;">
-      <button id="df-copy-btn" onclick="copyDocResult()" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);color:#a78bfa;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copy</button>
-      <button onclick="insertDocIntoNote()" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.35);color:#a78bfa;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Insert into Note</button>
+      <button id="df-copy-btn" onclick="copyDocResult()" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);color:var(--accent2);border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copy</button>
+      <button onclick="insertDocIntoNote()" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);color:var(--accent2);border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Insert into Note</button>
       <button onclick="insertDocIntoNewNote()" style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.35);color:#34d399;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📄 Copy into New Note</button>
       <div style="position:relative;">
         <button id="df-save-btn" onclick="toggleDocSaveMenu()" style="background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.25);color:#4fc3f7;border-radius:8px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">⬇ Save As ▾</button>
-        <div id="df-save-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:#1a1a2e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px;min-width:190px;z-index:10;box-shadow:0 8px 28px rgba(0,0,0,0.7);">
-          <div onclick="downloadDocResult('txt')"  style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''">📄 Plain Text (.txt)</div>
-          <div onclick="downloadDocResult('docx')" style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''">📝 Word Document (.docx)</div>
-          <div onclick="downloadDocResult('pdf')"  style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#c8c8f0;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(139,92,246,0.18)'" onmouseout="this.style.background=''">🖨 PDF (Print to PDF)</div>
+        <div id="df-save-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:#1A232C;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:10px;padding:4px;min-width:190px;z-index:10;box-shadow:0 8px 28px rgba(0,0,0,0.7);">
+          <div onclick="downloadDocResult('txt')"  style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''">📄 Plain Text (.txt)</div>
+          <div onclick="downloadDocResult('docx')" style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''">📝 Word Document (.docx)</div>
+          <div onclick="downloadDocResult('pdf')"  style="padding:9px 14px;border-radius:7px;font-size:0.78rem;font-weight:600;color:#C9D3DB;cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.18)'" onmouseout="this.style.background=''">🖨 PDF (Print to PDF)</div>
         </div>
       </div>
     </div>
@@ -1419,7 +1508,7 @@
 <div id="sel-popup" style="flex-direction:column;padding:5px;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:1px 4px 4px;gap:8px;">
     <span style="font-size:0.62rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.06em;white-space:nowrap;">FONT SIZE</span>
-    <span id="sel-fs-badge" style="font-size:0.78rem;font-weight:700;color:#a78bfa;background:rgba(139,92,246,0.18);padding:1px 9px;border-radius:5px;letter-spacing:0.02em;">16px</span>
+    <span id="sel-fs-badge" style="font-size:0.78rem;font-weight:700;color:var(--accent2);background:rgba(var(--accent-rgb),0.18);padding:1px 9px;border-radius:5px;letter-spacing:0.02em;">16px</span>
   </div>
   <div style="height:1px;background:rgba(255,255,255,0.07);margin:0 0 4px;"></div>
   <div id="sel-multi-row" style="display:flex;gap:4px;align-items:center;">
@@ -1468,7 +1557,7 @@
   <div class="ic-header">
     <span class="ic-mode-badge" id="ic-badge"></span>
     <span class="ic-selected-text" id="ic-sel-text"></span>
-    <button class="ic-close" id="ic-copy-btn" onclick="copyInterpResult()" title="Copy" style="background:none;border:none;color:#666;cursor:pointer;font-size:0.8rem;padding:2px 6px;transition:color 0.12s;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#666'">📋</button>
+    <button class="ic-close" id="ic-copy-btn" onclick="copyInterpResult()" title="Copy" style="background:none;border:none;color:#666;cursor:pointer;font-size:0.8rem;padding:2px 6px;transition:color 0.12s;" onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='#666'">📋</button>
     <button class="ic-close" onclick="closeInterpCard()">✕</button>
   </div>
   <div id="ic-body-wrap"></div>
@@ -1517,14 +1606,15 @@ const PAGE_H = 1056;  // 11 in
 // ── THEME ──
 (function(){
   const saved = localStorage.getItem('gn-theme');
-  if (saved === 'light') { document.documentElement.classList.add('light'); }
+  // Light by default on this page; only an explicit "dark" choice switches it.
+  if (saved !== 'dark') { document.documentElement.classList.add('light'); }
   _updateNpThemeBtn();
 })();
 function _updateNpThemeBtn() {
   const btn = document.getElementById('np-theme-btn');
   if (!btn) return;
   const isLight = document.documentElement.classList.contains('light');
-  btn.textContent = isLight ? '☀️ Light mode' : '🌙 Dark mode';
+  btn.textContent = isLight ? 'Dark' : 'Light'; // names the mode the button switches to
 }
 function toggleNpTheme() {
   const isLight = document.documentElement.classList.toggle('light');
@@ -1532,7 +1622,7 @@ function toggleNpTheme() {
   _updateNpThemeBtn();
   schedulePageLines();
 }
-window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue === 'light'); _updateNpThemeBtn(); schedulePageLines(); setTimeout(buildRuler, 50); } });
+window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue !== 'dark'); _updateNpThemeBtn(); schedulePageLines(); setTimeout(buildRuler, 50); } });
 window.addEventListener('resize', function() { schedulePageLines(); setTimeout(buildRuler, 50); _positionRecordFabs(); });
 
 // ── CUSTOM PROMPT ──
@@ -1557,13 +1647,22 @@ function _cpCancel() {
 }
 
 // ── SIDEBAR TOGGLE ──
-let _sidebarVisible = window.innerWidth >= 768;
+// The folder rail starts collapsed; it only starts open if the user left it open last time
+// (and the window is wide enough to fit it next to the page).
+let _sidebarVisible = window.innerWidth >= 768 && localStorage.getItem('gn-np-rail') === 'open';
+function _syncRailToggle() {
+  const b = document.getElementById('np-rail-toggle');
+  if (b) b.setAttribute('aria-expanded', _sidebarVisible ? 'true' : 'false');
+}
 (function() {
   if (!_sidebarVisible) document.getElementById('np-sidebar').classList.add('hidden');
+  _syncRailToggle();
 })();
 function toggleSidebar() {
   _sidebarVisible = !_sidebarVisible;
   document.getElementById('np-sidebar').classList.toggle('hidden', !_sidebarVisible);
+  try { localStorage.setItem('gn-np-rail', _sidebarVisible ? 'open' : 'closed'); } catch (e) {}
+  _syncRailToggle();
 }
 
 async function importDoc(input) {
@@ -1654,7 +1753,7 @@ function manualSave() {
   btn.style.background = 'var(--save)';
   setTimeout(() => {
     btn.innerHTML = '💾 <span class="np-btn-label">Save</span>';
-    btn.style.background = 'var(--purple)';
+    btn.style.background = 'var(--accent)';
   }, 2000);
 }
 
@@ -1669,7 +1768,7 @@ function saveLeftNote() {
   if (!_saveErrorMsg) setSaved();
   renderSidebar();
   const btn = document.getElementById('left-save-btn');
-  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '💾 Save'; }, 1500); }
+  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = 'Save'; }, 1500); }
 }
 
 function showSaveDest() {
@@ -1693,7 +1792,7 @@ function showSaveDest() {
       opts += `<button class="sd-opt${note.folderId===f.id?' sd-current':''}" onclick="confirmSaveDest('${f.id}')">📁 ${escHtml(f.name)}</button>`;
     });
     if (freshFolders.length === 0) {
-      opts += `<div style="font-size:0.73rem;color:var(--muted);padding:6px 10px;">No folders yet — create one on the <a href="history.html?type=notepad" style="color:var(--purple2);">My Notes page</a>.</div>`;
+      opts += `<div style="font-size:0.73rem;color:var(--muted);padding:6px 10px;">No folders yet — create one on the <a href="history.html?type=notepad" style="color:var(--accent2);">My Notes page</a>.</div>`;
     }
   }
   const listEl = document.getElementById('sd-folder-list');
@@ -3184,7 +3283,7 @@ function _openHeaderOptions(btn) {
     var el = document.createElement('button');
     el.textContent = label;
     el.style.cssText = 'display:block;width:100%;padding:9px 16px;border:none;background:none;color:var(--text);font-size:0.84rem;text-align:left;cursor:pointer;font-family:inherit;white-space:nowrap;';
-    el.onmouseover = function() { this.style.background='rgba(139,92,246,0.12)'; };
+    el.onmouseover = function() { this.style.background='rgba(var(--accent-rgb),0.12)'; };
     el.onmouseout  = function() { this.style.background='none'; };
     el.onclick = function() { menu.remove(); _hdrOptsMenu=null; fn(); };
     return el;
@@ -3210,12 +3309,12 @@ function _openHeaderFormat() {
   card.innerHTML = '<div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:14px;">Header Format</div>'
     + '<div style="font-size:0.78rem;color:var(--text-muted,#888);margin-bottom:8px;">Text alignment</div>'
     + '<div id="hf-aligns" style="display:flex;gap:6px;margin-bottom:18px;">'
-    +   '<button data-a="left"   style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Left</button>'
-    +   '<button data-a="center" style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Center</button>'
-    +   '<button data-a="right"  style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Right</button>'
+    +   '<button data-a="left"   style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Left</button>'
+    +   '<button data-a="center" style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Center</button>'
+    +   '<button data-a="right"  style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Right</button>'
     + '</div>'
     + '<div style="display:flex;justify-content:flex-end;">'
-    +   '<button id="hf-done" style="padding:8px 18px;border:none;border-radius:6px;background:rgba(139,92,246,0.8);color:#fff;cursor:pointer;font-size:0.84rem;font-weight:600;">Done</button>'
+    +   '<button id="hf-done" style="padding:8px 18px;border:none;border-radius:6px;background:rgba(var(--accent-rgb),0.8);color:#fff;cursor:pointer;font-size:0.84rem;font-weight:600;">Done</button>'
     + '</div>';
   pan.appendChild(card);
   document.body.appendChild(pan);
@@ -3224,10 +3323,10 @@ function _openHeaderFormat() {
   var note = notes.find(function(n){ return n.id===activeId; });
   var curAlign = (note && note.headerAlign) || 'left';
   card.querySelectorAll('[data-a]').forEach(function(btn) {
-    if (btn.dataset.a === curAlign) btn.style.background = 'rgba(139,92,246,0.3)';
+    if (btn.dataset.a === curAlign) btn.style.background = 'rgba(var(--accent-rgb),0.3)';
     btn.addEventListener('click', function() {
       card.querySelectorAll('[data-a]').forEach(function(b){ b.style.background='none'; });
-      this.style.background = 'rgba(139,92,246,0.3)';
+      this.style.background = 'rgba(var(--accent-rgb),0.3)';
       _applyHeaderAlign(this.dataset.a);
     });
   });
@@ -3248,9 +3347,9 @@ function _openPageNumbers() {
   card.innerHTML = '<div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:14px;">Page Numbers</div>'
     + '<div style="font-size:0.78rem;color:var(--text-muted,#888);margin-bottom:8px;">Position in header</div>'
     + '<div style="display:flex;gap:6px;margin-bottom:18px;">'
-    +   '<button data-pa="left"   style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Left</button>'
-    +   '<button data-pa="center" style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Center</button>'
-    +   '<button data-pa="right"  style="flex:1;padding:8px 4px;border:1px solid rgba(139,92,246,0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Right</button>'
+    +   '<button data-pa="left"   style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Left</button>'
+    +   '<button data-pa="center" style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Center</button>'
+    +   '<button data-pa="right"  style="flex:1;padding:8px 4px;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:6px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;">Right</button>'
     + '</div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;">'
     +   '<button id="pn-remove" style="padding:7px 14px;border:1px solid rgba(220,80,80,0.5);border-radius:6px;background:none;color:#e57373;cursor:pointer;font-size:0.82rem;">Remove numbers</button>'
@@ -3763,8 +3862,8 @@ function renderSbFolders() {
   if (!el) return;
   let html = `<div class="sb-folder-item" onclick="setFolderFilter(null)"
     ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
-    <span class="sb-fdot" style="background:rgba(139,92,246,0.35);border:1.5px solid rgba(139,92,246,0.5);"></span>
-    <span class="sb-fname" style="${!_folderFilter?'color:var(--purple2);font-weight:600;':''}">All Notes</span>
+    <span class="sb-fdot" style="background:rgba(var(--accent-rgb),0.35);border:1.5px solid rgba(var(--accent-rgb),0.5);"></span>
+    <span class="sb-fname" style="${!_folderFilter?'color:var(--accent2);font-weight:600;':''}">All Notes</span>
     <span class="sb-fcount" style="font-size:0.65rem;color:var(--muted);margin-left:auto;padding-right:4px;">${notes.length}</span>
   </div>`;
   html += _renderFolderTree(null, 0);
@@ -3780,7 +3879,7 @@ function renderSbFolders() {
       ondragover="_ftreeDragOver(event)" ondragleave="_ftreeDragLeave(event)" ondrop="_ftreeDrop(event,null)">
       <span class="ftree-chev${unfiledOpen?' open':''}" onclick="event.stopPropagation();toggleFolderCollapse('__unfiled__')">▶</span>
       <span class="ftree-icon">📄</span>
-      <span class="ftree-name" style="${_folderFilter==='__unfiled__'?'color:var(--purple2);':''}">Unfiled</span>
+      <span class="ftree-name" style="${_folderFilter==='__unfiled__'?'color:var(--accent2);':''}">Unfiled</span>
       <span class="ftree-count">${unfiledNotes.length}</span>
     </div>`;
     if (unfiledOpen) {
@@ -4070,7 +4169,7 @@ function renameNoteInline(e, id) {
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.value = note.title;
-  inp.style.cssText = 'width:100%;background:transparent;border:none;border-bottom:1px solid var(--purple);color:var(--text);font-size:0.85rem;font-weight:600;font-family:inherit;outline:none;padding:0;';
+  inp.style.cssText = 'width:100%;background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:0.85rem;font-weight:600;font-family:inherit;outline:none;padding:0;';
   titleEl.replaceWith(inp);
   inp.focus();
   inp.select();
@@ -4095,6 +4194,8 @@ function renameNoteInline(e, id) {
 
 function filterNotes(q) {
   searchQuery = q;
+  // The flat notes list is only shown as search results (see ".np-sidebar:not(.searching)").
+  document.getElementById('np-sidebar').classList.toggle('searching', !!String(q || '').trim());
   renderSidebar();
 }
 
@@ -4293,7 +4394,7 @@ function toggleNpMoreMenu(forceClose) {
 function toggleTbMoreMenu() {
   const m = document.getElementById('tb-more-menu');
   if (!m) return;
-  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
 }
 document.addEventListener('click', e => {
   const wrap = document.getElementById('export-wrap');
@@ -4937,7 +5038,7 @@ body{background:#0d1117;font-family:'SFMono-Regular','Fira Code',Consolas,'Couri
 .file-box{border:1px solid #30363d;border-radius:8px;overflow:hidden;max-width:1100px;margin:0 auto;}
 .file-header{background:#161b22;padding:10px 16px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:10px;}
 .file-title{font-size:0.82rem;font-weight:600;color:#c9d1d9;flex:1;}
-.lang-badge{background:rgba(139,92,246,0.18);border:1px solid rgba(139,92,246,0.3);color:#a78bfa;font-size:0.68rem;font-weight:700;padding:2px 10px;border-radius:100px;letter-spacing:0.04em;text-transform:uppercase;}
+.lang-badge{background:rgba(92,196,208,0.18);border:1px solid rgba(92,196,208,0.3);color:#7FD4DD;font-size:0.68rem;font-weight:700;padding:2px 10px;border-radius:100px;letter-spacing:0.04em;text-transform:uppercase;}
 table{border-collapse:collapse;width:100%;background:#0d1117;}
 td{padding:1px 0;white-space:pre;vertical-align:top;}
 .ln{color:#8b949e;text-align:right;padding:0 16px;user-select:none;min-width:52px;border-right:1px solid #21262d;font-size:0.75rem;}
@@ -5204,8 +5305,8 @@ function _cnFmtCuePreview(text, x) {
 
 function _cnFmtCueEditable(text, x) {
   const i = text.indexOf(' → ');
-  if (i === -1) return `<div style="font-weight:700;color:#a78bfa;">${x(text)}</div>`;
-  return `<div style="font-weight:700;color:#a78bfa;margin-bottom:4px;">${x(text.slice(0, i))}</div>
+  if (i === -1) return `<div style="font-weight:700;color:var(--accent2);">${x(text)}</div>`;
+  return `<div style="font-weight:700;color:var(--accent2);margin-bottom:4px;">${x(text.slice(0, i))}</div>
           <div style="font-size:0.76rem;color:#7766bb;line-height:1.5;">${x(text.slice(i + 3))}</div>`;
 }
 
@@ -5213,7 +5314,7 @@ function _renderCornellHTML(data) {
   const x = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const B = '2px solid #c0392b';
   const rows = (data.rows || []).map(r => `<tr>
-    <td style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1a1a2a;font-family:Arial,sans-serif;">${_cnFmtCuePreview(r.cue||'', x)}</td>
+    <td style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1A232C;font-family:Arial,sans-serif;">${_cnFmtCuePreview(r.cue||'', x)}</td>
     <td style="padding:10px 16px;border-bottom:1px dotted #ccc;vertical-align:top;font-size:0.83rem;line-height:1.65;color:#111;font-family:Arial,sans-serif;">${_cnFmtNote(r.note||'', x)}</td>
   </tr>`).join('');
   return `<div style="font-family:Arial,sans-serif;background:#fff;color:#111;border-radius:6px;overflow:hidden;width:100%;box-sizing:border-box;">
@@ -5227,14 +5328,14 @@ function _renderCornellHTML(data) {
     <div style="border:${B};border-radius:4px;margin:0 14px 10px;overflow:hidden;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <thead><tr style="border-bottom:${B};">
-          <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;width:30%;background:#fafafa;">Questions and Ideas</th>
-          <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;background:#fafafa;">Notes:</th>
+          <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1A232C;width:30%;background:#fafafa;">Questions and Ideas</th>
+          <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1A232C;background:#fafafa;">Notes:</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
     <div style="border:${B};border-radius:4px;margin:0 14px 14px;padding:10px 14px;">
-      <div style="font-size:0.84rem;font-weight:700;color:#1a1a2a;margin-bottom:6px;">Summary:</div>
+      <div style="font-size:0.84rem;font-weight:700;color:#1A232C;margin-bottom:6px;">Summary:</div>
       <div style="font-size:0.83rem;line-height:1.8;color:#333;border-top:1px dotted #ccc;padding-top:7px;">${x(data.summary)}</div>
     </div>
   </div>`;
@@ -5244,7 +5345,7 @@ function _renderCornellEditable(data) {
   const x = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const B = '2px solid #c0392b';
   const rows = (data.rows || []).map(r => `<tr>
-    <td class="cn-cell" contenteditable="true" style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1a1a2a;font-family:Arial,sans-serif;cursor:text;">${_cnFmtCuePreview(r.cue||'', x)}</td>
+    <td class="cn-cell" contenteditable="true" style="padding:10px 14px;border-right:${B};border-bottom:1px dotted #ccc;vertical-align:top;width:30%;font-size:0.83rem;line-height:1.65;color:#1A232C;font-family:Arial,sans-serif;cursor:text;">${_cnFmtCuePreview(r.cue||'', x)}</td>
     <td class="cn-cell cn-note" contenteditable="true" onclick="cnReveal(this)" style="padding:10px 16px;border-bottom:1px dotted #ccc;vertical-align:top;font-size:0.83rem;line-height:1.65;color:#111;font-family:Arial,sans-serif;cursor:text;">${_cnFmtNote(r.note||'', x)}</td>
   </tr>`).join('');
   return `<div class="cornell-block" contenteditable="false" style="display:block;width:100%;box-sizing:border-box;"><div style="font-family:Arial,sans-serif;background:#fff;color:#111;border:${B};border-radius:6px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);width:100%;box-sizing:border-box;">
@@ -5260,14 +5361,14 @@ function _renderCornellEditable(data) {
     <div style="border:${B};border-radius:4px;margin:0 14px 8px;overflow:hidden;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <thead><tr style="border-bottom:${B};">
-          <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;width:30%;background:#fafafa;">Questions and Ideas</th>
-          <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1a1a2a;background:#fafafa;">Notes:</th>
+          <th style="padding:9px 14px;border-right:${B};text-align:left;font-size:0.83rem;font-weight:700;color:#1A232C;width:30%;background:#fafafa;">Questions and Ideas</th>
+          <th style="padding:9px 16px;text-align:left;font-size:0.83rem;font-weight:700;color:#1A232C;background:#fafafa;">Notes:</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
     <div style="border:${B};border-radius:4px;margin:0 14px 12px;padding:10px 13px;">
-      <div style="font-size:0.84rem;font-weight:700;color:#1a1a2a;margin-bottom:5px;">Summary:</div>
+      <div style="font-size:0.84rem;font-weight:700;color:#1A232C;margin-bottom:5px;">Summary:</div>
       <div class="cn-cell cn-note" contenteditable="true" onclick="cnReveal(this)" style="font-size:0.83rem;line-height:1.8;color:#333;border-top:1px dotted #ccc;padding-top:6px;cursor:text;">${x(data.summary)}</div>
     </div>
   </div></div>`;
@@ -5405,7 +5506,7 @@ function copyNote() {
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.innerHTML = '✓ <span class="np-btn-label">Copied!</span>';
-    setTimeout(() => { btn.innerHTML = '📋 <span class="np-btn-label">Copy</span>'; }, 1500);
+    setTimeout(() => { btn.innerHTML = 'Copy'; }, 1500);
   });
 }
 
@@ -5503,7 +5604,7 @@ function toggleTTS() {
   utt.onerror = _ttsStop;
   _ttsActive = true;
   const btn = document.getElementById('tts-btn');
-  if (btn) btn.innerHTML = '⏹ <span class="np-btn-label">Stop</span>';
+  if (btn) btn.innerHTML = 'Stop reading';
   window.speechSynthesis.speak(utt);
 }
 
@@ -5512,7 +5613,7 @@ function _ttsStop() {
   _ttsActive = false;
   _ttsEditorEl = null;
   const btn = document.getElementById('tts-btn');
-  if (btn) btn.innerHTML = '🔊 <span class="np-btn-label">Read</span>';
+  if (btn) btn.innerHTML = 'Read aloud';
 }
 
 // ── SELECTION INTERPRET ──
@@ -6931,24 +7032,24 @@ async function _runHomeworkSolver(text) {
     res.innerHTML = '';
     if (hw.subject) {
       const badge = document.createElement('div');
-      badge.style.cssText = 'display:inline-block;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#a78bfa;border-radius:6px;padding:3px 10px;font-size:0.75rem;font-weight:700;margin-bottom:12px;';
+      badge.style.cssText = 'display:inline-block;background:rgba(var(--accent-rgb),0.2);border:1px solid rgba(var(--accent-rgb),0.4);color:var(--accent2);border-radius:6px;padding:3px 10px;font-size:0.75rem;font-weight:700;margin-bottom:12px;';
       badge.textContent = '📚 ' + hw.subject;
       res.appendChild(badge);
     }
     if (hw.problem) {
-      res.innerHTML += `<div style="font-weight:600;color:#e0e0ff;margin-bottom:10px;font-size:0.9rem;">${hw.problem.replace(/</g,'&lt;')}</div>`;
+      res.innerHTML += `<div style="font-weight:600;color:#E9EEF2;margin-bottom:10px;font-size:0.9rem;">${hw.problem.replace(/</g,'&lt;')}</div>`;
     }
     if (hw.steps?.length) {
       res.innerHTML += `<div style="font-size:0.75rem;font-weight:700;color:#6666aa;letter-spacing:0.08em;margin-bottom:6px;">STEPS</div>`;
       hw.steps.forEach((s,i) => {
-        res.innerHTML += `<div style="display:flex;gap:10px;margin-bottom:8px;"><span style="background:rgba(139,92,246,0.2);color:#a78bfa;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;flex-shrink:0;">${i+1}</span><span style="color:#d0d0f0;font-size:0.85rem;line-height:1.6;">${s.replace(/</g,'&lt;')}</span></div>`;
+        res.innerHTML += `<div style="display:flex;gap:10px;margin-bottom:8px;"><span style="background:rgba(var(--accent-rgb),0.2);color:var(--accent2);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;flex-shrink:0;">${i+1}</span><span style="color:#d0d0f0;font-size:0.85rem;line-height:1.6;">${s.replace(/</g,'&lt;')}</span></div>`;
       });
     }
     if (hw.answer) {
-      res.innerHTML += `<div style="background:rgba(40,200,64,0.1);border:1px solid rgba(40,200,64,0.3);border-radius:8px;padding:10px 14px;margin-top:10px;"><div style="font-size:0.7rem;font-weight:700;color:#28c840;letter-spacing:0.08em;margin-bottom:4px;">ANSWER</div><div style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">${hw.answer.replace(/</g,'&lt;')}</div></div>`;
+      res.innerHTML += `<div style="background:rgba(40,200,64,0.1);border:1px solid rgba(40,200,64,0.3);border-radius:8px;padding:10px 14px;margin-top:10px;"><div style="font-size:0.7rem;font-weight:700;color:#28c840;letter-spacing:0.08em;margin-bottom:4px;">ANSWER</div><div style="color:#E9EEF2;font-size:0.9rem;font-weight:600;">${hw.answer.replace(/</g,'&lt;')}</div></div>`;
     }
     if (hw.formula) {
-      res.innerHTML += `<div style="margin-top:8px;font-size:0.8rem;color:#888;">Formula: <code style="color:#c4b5fd;">${hw.formula.replace(/</g,'&lt;')}</code></div>`;
+      res.innerHTML += `<div style="margin-top:8px;font-size:0.8rem;color:#888;">Formula: <code style="color:var(--accent2);">${hw.formula.replace(/</g,'&lt;')}</code></div>`;
     }
     if (hw.tip) {
       res.innerHTML += `<div style="margin-top:8px;background:rgba(79,195,247,0.07);border-left:3px solid #4fc3f7;padding:8px 12px;border-radius:0 6px 6px 0;font-size:0.82rem;color:#9ed8f0;">💡 ${hw.tip.replace(/</g,'&lt;')}</div>`;
@@ -7063,7 +7164,7 @@ function initCloudSync() {
 }
 
 function _welcomeNoteContent() {
-  return `<h1>Welcome to NoteCaptain AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p>`;
+  return `<h1>Welcome to NoteCaptain AI</h1><p>This is your starter note. Replace this with your own content.</p><p><em>Tip: Type <strong>/</strong> anywhere in a note to see all available AI commands.</em></p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud/Logbook live under the <strong>⋯</strong> menu at the top.</p>`;
 }
 
 async function _seedWelcomeNote(uid) {
@@ -7253,7 +7354,7 @@ function _cloudFetchChunkedContent(noteId) {
 function _showToast(message) {
   var el = document.createElement('div');
   el.textContent = message;
-  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;border:1px solid rgba(239,68,68,0.4);padding:10px 16px;border-radius:10px;font-size:0.82rem;max-width:420px;text-align:center;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A232C;color:#fff;border:1px solid rgba(239,68,68,0.4);padding:10px 16px;border-radius:10px;font-size:0.82rem;max-width:420px;text-align:center;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
   document.body.appendChild(el);
   setTimeout(function() { el.remove(); }, 6000);
 }
@@ -7566,7 +7667,7 @@ const _DEMO_NOTE = {
   id: _DEMO_NOTE_ID,
   _isDemo: true,
   title: 'Prompt Guide',
-  content: `<h1>Prompt Guide</h1><p style="color:#8888aa;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read/Record/My Notes live under the <strong>⋯</strong> menu at the top.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
+  content: `<h1>Prompt Guide</h1><p style="color:#55606B;font-size:0.9rem;margin-bottom:20px;">Type any <strong>/command</strong> while editing a note and press Space or Enter to run it.</p><h2>Working with long notes</h2><p>Notes are one continuous page with no page limit — paste whole articles, transcripts, or lecture notes and keep going.</p><p>Use <strong>H1</strong>/<strong>H2</strong> headings (in the toolbar) to organize a long note into sections.</p><p><strong>Ctrl+F</strong> to find text on the page, <strong>Ctrl+S</strong> to save (it also autosaves as you type).</p><p>Looking for a button that used to be in the toolbar? Less-common tools now live under <strong>More ▾</strong> in the formatting toolbar, and Export/Import/Copy/Read aloud/Logbook live under the <strong>⋯</strong> menu at the top.</p><h2>Note Conversion</h2><p><strong>/cornellnotes</strong> — Converts your note into Cornell format: cues, key answers, notes, and summary.</p><p><strong>/bullets</strong> — Reorganizes your note into a clean bullet-point summary.</p><p><strong>/outline</strong> — Structures your note into a formal hierarchical outline.</p><p><strong>/studyguide</strong> — Generates a full study guide with key concepts and exam questions.</p><p><strong>/flashcards</strong> — Turns your note into a flashcard deck.</p><h2>Writing &amp; Formatting</h2><p><strong>/format academic</strong> — Restructures as a formal APA / MLA / Chicago essay.</p><p><strong>/format email</strong> — Converts your note into a professional email draft.</p><p><strong>/format code</strong> — Cleans up code and applies syntax highlighting.</p><h2>AI Assistance</h2><p><strong>/highlight</strong> — Highlights the most important concepts in your note.</p><p><strong>/prompt</strong> — Opens an inline AI field to write directly into your note.</p><h2>Selection Actions</h2><p><strong>Highlight one word</strong> → Spelling check with one-click correction.</p><p><strong>Highlight multiple words</strong> → Define / Comprehend / Grammar check.</p><h2>Sharing</h2><p><strong>/share</strong> — Generate a view-only or live collaboration link.</p><h2>Tips</h2><p>• Commands run on the entire note. For selection actions, highlight text first.</p><p>• Results open in a new note so your original is never changed.</p><p>• Sign in to save your notes and sync across devices.</p>`,
   created: Date.now(),
   updated: Date.now()
 };
@@ -7671,6 +7772,20 @@ function _formatWikipediaNoteContent(text) {
       updated: Date.now(),
       folderId: pendingFolder || null
     };
+    if (!_fbUid) note._guest = true;
+    notes.unshift(note);
+    saveNotes();
+    renderSidebar();
+    openNote(note.id);
+    return;
+  }
+  // "New note" / "Start a note" from the Logbook (my-notes.html): open a fresh, empty note.
+  const _newReq = localStorage.getItem('gn-notepad-new');
+  if (_newReq) {
+    localStorage.removeItem('gn-notepad-new');
+    let _nr = {};
+    try { _nr = JSON.parse(_newReq) || {}; } catch (e) {}
+    const note = { id: genId(), title: String(_nr.title || ''), content: '', created: Date.now(), updated: Date.now(), folderId: _nr.folderId || null };
     if (!_fbUid) note._guest = true;
     notes.unshift(note);
     saveNotes();
@@ -7974,7 +8089,7 @@ function toggleComparePicker() {
   const otherNotes = notes.filter(n => n.id !== activeId);
   menu.innerHTML = '<div style="font-size:0.68rem;font-weight:700;color:var(--muted);padding:5px 10px 3px;letter-spacing:0.06em;">⊞ COMPARE WITH...</div>' +
     (otherNotes.length ? otherNotes.map(n =>
-      `<div style="padding:9px 13px;border-radius:7px;cursor:pointer;font-size:0.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(139,92,246,0.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode('${n.id}');document.getElementById('compare-picker-menu')?.remove();">${n.title||'Untitled'}</div>`
+      `<div style="padding:9px 13px;border-radius:7px;cursor:pointer;font-size:0.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode('${n.id}');document.getElementById('compare-picker-menu')?.remove();">${n.title||'Untitled'}</div>`
     ).join('') : '<div style="padding:8px 12px;color:var(--muted);font-size:0.8rem;">No other notes to compare</div>');
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', function _cp(e) {
@@ -7993,7 +8108,7 @@ function toggleSplitPicker() {
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:210px;max-height:280px;overflow-y:auto;z-index:2000;box-shadow:0 8px 28px rgba(0,0,0,0.6);`;
   menu.innerHTML = '<div style="font-size:0.68rem;font-weight:700;color:var(--muted);padding:5px 10px 3px;letter-spacing:0.06em;">SELECT NOTE TO COMPARE</div>' +
     notes.filter(n => n.id !== activeId).map(n =>
-      `<div style="padding:9px 13px;border-radius:7px;cursor:pointer;font-size:0.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(139,92,246,0.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode('${n.id}');document.getElementById('split-picker-menu')?.remove();">${n.title||'Untitled'}</div>`
+      `<div style="padding:9px 13px;border-radius:7px;cursor:pointer;font-size:0.82rem;color:var(--text);font-weight:600;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.12)'" onmouseout="this.style.background=''" onclick="enterSplitMode('${n.id}');document.getElementById('split-picker-menu')?.remove();">${n.title||'Untitled'}</div>`
     ).join('') || '<div style="padding:8px 12px;color:var(--muted);font-size:0.8rem;">No other notes</div>';
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', function _sp(e) {
@@ -8411,7 +8526,7 @@ function saveRightNote() {
   note.content = content; note.updated = Date.now();
   saveNotes();
   const btn = document.querySelector('.rp-btn[onclick="saveRightNote()"]');
-  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '💾 Save'; }, 1500); }
+  if (btn) { btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = 'Save'; }, 1500); }
   renderSidebar();
 }
 
@@ -8502,8 +8617,8 @@ async function importVideo(input) {
   input.value = '';
   const name = file.name.replace(/\.[^.]+$/, '');
   const status = document.createElement('div');
-  status.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid rgba(139,92,246,0.4);border-radius:10px;padding:12px 20px;color:#a78bfa;font-size:0.82rem;font-weight:600;z-index:9999;display:flex;align-items:center;gap:10px;';
-  status.innerHTML = '<div style="width:14px;height:14px;border:2px solid rgba(139,92,246,0.3);border-top-color:#a78bfa;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div> Transcribing video…';
+  status.style.cssText = '--accent2:#7FD4DD;--accent-rgb:92,196,208;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1A232C;border:1px solid rgba(var(--accent-rgb),0.4);border-radius:10px;padding:12px 20px;color:var(--accent2);font-size:0.82rem;font-weight:600;z-index:9999;display:flex;align-items:center;gap:10px;';
+  status.innerHTML = '<div style="width:14px;height:14px;border:2px solid rgba(var(--accent-rgb),0.3);border-top-color:var(--accent2);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div> Transcribing video…';
   document.body.appendChild(status);
   try {
     const buf = await file.arrayBuffer();
@@ -9329,24 +9444,24 @@ function recInsertIntoNote() {
 </div>
 
 <!-- Folder-area + dropdown -->
-<div id="folder-area-menu" style="display:none;position:fixed;width:180px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
-  <button onclick="document.getElementById('folder-area-menu').style.display='none';newNoteWithName();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+<div id="folder-area-menu" style="display:none;position:fixed;width:180px;background:var(--surface);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
+  <button onclick="document.getElementById('folder-area-menu').style.display='none';newNoteWithName();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
     New Note
   </button>
-  <button onclick="document.getElementById('folder-area-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+  <button onclick="document.getElementById('folder-area-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.86rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
     New Folder
   </button>
 </div>
 
 <!-- Add Note/Folder dropdown — lives outside sidebar so overflow:hidden doesn't clip it -->
-<div id="new-note-menu" style="display:none;position:fixed;width:200px;background:var(--surface);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
-  <button onclick="newNoteWithName()" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+<div id="new-note-menu" style="display:none;position:fixed;width:200px;background:var(--surface);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:12px;padding:6px 0;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,0.65);">
+  <button onclick="newNoteWithName()" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
     Add New Note
   </button>
-  <button onclick="document.getElementById('new-note-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">
+  <button onclick="document.getElementById('new-note-menu').style.display='none';newFolder();" style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 16px;border:none;background:none;color:var(--text);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='rgba(var(--accent-rgb),0.1)'" onmouseout="this.style.background='none'">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
     Add New Folder
   </button>
@@ -9379,7 +9494,7 @@ function recInsertIntoNote() {
 </div>
 
 <!-- IMG CONTEXT MENU -->
-<div id="img-ctx-menu" style="display:none;position:fixed;z-index:9900;background:#12121e;border:1px solid rgba(139,92,246,0.35);border-radius:10px;padding:4px 0;box-shadow:0 8px 28px rgba(0,0,0,0.65);min-width:150px;">
+<div id="img-ctx-menu" style="display:none;position:fixed;z-index:9900;background:#131A21;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:10px;padding:4px 0;box-shadow:0 8px 28px rgba(0,0,0,0.65);min-width:150px;">
   <button class="img-ctx-item" onclick="openCtxImgEdit()">✏️ Edit Photo</button>
   <button class="img-ctx-item" id="img-ctx-revert" onclick="revertCtxImg()" style="display:none;">↩ Revert to Original</button>
   <button class="img-ctx-item" onclick="deleteCtxImg()" style="color:#f87171;">🗑️ Delete</button>
@@ -9387,14 +9502,14 @@ function recInsertIntoNote() {
 <!-- AI Inline Prompt popup -->
 <div id="ai-inline-popup">
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-    <span style="font-size:0.68rem;font-weight:700;color:#a78bfa;letter-spacing:0.08em;">✦ AI WRITE</span>
+    <span style="font-size:0.68rem;font-weight:700;color:var(--accent2);letter-spacing:0.08em;">✦ AI WRITE</span>
     <span style="font-size:0.67rem;color:#444;margin-left:auto;">Enter to generate · Esc to cancel</span>
   </div>
   <textarea id="ai-inline-input" placeholder="What should I write?&#10;e.g. &quot;create 3 calculus problems&quot; · &quot;write an essay intro&quot;" onkeydown="_aiInlineKey(event)"></textarea>
   <div id="ai-inline-status" style="font-size:0.7rem;color:#f87171;min-height:14px;margin-top:4px;"></div>
   <div style="display:flex;gap:6px;margin-top:9px;justify-content:flex-end;">
     <button onclick="_cancelAiInline()" style="padding:5px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#666;font-size:0.74rem;cursor:pointer;font-family:inherit;">Cancel</button>
-    <button id="ai-inline-btn" onclick="_submitAiInline()" style="padding:5px 15px;background:rgba(139,92,246,0.22);border:1px solid rgba(139,92,246,0.5);border-radius:7px;color:#a78bfa;font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">✦ Generate</button>
+    <button id="ai-inline-btn" onclick="_submitAiInline()" style="padding:5px 15px;background:rgba(var(--accent-rgb),0.22);border:1px solid rgba(var(--accent-rgb),0.5);border-radius:7px;color:var(--accent2);font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">✦ Generate</button>
   </div>
 </div>
 

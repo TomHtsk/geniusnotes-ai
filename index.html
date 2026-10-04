@@ -594,9 +594,17 @@
 
     /* Hero — flat background, serif headline, search as the focus */
     .home-main { flex: 1; height: auto; overflow: visible; background: none; background-image: none; }
-    .home-hero { position: relative; overflow: hidden; background: none; min-height: 0; display: block; text-align: center; padding: 76px 20px 90px; }
+    .home-hero { position: relative; overflow: hidden; background: none; min-height: 0; display: block; text-align: center; padding: 170px 20px 150px; }
     .home-hero::before, .home-hero::after { content: none; display: none; }
     .home-hero-inner { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; }
+    /* Soft white glow centered behind the search bar (the bar is the first thing in the hero). */
+    .home-hero-inner::before { content: ''; position: absolute; left: 50%; top: 32px; width: min(980px, 135vw); height: min(560px, 90vw);
+      transform: translate(-50%, -50%); pointer-events: none; z-index: -1; filter: blur(22px);
+      background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.30) 16%, rgba(255,255,255,0.11) 32%, rgba(var(--accent-rgb),0.07) 46%, rgba(255,255,255,0) 64%);
+      animation: hpGlow 12s ease-in-out infinite; }
+    :root.light .home-hero-inner::before { background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb),0.20) 0%, rgba(var(--accent-rgb),0.10) 26%, rgba(var(--accent-rgb),0) 62%); }
+    @keyframes hpGlow { 0%,100% { opacity: 0.88; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.05); } }
+    .hp-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     .hp-watermark { position: absolute; right: -40px; bottom: -70px; width: 420px; height: 420px; object-fit: contain; opacity: 0.2; pointer-events: none; z-index: 0; }
     .hp-watermark.logo-lt { opacity: 0.14; }
     .hp-title { font-family: var(--serif); font-size: clamp(2.1rem, 5.4vw, 3.3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.12; color: var(--text); margin-bottom: 14px; }
@@ -657,7 +665,7 @@
       #sb-float-btn.hp-menu-btn { display: inline-flex; }
       .hp-header-row { padding: 0 12px; gap: 6px; }
       .hp-brand { margin-right: 0; }
-      .home-hero { padding: 44px 16px 64px; }
+      .home-hero { padding: 110px 16px 100px; }
       .hp-watermark { width: 260px; height: 260px; right: -50px; bottom: -40px; }
       footer.hp-footer { flex-direction: column; align-items: flex-start; }
     }
@@ -748,8 +756,7 @@ _syncThemeBtn();
   <div class="home-hero">
     <img class="hp-watermark logo-dk" src="images/logo-mark-white.png" alt=""><img class="hp-watermark logo-lt" src="images/logo-mark-dark.png" alt="">
     <div class="home-hero-inner">
-      <h1 class="hp-title">Your AI study <span style="white-space:nowrap">co-captain.</span></h1>
-      <p class="hp-sub">Search any topic or paste a YouTube link, then turn it into notes you can study.</p>
+      <h1 class="hp-visually-hidden">NoteCaptain — your AI study co-captain. Search any topic or paste a YouTube link, then turn it into notes you can study.</h1>
 
       <!-- Unified smart search bar: detects YouTube links vs. search topics -->
       <form id="smart-search-form" class="smart-search-bar">

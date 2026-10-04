@@ -384,7 +384,117 @@ async function checkYoutubeDailyLimit(uid, res) {
   }
 }
 
+// ── Chunked uploads (homepage Upload window: video/audio sent as ~80s WAV parts) ──
+// One uploaded file = ONE AI action and ONE hourly-rate-limit hit, charged on chunk 0.
+// When chunk 0 is accepted the caller records a session at users/{uid}/uploads/{uploadId};
+// later chunks skip the rate limit and usage check ONLY if they match a live session
+// (see claimUploadChunk). Change the numbers here.
+const UPLOAD_MAX_CHUNKS = 50;
+const UPLOAD_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const UPLOAD_MAX_ATTEMPTS = 2;        // the browser retries a failed chunk once
+
+function isValidUploadId(id) {
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id);
+}
+
+// Decides whether a chunk may be processed. Returns one of:
+//   { status: 'new' }       chunk 0 and no live session yet — caller must run the normal
+//                           rate-limit + usage checks, then call startUploadSession
+//   { status: 'ok' }        matches a live session; this attempt is now recorded
+//   { status: 'rejected', error }  not allowed (unknown/expired upload, bad or reused index)
+//   { status: 'error' }     Firestore unreachable — caller falls back to the normal checks
+async function claimUploadChunk(uid, uploadId, chunkIndex) {
+  try {
+    _ensureAdmin();
+    const db = getDb();
+    const ref = db.doc(`users/${uid}/uploads/${uploadId}`);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : null;
+      const live = data && data.expiresAtMs > Date.now();
+      if (!live) {
+        if (chunkIndex === 0) return { status: 'new' };
+        return { status: 'rejected', error: 'This upload took too long and expired. Please upload the file again.' };
+      }
+      if (chunkIndex >= data.chunkCount) {
+        return { status: 'rejected', error: 'This part does not belong to the upload. Please upload the file again.' };
+      }
+      const attempts = data.attempts || {};
+      const used = attempts[chunkIndex] || 0;
+      if (used >= UPLOAD_MAX_ATTEMPTS) {
+        return { status: 'rejected', error: 'This part of the file was already sent. Please upload the file again.' };
+      }
+      attempts[chunkIndex] = used + 1;
+      tx.set(ref, { attempts }, { merge: true });
+      return { status: 'ok' };
+    });
+  } catch (e) {
+    return { status: 'error' };
+  }
+}
+
+// Records the session after chunk 0 passed the normal checks. `expiresAt` is a real
+// date so a Firestore TTL policy can clean old sessions up later if wanted.
+async function startUploadSession(uid, uploadId, chunkCount) {
+  try {
+    _ensureAdmin();
+    const expiresAtMs = Date.now() + UPLOAD_TTL_MS;
+    await getDb().doc(`users/${uid}/uploads/${uploadId}`).set({
+      chunkCount, attempts: { 0: 1 }, expiresAtMs, expiresAt: new Date(expiresAtMs),
+    });
+  } catch (e) { /* later chunks will be rejected and the user asked to retry */ }
+}
+
+// Same rule as Record Lecture's record-check (api/subscription.js): refuse to START when
+// this month's audio minutes are already used up. Sends the 429 itself. Fail-open.
+async function checkAudioAllowance(uid, res) {
+  try {
+    const limit = USAGE_LIMITS.record;
+    _ensureAdmin();
+    const snap = await getDb().doc(`users/${uid}/usage/${_monthKey()}`).get();
+    const used = snap.exists ? (snap.data().recordSeconds || 0) : 0;
+    if (used >= limit) {
+      res.status(429).json({
+        code: 'limit_reached', used, limit,
+        error: `You've used this month's ${Math.round(limit / 60)} minutes of audio transcription. The limit resets at the start of next month.`,
+      });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+// Adds transcribed audio to the user's monthly total (same `recordSeconds` counter that
+// Record Lecture uses) and to the site-wide total at siteUsage/{YYYY-MM} (tracking only —
+// there is no site-wide cap). Never throws.
+async function addTranscribedSeconds(uid, seconds) {
+  seconds = Math.max(0, Math.round(Number(seconds) || 0));
+  if (!seconds) return;
+  try {
+    _ensureAdmin();
+    const db = getDb();
+    const month = _monthKey();
+    const userRef = db.doc(`users/${uid}/usage/${month}`);
+    const siteRef = db.doc(`siteUsage/${month}`);
+    await db.runTransaction(async (tx) => {
+      const [userSnap, siteSnap] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
+      const user = userSnap.exists ? userSnap.data() : { month, aiActions: 0, recordSeconds: 0 };
+      const site = siteSnap.exists ? siteSnap.data() : { month, transcribeSeconds: 0 };
+      tx.set(userRef, { month, recordSeconds: (user.recordSeconds || 0) + seconds }, { merge: true });
+      tx.set(siteRef, { month, transcribeSeconds: (site.transcribeSeconds || 0) + seconds }, { merge: true });
+    });
+  } catch (e) { /* counting must never fail the upload */ }
+}
+
 module.exports = {
+  UPLOAD_MAX_CHUNKS,
+  isValidUploadId,
+  claimUploadChunk,
+  startUploadSession,
+  checkAudioAllowance,
+  addTranscribedSeconds,
   applyCors,
   verifyAuth,
   verifyAuthFull,

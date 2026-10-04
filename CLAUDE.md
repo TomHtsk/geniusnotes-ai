@@ -201,7 +201,15 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 ### YouTube bar
 - **Transcribe** → `goYtTranscribe()` → `/api/summarize` `mode:'transcribe'` → `#yt-modal`
 
-### Upload / Record modals — unchanged
+### Upload modal — video/audio is chunked (Oct 2026)
+- The video/audio file itself is NEVER uploaded (Vercel rejects bodies over 4.5 MB with a plain-text 413). `umTranscribeMedia()` decodes the audio in the browser, converts to mono 16 kHz, cuts it into 72–80 s 16-bit WAV parts at quiet moments (`umChunkBounds`), and sends them to `/api/transcribe` one at a time with `uploadId`, `chunkIndex`, `chunkCount`, `chunkSeconds`. Limit: 60 minutes. One retry per part; Cancel button; progress bar.
+- `umPostJson()` is the only way the Upload window calls the server — it reads the reply as text first so a non-JSON reply becomes a friendly message. Don't call `r.json()` directly in the upload flow.
+- Server (`handleUploadChunk` in `api/transcribe.js` + helpers in `api/_lib/auth.js`): chunk 0 pays the hourly rate limit + ONE AI action and records a session at `users/{uid}/uploads/{uploadId}` (30-min expiry, max 50 parts, max 2 attempts per part). Later parts skip those checks only if they match a live session. Audio seconds (measured from the WAV size, not trusted from the browser) are added to the user's `recordSeconds` — the SAME 30 min/month allowance as Record Lecture — and to the site-wide tracking total `siteUsage/{YYYY-MM}.transcribeSeconds` (no site-wide cap).
+- Other callers of `/api/transcribe` (Record Lecture, Notepad, create-deck) send no `uploadId` and are unchanged.
+- Local test: `node _test_upload.js` (gitignored; needs the files in `Claude outputs/upload-test-files/`). It fakes Groq and Firestore, so real transcripts still have to be checked on the live site.
+- PDF/DOCX/PPTX/image paths still send to `/api/extract` as before (only their error handling changed) — big ones still hit the 4.5 MB limit; moving them into the browser is planned but not done.
+
+### Record modal — unchanged
 
 ---
 

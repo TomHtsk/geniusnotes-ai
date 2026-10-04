@@ -1,5 +1,79 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const {
+  applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage,
+  UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
+  checkAudioAllowance, addTranscribedSeconds,
+} = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+
+// Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
+const CHUNK_BYTES_PER_SEC = 32000;
+const CHUNK_MAX_SECONDS = 90;
+
+// ── CHUNKED UPLOAD (video/audio file split in the browser) ─────────────────
+// Body: { audio (base64 WAV), uploadId, chunkIndex, chunkCount, chunkSeconds }.
+// One file = one AI action: only chunk 0 goes through the rate limit and usage check;
+// later chunks must match the session recorded for that uploadId (api/_lib/auth.js).
+async function handleUploadChunk(req, res, uid) {
+  const { audio, uploadId } = req.body;
+  const chunkIndex = Number(req.body.chunkIndex);
+  const chunkCount = Number(req.body.chunkCount);
+
+  if (!isValidUploadId(uploadId) || !Number.isInteger(chunkIndex) || chunkIndex < 0 ||
+      !Number.isInteger(chunkCount) || chunkCount < 1 || chunkIndex >= chunkCount ||
+      typeof audio !== 'string' || !audio) {
+    return res.status(400).json({ error: 'Something went wrong preparing this file. Please try again.' });
+  }
+  if (chunkCount > UPLOAD_MAX_CHUNKS) {
+    return res.status(400).json({ error: 'This file is too long. The limit is 60 minutes of audio.' });
+  }
+
+  const buffer = Buffer.from(audio, 'base64');
+  const isWav = buffer.length > 44 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WAVE';
+  const seconds = (buffer.length - 44) / CHUNK_BYTES_PER_SEC;
+  if (!isWav || seconds > CHUNK_MAX_SECONDS) {
+    return res.status(400).json({ error: 'Something went wrong preparing this file. Please try again.' });
+  }
+
+  const claim = await claimUploadChunk(uid, uploadId, chunkIndex);
+  if (claim.status === 'rejected') return res.status(409).json({ error: claim.error });
+  if (claim.status === 'new') {
+    if (!(await checkRateLimit(uid, res))) return;
+    if (!(await checkAudioAllowance(uid, res))) return;
+    if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+    await startUploadSession(uid, uploadId, chunkCount);
+  } else if (claim.status === 'error') {
+    if (!(await checkRateLimit(uid, res))) return;
+  }
+
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: 'audio/wav' }), 'audio.wav');
+    form.append('model', MODEL_WHISPER);
+    form.append('response_format', 'json');
+    form.append('language', 'en');
+
+    const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      body: form
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error('Groq error (transcribe/chunk):', data.error?.message || r.status);
+      const e = new Error(data.error?.message || ''); e.code = data.error?.code;
+      if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(502).json({ error: 'We couldn\'t transcribe part of this file. Please try again.' });
+    }
+
+    // Count by the real length of the audio we received, never more than the browser said.
+    const declared = Number(req.body.chunkSeconds);
+    await addTranscribedSeconds(uid, declared > 0 ? Math.min(declared, seconds) : seconds);
+    return res.status(200).json({ transcript: (data.text || '').trim(), chunkIndex });
+  } catch (err) {
+    console.error('Groq error (transcribe/chunk):', err.message);
+    return res.status(502).json({ error: 'We couldn\'t transcribe part of this file. Please try again.' });
+  }
+}
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -7,6 +81,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const uid = await verifyAuth(req, res);
   if (!uid) return;
+  if (req.body && req.body.uploadId !== undefined) return handleUploadChunk(req, res, uid);
   if (!(await checkRateLimit(uid, res))) return;
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 

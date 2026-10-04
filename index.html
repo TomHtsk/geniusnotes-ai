@@ -506,6 +506,9 @@
     /* Processing */
     .um-spin { width:36px;height:36px;border:3px solid rgba(var(--accent-rgb),0.25);border-top-color:var(--accent2);border-radius:50%;animation:umspin 0.8s linear infinite;margin:0 auto 14px; }
     @keyframes umspin { to { transform:rotate(360deg); } }
+    .um-file-info { font-size:0.78rem;font-weight:700;margin-bottom:8px;word-break:break-word; }
+    .um-bar { height:8px;max-width:320px;margin:14px auto 0;border-radius:99px;background:rgba(var(--accent-rgb),0.2);overflow:hidden; }
+    .um-bar-fill { height:100%;width:0;border-radius:99px;background:var(--accent2);transition:width 0.3s; }
     .um-proc { text-align:center;padding:40px 20px;color:rgba(255,255,255,0.65);font-size:0.9rem; }
     /* Results */
     .um-result-label { font-size:0.7rem;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:0.07em;margin-bottom:7px; }
@@ -729,7 +732,7 @@
     </button>
     <a class="hp-brand" href="index.html" aria-label="NoteCaptain home">
       <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
-      <span class="hp-brand-name">NoteCaptain</span>
+      <span class="hp-brand-name">NoteCaptain.ai</span>
     </a>
     <nav class="hp-nav" aria-label="Main">
       <a href="index.html" class="active" aria-current="page">Home</a>
@@ -1504,13 +1507,16 @@ function _umDownloadGeneric(text, name, fmt) {
             <span class="um-type-tag um-type-vid">WEBM</span>
           </div>
         </div>
-        <input id="um-file-input" type="file" accept=".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm,.mkv" style="display:none" onchange="umHandleFile(this.files[0])">
+        <input id="um-file-input" type="file" accept=".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm,.mkv,.mp3,.m4a,.wav" style="display:none" onchange="umHandleFile(this.files[0])">
       </div>
       <!-- Step 2: Processing -->
       <div id="um-step-2" style="display:none">
         <div class="um-proc">
-          <div class="um-spin"></div>
+          <div class="um-spin" id="um-spin"></div>
+          <div class="um-file-info" id="um-file-info"></div>
           <div id="um-proc-label">Processing…</div>
+          <div class="um-bar" id="um-bar" style="display:none"><div class="um-bar-fill" id="um-bar-fill"></div></div>
+          <button class="um-btn um-btn-ghost" id="um-cancel-btn" onclick="umCancel()" style="display:none;margin-top:16px;">Cancel</button>
         </div>
       </div>
       <!-- Step 3: Results -->
@@ -1555,15 +1561,71 @@ function openUploadModal(e) {
   document.getElementById('upload-modal').style.display = 'flex';
 }
 function closeUploadModal() {
+  umAbort();
   document.getElementById('upload-modal').style.display = 'none';
 }
+// _umRun changes whenever the window is reset/cancelled, so a file that is still being
+// processed in the background can tell it is no longer wanted and stay silent.
+let _umRun = 0, _umAbortCtl = null;
+function umAbort() {
+  _umRun++;
+  if (_umAbortCtl) { try { _umAbortCtl.abort(); } catch (e) {} _umAbortCtl = null; }
+}
+function umCancel() { umReset(); }
 function umReset() {
+  umAbort();
   document.getElementById('um-step-1').style.display = '';
   document.getElementById('um-step-2').style.display = 'none';
   document.getElementById('um-step-3').style.display = 'none';
   document.getElementById('um-file-input').value = '';
   document.getElementById('um-dropzone').classList.remove('drag-over');
+  document.getElementById('um-spin').style.display = '';
+  document.getElementById('um-file-info').textContent = '';
+  umProgress(null);
+  document.getElementById('um-cancel-btn').style.display = 'none';
   _umText = ''; _umFileName = '';
+}
+// fraction 0..1 shows the progress bar; null hides it.
+function umProgress(fraction) {
+  const bar = document.getElementById('um-bar');
+  bar.style.display = fraction === null ? 'none' : '';
+  document.getElementById('um-bar-fill').style.width = Math.round((fraction || 0) * 100) + '%';
+}
+function umFormatSize(bytes) {
+  return bytes < 1048576 ? Math.max(1, Math.round(bytes / 1024)) + ' KB' : (bytes / 1048576).toFixed(1) + ' MB';
+}
+function umEscape(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// Every server call in the Upload window goes through here. The reply is read as text
+// first, so a non-JSON reply (for example Vercel's plain-text "Request Entity Too Large")
+// becomes a friendly message instead of a raw parser error. Throws an Error whose
+// message is safe to show; err.noRetry marks failures that retrying won't fix.
+async function umPostJson(url, payload, signal) {
+  let resp, raw;
+  try {
+    resp = await _authFetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), signal });
+    raw = await resp.text();
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    throw new Error("We couldn't reach the server. Check your connection and try again.");
+  }
+  let data = null;
+  try { data = JSON.parse(raw); } catch (e) {}
+  if (!data || typeof data !== 'object') {
+    const err = new Error(resp.status === 413 ? 'The file was too large to send' : 'Something went wrong, please try again');
+    err.noRetry = resp.status === 413;
+    throw err;
+  }
+  if (!resp.ok || data.error) {
+    const err = new Error(typeof data.error === 'string' && data.error ? data.error : 'Something went wrong, please try again');
+    err.noRetry = resp.status >= 400 && resp.status < 500;
+    if (data.code === 'limit_reached' && window.gnShowLimitNotice) window.gnShowLimitNotice(data.error);
+    if (resp.status === 401) err.message = 'Please sign in to upload files.';
+    throw err;
+  }
+  return data;
 }
 function umHandleDrop(e) {
   e.preventDefault();
@@ -1577,6 +1639,10 @@ async function umHandleFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   document.getElementById('um-step-1').style.display = 'none';
   document.getElementById('um-step-2').style.display = '';
+  document.getElementById('um-file-info').textContent = file.name + ' · ' + umFormatSize(file.size);
+  umAbort();
+  const run = _umRun;
+  const ctl = _umAbortCtl = new AbortController();
 
   try {
     let text = '';
@@ -1586,46 +1652,187 @@ async function umHandleFile(file) {
     } else if (ext === 'docx') {
       document.getElementById('um-proc-label').textContent = 'Extracting document text…';
       const b64 = await umToBase64(file);
-      const r = await _authFetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: b64 }) });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
+      const d = await umPostJson('/api/extract', { content: b64 }, ctl.signal);
       text = d.text || '';
     } else if (ext === 'pptx') {
       document.getElementById('um-proc-label').textContent = 'Extracting slides…';
       const b64 = await umToBase64(file);
-      const r = await _authFetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: b64, fileType: 'pptx' }) });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
+      const d = await umPostJson('/api/extract', { content: b64, fileType: 'pptx' }, ctl.signal);
       text = d.text || '';
     } else if (ext === 'pdf') {
       document.getElementById('um-proc-label').textContent = 'Rendering PDF pages…';
-      text = await umExtractPdf(file);
+      text = await umExtractPdf(file, ctl.signal);
     } else if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
       document.getElementById('um-proc-label').textContent = 'Transcribing image text…';
       const dataUrl = await umToDataUrl(file);
-      const r = await _authFetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ocrImages: [dataUrl] }) });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
+      const d = await umPostJson('/api/extract', { ocrImages: [dataUrl] }, ctl.signal);
       text = d.text || '';
     } else if (['mp4','mov','webm','mkv','m4a','mp3','wav'].includes(ext)) {
-      document.getElementById('um-proc-label').textContent = 'Transcribing audio/video…';
-      const b64 = await umToBase64(file);
-      const mime = file.type || 'video/mp4';
-      const r = await _authFetch('/api/transcribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ audio: b64, mimeType: mime }) });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error);
-      text = d.transcript || '';
+      text = await umTranscribeMedia(file, ctl.signal, () => run === _umRun);
     } else {
       throw new Error('Unsupported file type: .' + ext);
     }
 
+    if (run !== _umRun) return; // cancelled or window closed meanwhile
     _umText = text.trim();
     document.getElementById('um-preview-text').textContent = _umText || '(No text found)';
     document.getElementById('um-step-2').style.display = 'none';
     document.getElementById('um-step-3').style.display = '';
   } catch(err) {
-    document.getElementById('um-proc-label').innerHTML = `<span style="color:#f87171;">${err.message}</span><br><br><button onclick="umReset()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Try again</button>`;
+    if (run !== _umRun || (err && err.name === 'AbortError')) return;
+    document.getElementById('um-spin').style.display = 'none';
+    umProgress(null);
+    document.getElementById('um-cancel-btn').style.display = 'none';
+    document.getElementById('um-proc-label').innerHTML = `<span style="color:#f87171;">${umEscape(err.message || 'Something went wrong, please try again')}</span><br><br><button onclick="umReset()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Try again</button>`;
   }
+}
+
+// ── Video / audio: the file itself is never uploaded ──
+// The audio track is decoded in the browser, converted to mono 16 kHz, cut into parts of
+// at most 80 seconds (16-bit WAV, ~2.6 MB each — safely under Vercel's 4.5 MB request
+// limit after base64) and sent to /api/transcribe one part at a time.
+const UM_SR = 16000, UM_CHUNK_SEC = 80, UM_MAX_MINUTES = 60;
+const UM_CANT_DECODE = "This video format can't be read in your browser. Try an MP4 or WEBM file.";
+
+function umTooLongMessage(seconds) {
+  return `This file is about ${Math.ceil(seconds / 60)} minutes long. The limit is ${UM_MAX_MINUTES} minutes of audio — try a shorter file.`;
+}
+
+// Length of the file in seconds from its header (cheap, no decoding), or null if unknown.
+function umMediaDuration(file) {
+  return new Promise(resolve => {
+    const el = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    let done = false;
+    const finish = v => { if (done) return; done = true; URL.revokeObjectURL(url); resolve(v); };
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => finish(isFinite(el.duration) && el.duration > 0 ? el.duration : null);
+    el.onerror = () => finish(null);
+    setTimeout(() => finish(null), 8000);
+    el.src = url;
+  });
+}
+
+// Returns the whole audio track as one Float32Array of mono 16 kHz samples.
+async function umDecodeToMono16k(file) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!OAC && !AC) throw new Error(UM_CANT_DECODE);
+  let decoded;
+  try {
+    const data = await file.arrayBuffer();
+    // Decoding in a 16 kHz context makes the browser resample for us and keeps memory low.
+    let ctx;
+    try { ctx = new OAC(1, 1, UM_SR); } catch (e) { ctx = new AC(); }
+    decoded = await new Promise((res, rej) => {
+      const p = ctx.decodeAudioData(data, res, rej);
+      if (p && p.catch) p.catch(rej);
+    });
+    if (ctx.close) { try { ctx.close(); } catch (e) {} }
+  } catch (e) {
+    throw new Error(UM_CANT_DECODE);
+  }
+  if (!decoded || !decoded.length) throw new Error(UM_CANT_DECODE);
+  if (decoded.numberOfChannels === 1 && decoded.sampleRate === UM_SR) return decoded.getChannelData(0);
+  try {
+    const off = new OAC(1, Math.ceil(decoded.duration * UM_SR), UM_SR);
+    const src = off.createBufferSource();
+    src.buffer = decoded; src.connect(off.destination); src.start();
+    return (await off.startRendering()).getChannelData(0);
+  } catch (e) {
+    // Older browsers can't render at 16 kHz: mix down and resample by hand.
+    const ratio = decoded.sampleRate / UM_SR, n = Math.floor(decoded.length / ratio), ch = decoded.numberOfChannels;
+    const out = new Float32Array(n);
+    for (let c = 0; c < ch; c++) {
+      const d = decoded.getChannelData(c);
+      for (let i = 0; i < n; i++) out[i] += d[Math.floor(i * ratio)] / ch;
+    }
+    return out;
+  }
+}
+
+// [start, end) sample ranges, each at most 80 seconds. Each cut is placed in a quiet
+// 50 ms within the last 8 seconds before the 80-second mark (the quiet moment closest
+// to 80 seconds wins), so words aren't split. Parts are therefore 72-80 seconds, which
+// keeps a 60-minute file within the server's 50-part cap.
+function umChunkBounds(samples) {
+  const max = UM_CHUNK_SEC * UM_SR, win = 8 * UM_SR, frame = UM_SR / 20;
+  const bounds = [];
+  let start = 0;
+  while (samples.length - start > max) {
+    const energies = [];
+    let quietest = Infinity;
+    for (let f = start + max - win; f + frame <= start + max; f += frame) {
+      let energy = 0;
+      for (let i = f; i < f + frame; i++) energy += samples[i] * samples[i];
+      energies.push(energy);
+      if (energy < quietest) quietest = energy;
+    }
+    // "Quiet" = about as quiet as the quietest moment found (or true silence).
+    const quiet = Math.max(quietest * 2, frame * 1e-7);
+    let k = energies.length - 1;
+    while (k > 0 && energies[k] > quiet) k--;
+    const cut = start + max - win + k * frame + frame / 2;
+    bounds.push([start, cut]);
+    start = cut;
+  }
+  // Don't send a leftover sliver of under a second on its own.
+  if (bounds.length && samples.length - start < UM_SR) bounds[bounds.length - 1][1] = samples.length;
+  else bounds.push([start, samples.length]);
+  return bounds;
+}
+
+function umEncodeWav(samples, start, end) {
+  const n = end - start, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, UM_SR, true); v.setUint32(28, UM_SR * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const s = Math.max(-1, Math.min(1, samples[start + i]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+async function umTranscribeMedia(file, signal, stillWanted) {
+  const label = document.getElementById('um-proc-label');
+  document.getElementById('um-cancel-btn').style.display = '';
+  label.textContent = 'Checking the file…';
+
+  const headerSeconds = await umMediaDuration(file);
+  if (headerSeconds && headerSeconds > UM_MAX_MINUTES * 60) throw new Error(umTooLongMessage(headerSeconds));
+  if (!stillWanted()) return '';
+
+  label.textContent = 'Reading the audio from your file…';
+  const samples = await umDecodeToMono16k(file);
+  if (!stillWanted()) return '';
+  if (samples.length / UM_SR > UM_MAX_MINUTES * 60) throw new Error(umTooLongMessage(samples.length / UM_SR));
+
+  const bounds = umChunkBounds(samples);
+  const uploadId = 'up_' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join('');
+  const parts = [];
+  umProgress(0);
+  for (let i = 0; i < bounds.length; i++) {
+    if (!stillWanted()) return '';
+    label.textContent = `Transcribing part ${i + 1} of ${bounds.length}…`;
+    const payload = {
+      audio: await umToBase64(umEncodeWav(samples, bounds[i][0], bounds[i][1])),
+      mimeType: 'audio/wav', uploadId, chunkIndex: i, chunkCount: bounds.length,
+      chunkSeconds: Math.round((bounds[i][1] - bounds[i][0]) / UM_SR * 10) / 10,
+    };
+    let d;
+    try {
+      d = await umPostJson('/api/transcribe', payload, signal);
+    } catch (err) {
+      if ((err && err.name === 'AbortError') || err.noRetry) throw err;
+      d = await umPostJson('/api/transcribe', payload, signal); // one retry, then give up
+    }
+    if (d.transcript) parts.push(d.transcript.trim());
+    umProgress((i + 1) / bounds.length);
+  }
+  return parts.join(' ');
 }
 
 function umToBase64(file) {
@@ -1644,7 +1851,7 @@ function umToDataUrl(file) {
     fr.readAsDataURL(file);
   });
 }
-async function umExtractPdf(file) {
+async function umExtractPdf(file, signal) {
   if (typeof pdfjsLib === 'undefined') throw new Error('PDF library not loaded. Try refreshing.');
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const buf = await file.arrayBuffer();
@@ -1660,9 +1867,7 @@ async function umExtractPdf(file) {
     images.push(canvas.toDataURL('image/jpeg', 0.85));
   }
   document.getElementById('um-proc-label').textContent = 'Extracting text via AI…';
-  const r = await _authFetch('/api/extract', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ocrImages: images }) });
-  const d = await r.json();
-  if (d.error) throw new Error(d.error);
+  const d = await umPostJson('/api/extract', { ocrImages: images }, signal);
   return d.text || '';
 }
 

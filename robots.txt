@@ -1,9 +1,10 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /passwords.html
-Disallow: /vault.html
-Disallow: /share.html
-Disallow: /reset.html
+
+# App pages (Notepad, My Notes, Flashcards, sign-in, etc.) are kept out of search
+# with a <meta name="robots" content="noindex"> tag on each page. They are NOT
+# blocked here on purpose: search engines must be able to open a page to see
+# its noindex tag.
 
 Sitemap: https://www.notecaptain.ai/sitemap.xml

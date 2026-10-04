@@ -675,6 +675,7 @@
 
     /* Footer */
     footer.hp-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 22px 24px; background: var(--surface); border-top: 1px solid var(--border); color: var(--muted); font-size: 0.84rem; }
+    .hp-footer .footer-left { position: relative; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .hp-footer .footer-logo { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 1rem; font-weight: 700; color: var(--text); }
     .hp-footer .footer-logo img { width: 22px; height: 22px; object-fit: contain; }
     .hp-footer .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
@@ -846,9 +847,13 @@ _syncThemeBtn();
 
 <!-- ── FOOTER ── -->
 <footer class="hp-footer">
-  <div class="footer-logo">
-    <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
-    NoteCaptain
+  <div class="footer-left">
+    <div class="footer-logo">
+      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+      NoteCaptain
+    </div>
+    <!-- Weather chip + forecast card (js/weather.js) -->
+    <div id="gn-weather"></div>
   </div>
   <div class="footer-links">
     <a href="notepad.html">Notepad</a>
@@ -1346,6 +1351,7 @@ function _umDownloadGeneric(text, name, fmt) {
 <script src="js/recorder.js"></script>
 <script src="js/wiki.js"></script>
 <script src="js/search.js"></script>
+<script src="js/weather.js"></script>
 <script src="js/auth-gate.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 

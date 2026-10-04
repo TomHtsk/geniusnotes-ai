@@ -31,7 +31,7 @@
   <meta name="description" content="Turn videos, PDFs, and lectures into notes, flashcards, and quizzes instantly. Free AI study tools — no credit card required." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Caveat:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     /* NoteCaptain "logbook" palette — the same variables and values as notepad.html.
        --accent-rgb is the accent as bare numbers, for rgba(var(--accent-rgb), 0.x) tints. */
@@ -604,6 +604,12 @@
       animation: hpGlow 12s ease-in-out infinite; }
     :root.light .home-hero-inner::before { background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb),0.20) 0%, rgba(var(--accent-rgb),0.10) 26%, rgba(var(--accent-rgb),0) 62%); }
     @keyframes hpGlow { 0%,100% { opacity: 0.88; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.05); } }
+    /* Faint handwritten equations scattered behind the hero, in the same spirit as the sailboat watermark. */
+    .hp-eq-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; user-select: none; }
+    .hp-eq { position: absolute; font-family: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive; font-weight: 500; color: var(--text); opacity: 0.17; white-space: nowrap; line-height: 1; }
+    :root.light .hp-eq { opacity: 0.15; }
+    @media(max-width:860px) { .hp-eq.eq-wide { display: none; } .hp-eq { font-size: 85%; } }
+    @media(max-width:520px) { .hp-eq.eq-mid { display: none; } }
     .hp-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     .hp-watermark { position: absolute; right: -40px; bottom: -70px; width: 420px; height: 420px; object-fit: contain; opacity: 0.2; pointer-events: none; z-index: 0; }
     .hp-watermark.logo-lt { opacity: 0.14; }
@@ -755,6 +761,20 @@ _syncThemeBtn();
 <main class="home-main">
   <div class="home-hero">
     <img class="hp-watermark logo-dk" src="images/logo-mark-white.png" alt=""><img class="hp-watermark logo-lt" src="images/logo-mark-dark.png" alt="">
+    <div class="hp-eq-layer" aria-hidden="true">
+      <span class="hp-eq eq-mid" style="top:9%;left:5%;font-size:2.1rem;transform:rotate(-7deg)">E = mc²</span>
+      <span class="hp-eq " style="top:13%;right:6%;font-size:1.9rem;transform:rotate(5deg)">F = ma</span>
+      <span class="hp-eq eq-wide" style="top:30%;left:2.5%;font-size:1.65rem;transform:rotate(4deg)">a² + b² = c²</span>
+      <span class="hp-eq eq-wide" style="top:6%;right:23%;font-size:1.7rem;transform:rotate(-5deg)">e<sup>iπ</sup> + 1 = 0</span>
+      <span class="hp-eq eq-wide" style="top:52%;left:4%;font-size:1.6rem;transform:rotate(-4deg)">∫₀<sup>∞</sup> e<sup>−x²</sup> dx = √π ⁄ 2</span>
+      <span class="hp-eq eq-wide" style="top:24%;right:19%;font-size:1.55rem;transform:rotate(6deg)">PV = nRT</span>
+      <span class="hp-eq eq-mid" style="top:74%;left:7%;font-size:1.75rem;transform:rotate(6deg)">x = (−b ± √(b² − 4ac)) ⁄ 2a</span>
+      <span class="hp-eq eq-wide" style="top:5%;left:36%;font-size:1.45rem;transform:rotate(3deg)">∇ · E = ρ ⁄ ε₀</span>
+      <span class="hp-eq eq-wide" style="top:86%;left:40%;font-size:1.5rem;transform:rotate(-3deg)">Δx · Δp ≥ ħ ⁄ 2</span>
+      <span class="hp-eq " style="top:88%;left:4%;font-size:1.5rem;transform:rotate(-5deg)">λ = h ⁄ p</span>
+      <span class="hp-eq eq-mid" style="top:72%;right:30%;font-size:1.5rem;transform:rotate(-6deg)">F = G m₁m₂ ⁄ r²</span>
+      <span class="hp-eq eq-wide" style="top:20%;left:19%;font-size:1.4rem;transform:rotate(-9deg)">v = v₀ + at</span>
+    </div>
     <div class="home-hero-inner">
       <h1 class="hp-visually-hidden">NoteCaptain — your AI study co-captain. Search any topic or paste a YouTube link, then turn it into notes you can study.</h1>
 

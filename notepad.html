@@ -9528,18 +9528,17 @@ function recInsertIntoNote() {
     return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
   }
 
-  // Pictures are locked inside the note page: the area a picture may occupy is the page's
-  // text area (the .page-content box minus its padding).
+  // Pictures are locked inside the note page: the area a picture may occupy is the sheet
+  // of paper itself (.page-box, margins included) with a small gap at the edges, so a
+  // picture can still be slid left and right into the margins but never off the paper.
+  const IMG_EDGE_GAP = 12;
   function _imgBounds(wrap) {
-    const host = wrap.closest('.page-content');
+    const host = wrap.closest('.page-box') || wrap.closest('.page-content');
     if (!host) return null;
-    const r = host.getBoundingClientRect(), cs = getComputedStyle(host);
+    const r = host.getBoundingClientRect();
     const k = host.offsetWidth ? (r.width / host.offsetWidth) || 1 : 1; // page zoom
-    const pad = function (v) { return (parseFloat(v) || 0) * k; };
-    return {
-      left: r.left + pad(cs.paddingLeft), right: r.right - pad(cs.paddingRight),
-      top: r.top + pad(cs.paddingTop), bottom: r.bottom - pad(cs.paddingBottom),
-    };
+    const g = IMG_EDGE_GAP * k;
+    return { left: r.left + g, right: r.right - g, top: r.top + g, bottom: r.bottom - g };
   }
   // Screen pixels per note pixel (the Notepad's zoom control scales the page).
   function _imgScale(wrap) {
@@ -9615,8 +9614,8 @@ function recInsertIntoNote() {
     const startH = img.offsetHeight || img.naturalHeight || 200;
     const ratio = startW / (startH || 1);
     const isCorner = pos.length === 2;
-    const _b = _selWrap ? _imgBounds(_selWrap) : null;
-    const maxW = _b ? Math.max(40, (_b.right - _b.left) / _imgScale(_selWrap)) : Infinity;
+    const _pc = _selWrap ? _selWrap.closest('.page-content') : null;
+    const maxW = _pc && _pc.clientWidth ? Math.max(40, _pc.clientWidth) : Infinity; // never wider than the text area
 
     function onMove(ev) {
       const dx = ev.clientX - startX, dy = ev.clientY - startY;

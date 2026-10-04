@@ -288,12 +288,12 @@ gnSyncThemeBtn();
         <div class="page-sub" id="decks-sub">0 decks</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
-        <button id="create-deck-btn" class="btn-primary" onclick="createDeckWithNote()" data-disabled title="Select a note below first" style="opacity:0.35;cursor:default;pointer-events:none;">＋ Create New Deck</button>
+        <button id="create-deck-btn" class="btn-primary" onclick="createDeckWithNote()">＋ Create New Deck</button>
       </div>
     </div>
 
-    <!-- Note browser -->
-    <div class="nb-section">
+    <!-- Note browser (hidden Oct 2026 at owner's request) -->
+    <div class="nb-section" style="display:none">
       <div class="nb-heading">⚡ Generate from a Note</div>
       <div id="nb-folder-row" class="nb-chips"></div>
       <div id="nb-notes-row" class="nb-notes"></div>
@@ -374,7 +374,7 @@ gnSyncThemeBtn();
         <div class="empty-title">No flashcard decks yet</div>
         <div class="empty-desc">Use AI to generate a deck from any topic or notes, or build one manually.</div>
         <div class="empty-actions">
-          <button id="create-deck-btn-empty" class="btn-primary" onclick="createDeckWithNote()" ${_selectedHistId ? '' : 'data-disabled title="Select a note above first" style="opacity:0.35;cursor:default;pointer-events:none;"'}>＋ Create New Deck</button>
+          <button id="create-deck-btn-empty" class="btn-primary" onclick="createDeckWithNote()">＋ Create New Deck</button>
         </div>
       </div>`;
       return;
@@ -395,6 +395,11 @@ gnSyncThemeBtn();
   function deleteDeck(id) {
     if (!confirm('Delete this deck?')) return;
     saveHistory(getHistory().filter(i => i.id !== id));
+    // Also delete the cloud copy, or the sync brings the deck back on refresh
+    try {
+      const u = firebase.auth().currentUser;
+      if (u && !u.isAnonymous) GNSync.deleteHistItem(u.uid, firebase.firestore(), id);
+    } catch (e) {}
     renderDecks();
   }
 

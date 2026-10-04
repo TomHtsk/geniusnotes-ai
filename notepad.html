@@ -7910,9 +7910,31 @@ function _shareModeBusy(busy) {
   document.getElementById('share-btn-view').disabled = busy;
   document.getElementById('share-btn-collab').disabled = busy;
 }
-// Writes the shared copy of the note (creating the link id if there isn't one yet).
-function _shareUpload(note, collaborative) {
-  if (!note.shareId) {
+// A shared note is ONE Firestore document, and a document can't be bigger than 1 MB.
+const SHARE_MAX_BYTES = 1000000;
+// Turns a failure into a sentence that says what actually went wrong (the real error is
+// logged to the console for debugging).
+function _shareErrorMessage(e, what) {
+  try { console.error('Share failed:', e && e.code, e && e.message); } catch (_) {}
+  const code = (e && e.code) || '', msg = (e && e.message) || '';
+  if (code === 'gn/too-large' || code === 'invalid-argument' || /exceeds the maximum|maximum allowed size|too large/i.test(msg)) {
+    return 'This note is too big to share as a link (pictures make a note large). Remove a picture or two, or share a shorter note.';
+  }
+  if (code === 'permission-denied' || /insufficient permissions/i.test(msg)) {
+    return _fbUid ? "Sharing wasn't allowed for this link. Click \u201cCreate a new link\u201d to make a fresh one."
+                  : 'Sign in to share notes.';
+  }
+  if (code === 'unavailable' || code === 'deadline-exceeded' || !navigator.onLine) {
+    return "Couldn't " + what + '. Check your connection and try again.';
+  }
+  return "Couldn't " + what + '. Please try again.';
+}
+// Writes the shared copy of the note (creating the link id if there isn't one yet, or a
+// brand-new id when `fresh` is true).
+function _shareUpload(note, collaborative, fresh) {
+  const bytes = new Blob([note.content || '', note.title || '']).size;
+  if (bytes > SHARE_MAX_BYTES) { const e = new Error('Note is too large to share'); e.code = 'gn/too-large'; return Promise.reject(e); }
+  if (!note.shareId || fresh) {
     note.shareId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     saveNotes();
   }
@@ -7941,13 +7963,24 @@ async function openShareModal() {
   try {
     let collab = false, exists = false;
     if (note.shareId) {
-      const doc = await _fbDb.collection('shared_notes').doc(note.shareId).get();
-      exists = doc.exists;
-      collab = exists && !!doc.data().collaborative;
+      // If the shared copy is gone (link stopped, or never uploaded) the check itself can be
+      // refused by the database — that just means "no link yet", not a failure.
+      try {
+        const doc = await _fbDb.collection('shared_notes').doc(note.shareId).get();
+        exists = doc.exists;
+        collab = exists && !!doc.data().collaborative;
+      } catch (checkErr) { exists = false; collab = false; }
     }
     // A live-editing link is left alone (collaborators may have typed since); a view-only
     // link, or a brand-new one, gets the note's current text.
-    if (!(exists && collab)) await _shareUpload(note, false);
+    if (!(exists && collab)) {
+      try { await _shareUpload(note, false); }
+      catch (firstErr) {
+        // An old link id this account may not write to: make a fresh link instead.
+        if (firstErr && firstErr.code === 'permission-denied' && _fbUid && !exists) await _shareUpload(note, false, true);
+        else throw firstErr;
+      }
+    }
     if (stale()) return;
     _shareCollab = collab;
     document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
@@ -7956,7 +7989,7 @@ async function openShareModal() {
   } catch (e) {
     if (stale()) return;
     _shareUi('off');
-    _shareStatus("Couldn't create the link. Check your connection and try again.", 'err');
+    _shareStatus(_shareErrorMessage(e, 'create the link'), 'err');
   }
 }
 
@@ -7975,7 +8008,7 @@ async function generateShareLink(collaborative) {
   _shareUi('working');
   _shareStatus('Creating your link…');
   try {
-    await _shareUpload(note, !!collaborative);
+    await _shareUpload(note, !!collaborative, true); // always a brand-new link id
     if (seq !== _shareSeq) return;
     _shareCollab = !!collaborative;
     document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
@@ -7985,7 +8018,7 @@ async function generateShareLink(collaborative) {
   } catch (e) {
     if (seq !== _shareSeq) return;
     _shareUi('off');
-    _shareStatus("Couldn't create the link. Check your connection and try again.", 'err');
+    _shareStatus(_shareErrorMessage(e, 'create the link'), 'err');
   }
 }
 
@@ -8014,7 +8047,7 @@ async function setShareMode(collaborative) {
   } catch (e) {
     if (seq !== _shareSeq) return;
     _shareUi('ready');
-    _shareStatus("Couldn't change that. Check your connection and try again.", 'err');
+    _shareStatus(_shareErrorMessage(e, 'change that'), 'err');
   } finally {
     _shareModeBusy(false);
   }
@@ -8034,7 +8067,7 @@ async function revokeShareLink() {
     _shareUi('off');
     _shareStatus('Sharing stopped. The old link no longer works.');
   } catch(e) {
-    _shareStatus("Couldn't stop sharing. Check your connection and try again.", 'err');
+    _shareStatus(_shareErrorMessage(e, 'stop sharing'), 'err');
   }
 }
 

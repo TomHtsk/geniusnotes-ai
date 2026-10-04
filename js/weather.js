@@ -4,9 +4,9 @@
 //   Forecast: https://api.open-meteo.com/v1/forecast
 // Weather data by Open-Meteo.com (CC BY 4.0) — the credit link in the card is required.
 //
-// Signed-in users only: a signed-out visitor sees the chip with a lock, and clicking it opens the
-// sign-in pop-up (js/auth-gate.js). No location is asked for and no forecast is fetched or shown
-// until a real account is signed in.
+// Signed-in users only: the widget is completely hidden for a signed-out visitor (no chip, no
+// lock, no prompt). It appears once a real account is signed in. No location is asked for and no
+// forecast is fetched until then.
 //
 // Privacy: nothing is requested until the visitor clicks the chip. Clicking it makes the BROWSER
 // ask for the location (its own permission pop-up). That is the only way a place is chosen:
@@ -104,7 +104,6 @@
       '.gn-wx-chip:hover { background:var(--surface2,#EDF0F3); }' +
       '.gn-wx-chip .gn-wx-icon { color:var(--accent,#0F6E7A); flex-shrink:0; }' +
       '.gn-wx-chip-city { overflow:hidden; text-overflow:ellipsis; color:var(--muted,#55606B); font-weight:500; }' +
-      '.gn-wx-chip .gn-wx-lock { color:var(--muted,#55606B); flex-shrink:0; }' +
       '.gn-wx-card { position:absolute; left:0; bottom:calc(100% + 10px); z-index:300; width:320px; max-width:calc(100vw - 32px); padding:16px; background:var(--surface,#fff); color:var(--text,#0B0F14); border:1px solid var(--border,#DCE1E6); border-radius:12px; box-shadow:0 1px 2px rgba(11,15,20,0.06), 0 12px 32px rgba(11,15,20,0.18); text-align:left; font-size:0.84rem; line-height:1.45; }' +
       '.gn-wx-card[hidden] { display:none; }' +
       '.gn-wx-hd { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }' +
@@ -209,11 +208,7 @@
   // ── Rendering ───────────────────────────────────────────────────────────────
   function renderChip() {
     var html, label;
-    if (!state.authed) {
-      html = icon('partly-day', 16) + '<span>Weather</span>' +
-        '<svg class="gn-wx-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
-      label = 'Weather: sign in to use';
-    } else if (state.locating) {
+    if (state.locating) {
       html = icon('partly-day', 16) + '<span>Locating…</span>';
       label = 'Weather: waiting for your browser to share a location';
     } else if (!state.place) {
@@ -292,7 +287,13 @@
     else card.innerHTML = unavailableHtml();
   }
 
-  function render() { if (!chip) return; renderChip(); renderCard(); }
+  function render() {
+    if (!chip) return;
+    // Hidden entirely while signed out.
+    mount.style.display = state.authed ? '' : 'none';
+    if (!state.authed) { card.hidden = true; return; }
+    renderChip(); renderCard();
+  }
 
   // ── Open / close ────────────────────────────────────────────────────────────
   function open() {
@@ -346,11 +347,7 @@
 
     chip.addEventListener('click', function () {
       syncAuth();
-      if (!state.authed) {
-        // Signed out: ask to sign in instead (same pop-up the other locked buttons use).
-        if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to see the weather', function () { syncAuth(); if (state.authed) open(); });
-        return;
-      }
+      if (!state.authed) return; // cannot normally happen: the chip is hidden while signed out
       if (state.open) close(false); else open();
     });
     card.addEventListener('click', onCardClick);

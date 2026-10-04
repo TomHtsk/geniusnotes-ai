@@ -1114,14 +1114,25 @@ function ytConvertBack() {
   document.getElementById('yt-convert-row').style.display = '';
 }
 
+// Sends text to the flashcard maker (create-deck.html), which then generates the cards by
+// itself. Used by the Upload, Record Lecture and YouTube windows.
+function gnTextToFlashcards(text) {
+  text = String(text || '').trim();
+  if (!text) return;
+  try {
+    localStorage.setItem('gn-to-flashcards', text.slice(0, 100000));
+    localStorage.setItem('gn-to-flashcards-auto', '1');
+  } catch (e) {
+    alert('This text is too large to send to flashcards. Try a shorter file.');
+    return;
+  }
+  window.open('create-deck.html', '_blank');
+}
+
 async function ytConvert(kind) {
   if (!_ytText) return;
 
-  if (kind === 'flashcards') {
-    localStorage.setItem('gn-to-flashcards', _ytText);
-    window.open('create-deck.html', '_blank');
-    return;
-  }
+  if (kind === 'flashcards') { gnTextToFlashcards(_ytText); return; }
 
   const user = window._fauth && window._fauth.currentUser;
   const realUser = user && !user.isAnonymous;
@@ -1403,13 +1414,9 @@ function _umDownloadGeneric(text, name, fmt) {
           </div>
         </div>
         <div class="um-section">
-          <div class="um-result-label" style="margin-bottom:10px;">CONVERT TO NOTE TYPE <span style="color:var(--accent);font-size:0.62rem;margin-left:6px;">COMING SOON</span></div>
+          <div class="um-result-label" style="margin-bottom:10px;">STUDY IT</div>
           <div class="um-convert-row">
-            <button class="um-convert-btn">Cornell Notes<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Flashcards<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Summary<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Study Guide<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Outline<span class="um-soon">SOON</span></button>
+            <button class="um-convert-btn enabled" onclick="gnTextToFlashcards(_rmText)">Make flashcards</button>
           </div>
         </div>
         <div style="margin-top:8px;">
@@ -1535,13 +1542,9 @@ function _umDownloadGeneric(text, name, fmt) {
           </div>
         </div>
         <div class="um-section">
-          <div class="um-result-label" style="margin-bottom:10px;">CONVERT TO NOTE TYPE <span style="color:var(--accent);font-size:0.62rem;margin-left:6px;">COMING SOON</span></div>
+          <div class="um-result-label" style="margin-bottom:10px;">STUDY IT</div>
           <div class="um-convert-row">
-            <button class="um-convert-btn">Cornell Notes<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Flashcards<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Summary<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Study Guide<span class="um-soon">SOON</span></button>
-            <button class="um-convert-btn">Outline<span class="um-soon">SOON</span></button>
+            <button class="um-convert-btn enabled" onclick="gnTextToFlashcards(_umText)">Make flashcards</button>
           </div>
         </div>
         <div style="margin-top:8px;">

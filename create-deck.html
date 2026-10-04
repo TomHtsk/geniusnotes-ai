@@ -401,6 +401,7 @@ gnSyncThemeBtn();
       const prompt = text.length < 200 ? `Generate ${count} flashcards about: ${text}` : text;
       const resp = await _authFetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text:prompt, mode:'flashcards', count}) });
       const data = await resp.json();
+      if (resp.status === 401) throw new Error('Sign in to make flashcards, then click Generate.');
       if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
 
       let raw = data.flashcards || data.summary || '';
@@ -424,6 +425,7 @@ gnSyncThemeBtn();
 
       // close the MA strip
       document.getElementById('ma-body').classList.remove('open');
+      if (data.truncated) showMAErr('This text is long, so the cards were made from the first part of it.');
 
       // scroll to first card
       document.getElementById('cards-list').scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -481,12 +483,17 @@ gnSyncThemeBtn();
   // ── Pre-fill from notepad "Send to Flashcards" (runs after all setup) ──
   (function() {
     const text = localStorage.getItem('gn-to-flashcards');
+    const auto = localStorage.getItem('gn-to-flashcards-auto') === '1';
+    localStorage.removeItem('gn-to-flashcards-auto');
     if (!text) return;
     localStorage.removeItem('gn-to-flashcards');
     const ta = document.getElementById('ma-textarea');
     ta.value = text;
     document.getElementById('ma-count').textContent = text.length.toLocaleString();
     document.getElementById('ma-body').classList.add('open');
+    // Came from Upload / Record / YouTube: make the cards straight away, once we know
+    // whether the visitor is signed in (the request needs their sign-in).
+    if (auto) window._maAutoGenerate = true;
   })();
 
   function loadAllNotes() {
@@ -601,7 +608,14 @@ gnSyncThemeBtn();
 <script>
   try {
     firebase.initializeApp({apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",authDomain:"geniusnotes-ai.firebaseapp.com",projectId:"geniusnotes-ai",storageBucket:"geniusnotes-ai.firebasestorage.app",messagingSenderId:"1041746856723",appId:"1:1041746856723:web:fae9072e0292c3946068e6"});
-    firebase.auth().onAuthStateChanged(u => { if (u && u.uid !== currentUid) currentUid = u.uid; });
+    firebase.auth().onAuthStateChanged(u => {
+      if (u && u.uid !== currentUid) currentUid = u.uid;
+      if (window._maAutoGenerate) {
+        window._maAutoGenerate = false;
+        if (u && !u.isAnonymous) maGenerate();
+        else showMAErr('Sign in to make flashcards from this text, then click Generate.');
+      }
+    });
   } catch(e) {}
 </script>
 <script>

@@ -785,8 +785,21 @@ module.exports = async function handler(req, res) {
     // Direct text input path (upload panel / Magic Assist)
     if (text) {
       if (mode === 'transcribe') return res.status(400).json({ error: 'Transcribe mode requires a YouTube URL.' });
-      const prompt = getPrompt(mode, text, highlightPrompt, noteStyle, count);
-      const maxTok = mode === 'flashcards' ? 6000 : mode === 'highlight' ? 3000 : mode === 'notes' ? 3000 : 2200;
+      // Flashcards: Groq's free plan refuses a request when (text sent + room reserved for the
+      // answer) is over about 8,000 tokens a minute. So reserve only what the cards need
+      // (about 90 tokens each) and trim the text to what still fits. Raise
+      // GROQ_TOKEN_BUDGET in Vercel if the Groq plan is upgraded.
+      let srcText = text, cardCount = count, flashTruncated = false, flashMaxTok = 0;
+      if (mode === 'flashcards') {
+        cardCount = Math.max(1, Math.min(40, parseInt(count, 10) || 8));
+        flashMaxTok = Math.min(6000, 400 + cardCount * 90);
+        const budget = Number(process.env.GROQ_TOKEN_BUDGET) || 7600;
+        const roomChars = Math.max(1500, Math.floor((budget - 300 - flashMaxTok) * 3.6));
+        srcText = String(text);
+        if (srcText.length > roomChars) { srcText = srcText.slice(0, roomChars); flashTruncated = true; }
+      }
+      const prompt = getPrompt(mode, srcText, highlightPrompt, noteStyle, cardCount);
+      const maxTok = mode === 'flashcards' ? flashMaxTok : mode === 'highlight' ? 3000 : mode === 'notes' ? 3000 : 2200;
       let groqRes, data;
       for (let attempt = 0; attempt < 2; attempt++) {
         groqRes = await groqChat({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3, include_reasoning: false }, { apiKey });
@@ -819,7 +832,7 @@ module.exports = async function handler(req, res) {
           try { cards = JSON.parse(summary.slice(start, end + 1)); } catch {}
         }
         if (!cards) { try { cards = JSON.parse(summary); } catch {} }
-        if (cards) return res.status(200).json({ flashcards: cards });
+        if (cards) return res.status(200).json({ flashcards: cards, truncated: flashTruncated });
         // fallback: return raw so client can try parsing
         return res.status(200).json({ summary });
       }

@@ -294,50 +294,6 @@
     .step-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; }
     .step-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
 
-    /* ── PRICING ── */
-    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 780px; margin: 0 auto; }
-    @media(max-width:620px){ .pricing-grid { grid-template-columns: 1fr; } }
-    .pricing-grid.pricing-grid-3 { grid-template-columns: 1fr 1fr 1fr; max-width: 900px; }
-    @media(max-width:800px){ .pricing-grid.pricing-grid-3 { grid-template-columns: 1fr; } }
-    .pricing-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 36px 32px;
-    }
-    .pricing-card.featured {
-      border-color: rgba(139,92,246,0.5);
-      background: linear-gradient(160deg, rgba(139,92,246,0.1) 0%, rgba(79,195,247,0.05) 100%);
-      position: relative;
-      box-shadow: 0 0 0 1px rgba(139,92,246,0.18), 0 24px 80px rgba(139,92,246,0.25), 0 0 120px rgba(139,92,246,0.12);
-    }
-    .pricing-badge {
-      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
-      background: linear-gradient(135deg,var(--purple),#6D28D9); color: #fff;
-      font-size: 0.7rem; font-weight: 700; padding: 4px 14px; border-radius: 100px;
-      white-space: nowrap;
-    }
-    .pricing-plan { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 16px; }
-    .pricing-price { font-size: 2.6rem; font-weight: 900; letter-spacing: -0.03em; margin-bottom: 4px; }
-    .pricing-price sub { font-size: 1rem; font-weight: 500; color: var(--muted); vertical-align: middle; }
-    .pricing-per { font-size: 0.82rem; color: var(--muted); margin-bottom: 28px; }
-    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
-    .pricing-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.87rem; }
-    .pricing-features li::before { content: ''; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
-    .pricing-features li.muted-feat::before { content: '—'; color: var(--muted); }
-    .pricing-features li.muted-feat { color: var(--muted); }
-    .btn-plan {
-      display: block; width: 100%; padding: 13px; border-radius: 10px;
-      font-size: 0.92rem; font-weight: 700; text-align: center;
-      border: 1.5px solid rgba(139,92,246,0.4); color: var(--purple2);
-      transition: background 0.15s;
-    }
-    .btn-plan:hover { background: rgba(139,92,246,0.08); }
-    .btn-plan.cta {
-      background: linear-gradient(135deg,var(--purple),#6D28D9);
-      border: none; color: #fff;
-      box-shadow: 0 6px 24px rgba(139,92,246,0.4);
-    }
-    .btn-plan.cta:hover { opacity: 0.9; }
-
     /* ── FINAL CTA ── */
     .cta-band {
       margin: 0 24px 96px; border-radius: 24px; position: relative; overflow: hidden;
@@ -410,11 +366,6 @@
       .step-num { width: 44px; height: 44px; font-size: 1rem; }
       .step-title { font-size: 0.97rem; }
       .step-desc { font-size: 0.82rem; }
-
-      /* Pricing */
-      .pricing-grid { gap: 16px; }
-      .pricing-card { padding: 28px 22px; }
-      .pricing-price { font-size: 2.1rem; }
 
       /* CTA band */
       .cta-band { margin: 0 16px 64px; padding: 48px 24px; border-radius: 18px; }
@@ -637,23 +588,12 @@
   </div>
   <div class="nav-right">
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:6px;border-radius:8px;line-height:1;">🌙</button>
-    <a href="pricing.html" style="font-size:0.82rem;font-weight:600;color:var(--muted);text-decoration:none;padding:7px 4px;">Pricing</a>
-    <button id="nav-go-pro" onclick="startProCheckout('monthly', this)" style="display:none;background:none;border:1.5px solid rgba(139,92,246,0.5);color:var(--purple2);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;padding:6.5px 16px;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(139,92,246,0.1)'" onmouseout="this.style.background='none'">✨ Go Pro</button>
-    <div id="nav-pro-badge-wrap" style="display:none;position:relative;">
-      <button id="nav-pro-badge" onclick="document.getElementById('nav-pro-menu').classList.toggle('open')" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;color:#fff;font-size:0.76rem;font-weight:800;padding:6px 13px;border-radius:100px;cursor:pointer;font-family:inherit;">Pro ✓</button>
-      <div id="nav-pro-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,0.3);padding:6px;min-width:170px;z-index:50;">
-        <button onclick="gnOpenManageSubscription(this)" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:0.82rem;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">Manage subscription</button>
-      </div>
-    </div>
     <a href="signup.html" class="btn-primary" id="nav-tryfree" style="display:none">Get Started</a>
     <a href="signin.html" class="btn-ghost" id="nav-signin" style="display:none">Sign In</a>
     <a href="notepad.html" class="btn-ghost" id="nav-dashboard" style="display:none">My Notepad</a>
     <button id="nav-signout" onclick="navSignOut()" style="display:none;background:none;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:600;color:var(--muted);padding:7px 16px;border-radius:8px;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--surface)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--muted)'">Sign Out</button>
   </div>
 </nav>
-<style>
-  #nav-pro-menu.open { display: block !important; }
-</style>
 
 <script>
 function toggleSidebar() {
@@ -766,57 +706,6 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
     </div>
   </div>
 
-  <!-- ── PRICING ── -->
-  <section id="pricing" style="max-width:900px;margin:0 auto;padding:64px 24px 80px;">
-    <h2 style="text-align:center;font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:40px;">Simple pricing</h2>
-    <div class="pricing-grid pricing-grid-3">
-      <div class="pricing-card">
-        <div class="pricing-plan">Free</div>
-        <div class="pricing-price">$0</div>
-        <div class="pricing-per">forever</div>
-        <ul class="pricing-features">
-          <li>Wikipedia search</li>
-          <li>3 YouTube conversions/day</li>
-          <li>Notepad &amp; Flashcards</li>
-          <li>10 AI actions/month</li>
-          <li>30 min lecture recording/month</li>
-        </ul>
-        <a href="signup.html" id="pricing-free-btn" class="btn-plan">Start free</a>
-      </div>
-      <div class="pricing-card">
-        <div class="pricing-plan">Pro Monthly</div>
-        <div class="pricing-price">$6.99<sub>/mo</sub></div>
-        <div class="pricing-per">billed monthly</div>
-        <ul class="pricing-features">
-          <li>Unlimited AI actions (fair use)</li>
-          <li>50 YouTube conversions/day</li>
-          <li>10 hrs lecture recording/month</li>
-          <li>Cloud sync</li>
-        </ul>
-        <button class="btn-plan" onclick="startProCheckout('monthly', this)">Go Pro</button>
-      </div>
-      <div class="pricing-card featured">
-        <div class="pricing-badge">Best value — $3.33/mo</div>
-        <div class="pricing-plan">Pro Yearly</div>
-        <div class="pricing-price">$39.99<sub>/yr</sub></div>
-        <div class="pricing-per">billed yearly</div>
-        <ul class="pricing-features">
-          <li>Unlimited AI actions (fair use)</li>
-          <li>50 YouTube conversions/day</li>
-          <li>10 hrs lecture recording/month</li>
-          <li>Cloud sync</li>
-        </ul>
-        <button class="btn-plan cta" onclick="startProCheckout('yearly', this)">Go Pro yearly</button>
-      </div>
-    </div>
-    <div style="text-align:center;margin-top:28px;font-size:0.86rem;color:var(--purple2);font-weight:600;">
-      🎉 Early supporter: use code <strong>EARLY</strong> at checkout for $4.99/month, locked in forever (first 100 users).
-    </div>
-    <div style="text-align:center;margin-top:10px;font-size:0.76rem;color:var(--muted);">
-      Secure checkout · Cancel anytime
-    </div>
-  </section>
-
 </main>
 
 <!-- ── FOOTER ── -->
@@ -827,7 +716,6 @@ window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.d
   </div>
   <div class="footer-links">
     <a href="notepad.html">Notepad</a>
-    <a href="pricing.html">Pricing</a>
     <a href="signin.html">Sign In</a>
     <a href="signup.html">Sign Up</a>
   </div>
@@ -866,22 +754,14 @@ onAuthStateChanged(_fauth, user => {
     _h('nav-tryfree'); _h('nav-signin'); _s('nav-dashboard'); _s('nav-signout');
     window._gnLoggedIn = true;
     window._hsUid = user.uid;
-    if (typeof window._refreshProBadge === 'function') window._refreshProBadge();
   } else {
     _s('nav-tryfree'); _s('nav-signin'); _h('nav-dashboard'); _h('nav-signout');
     window._gnLoggedIn = false;
-    // Guests still see "Go Pro" (clicking it opens the sign-in modal, same as
-    // any other protected action) — only a confirmed Pro account hides it.
-    _s('nav-go-pro'); _h('nav-pro-badge-wrap');
-    const freeBtn = document.getElementById('pricing-free-btn');
-    if (freeBtn) { freeBtn.textContent = 'Start free'; freeBtn.href = 'signup.html'; freeBtn.onclick = null; freeBtn.classList.remove('btn-plan-disabled'); }
   }
-  window._proUser = realUser ? user : null;
   if (typeof window._gnOnAuthChange === 'function') window._gnOnAuthChange(user);
 });
 window.navSignOut = async () => { try { await signOut(_fauth); } catch(e){} };
 </script>
-<script src="js/pricing.js"></script>
 
 <script>
 // Attaches the signed-in user's Firebase ID token to same-origin /api/* calls.
@@ -895,32 +775,6 @@ async function _authFetch(url, opts) {
   }
   return fetch(url, opts);
 }
-
-// Fetches real pro status (not just "signed in") and toggles the nav Go Pro
-// button vs Pro ✓ badge, plus the pricing section's Free-card button.
-async function _refreshProBadge() {
-  try {
-    const r = await _authFetch('/api/subscription');
-    const d = await r.json();
-    const freeBtn = document.getElementById('pricing-free-btn');
-    if (d.pro) {
-      document.getElementById('nav-go-pro').style.display = 'none';
-      document.getElementById('nav-pro-badge-wrap').style.display = '';
-      if (freeBtn) { freeBtn.textContent = 'Downgrade by canceling'; freeBtn.removeAttribute('href'); freeBtn.onclick = () => gnOpenManageSubscription(freeBtn); }
-    } else {
-      document.getElementById('nav-go-pro').style.display = '';
-      document.getElementById('nav-pro-badge-wrap').style.display = 'none';
-      if (freeBtn) { freeBtn.textContent = 'Current plan'; freeBtn.removeAttribute('href'); freeBtn.onclick = (e) => e.preventDefault(); freeBtn.style.opacity = '0.6'; freeBtn.style.cursor = 'default'; }
-    }
-  } catch (e) {}
-}
-window._refreshProBadge = _refreshProBadge;
-
-document.addEventListener('click', function (e) {
-  const menu = document.getElementById('nav-pro-menu');
-  if (!menu || !menu.classList.contains('open')) return;
-  if (!e.target.closest('#nav-pro-badge-wrap')) menu.classList.remove('open');
-});
 
 // ── YouTube Transcribe ──
 let _ytText = '', _ytTitle = '';
@@ -1038,7 +892,7 @@ async function goYtTranscribe() {
     const resp = await _authFetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url, mode:'transcribe' }) });
     const d = await resp.json();
     if (resp.status === 429 && d.error === 'guest_limit_reached') {
-      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f0f0ff;">${d.message || "You've used your 3 free conversions today. Sign in free for more."}</span><br><br><button onclick="closeYtModal();window.gnRequireSignIn&&window.gnRequireSignIn('Sign in free for unlimited conversions')" style="margin-top:8px;margin-right:8px;padding:7px 16px;border-radius:8px;background:var(--purple);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;">Sign in</button><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
+      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f0f0ff;">${d.message || "You've used your 3 free conversions today. Sign in free for more."}</span><br><br><button onclick="closeYtModal();window.gnRequireSignIn&&window.gnRequireSignIn('Sign in free to keep converting')" style="margin-top:8px;margin-right:8px;padding:7px 16px;border-radius:8px;background:var(--purple);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;">Sign in</button><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
       return;
     }
     if (resp.status === 401 && d.error === 'sign_in_required') {
@@ -1046,11 +900,11 @@ async function goYtTranscribe() {
       if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in to use this feature');
       return;
     }
-    if (resp.status === 402 && d.error === 'limit_reached') {
-      // Signed-in free/pro accounts past their daily YouTube cap (anonymous guests
-      // hit the 429 guest_limit_reached branch above instead).
+    if (d.code === 'limit_reached') {
+      // Signed-in accounts past their daily YouTube limit (anonymous guests hit the
+      // guest_limit_reached branch above instead).
       closeYtModal();
-      if (window.gnShowUpgradeModal) window.gnShowUpgradeModal(Object.assign({}, d, { kind: 'youtube' }));
+      if (window.gnShowLimitNotice) window.gnShowLimitNotice(d.error);
       return;
     }
     if (d.error) throw new Error(d.error);
@@ -1161,9 +1015,9 @@ async function ytConvert(kind) {
       if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to convert this transcript', () => ytConvert(kind));
       return;
     }
-    if (resp.status === 402 && d.error === 'limit_reached') {
+    if (d.code === 'limit_reached') {
       ytConvertBack();
-      if (window.gnShowUpgradeModal) window.gnShowUpgradeModal(Object.assign({}, d, { kind: 'writing' }));
+      if (window.gnShowLimitNotice) window.gnShowLimitNotice(d.error);
       return;
     }
     if (!resp.ok) throw new Error(d.error || 'Conversion failed.');

@@ -155,8 +155,8 @@ async function _verifyIdTokenRest(idToken) {
 }
 
 // Shared Firestore handle for every file in api/ that needs direct Firestore
-// access (checkout.js, webhook.js, subscription.js) — avoids each of them
-// separately importing firebase-admin/firestore.
+// access (subscription.js) — avoids each of them separately importing
+// firebase-admin/firestore.
 function getDb() {
   _ensureAdmin();
   if (!_fbFirestore) _fbFirestore = require('firebase-admin/firestore').getFirestore(_fbApp);
@@ -198,7 +198,7 @@ async function verifyAuth(req, res, opts) {
 }
 
 // Same as verifyAuth but returns { uid, email, isAnonymous } — for callers that need
-// the verified email (checkout.js, subscription.js) or need to branch on anonymous
+// the verified email or need to branch on anonymous
 // status (summarize.js, for the free/guest-limited YouTube converter).
 async function verifyAuthFull(req, res, opts) {
   const decoded = await _verifyToken(req, res, opts);
@@ -302,43 +302,27 @@ async function checkGuestYoutubeLimit(req, uid, res) {
   }
 }
 
-// Plan tiers and their limits. Record limits are in seconds (1800s = 30min,
-// 36000s = 10hr). YouTube limits are per-day; AI/record limits are per-month.
-const PLAN_LIMITS = {
-  free: { ai: 10, record: 1800, yt: 3 },
-  pro: { ai: 500, record: 36000, yt: 50 },
-};
+// Usage limits — ONE set for every signed-in account (payments and the Pro plan were removed
+// in Oct 2026; restore from the git tag "before-stripe-removal" if they are ever wanted back).
+// Change the numbers here. `record` is in seconds (1800s = 30 min). `yt` is per day;
+// `ai` and `record` are per month. Guests (not signed in) only get the YouTube converter,
+// limited by GUEST_YT_LIMIT above.
+const USAGE_LIMITS = { ai: 10, record: 1800, yt: 3 };
 
 function _monthKey(d) {
   return (d || new Date()).toISOString().slice(0, 7); // YYYY-MM, UTC
 }
 
-// Reads users/{uid} and returns 'pro' if pro===true and not expired, else 'free'.
-// Plain read (not a transaction) — called by every limit-check helper below. Fails
-// open to 'free' on any error so a Firestore hiccup never silently grants Pro.
-async function getUserPlan(uid) {
-  try {
-    _ensureAdmin();
-    const snap = await getDb().doc(`users/${uid}`).get();
-    if (!snap.exists) return 'free';
-    const d = snap.data();
-    const now = Math.floor(Date.now() / 1000);
-    const active = d.pro === true && (!d.proUntil || d.proUntil === 0 || d.proUntil > now);
-    return active ? 'pro' : 'free';
-  } catch (e) {
-    return 'free';
-  }
-}
-
 // Monthly AI-action counter at users/{uid}/usage/{YYYY-MM}. `kind` is currently
-// always 'ai' (kept as a param for future extensibility). Sends the 402 itself
-// and returns false when the plan's monthly cap is already reached; otherwise
-// increments the counter and returns true. Fail-open on Firestore errors, same
+// always 'ai' (kept as a param for future extensibility). Sends the 429 itself and
+// returns false when the monthly limit is already reached; otherwise increments the
+// counter and returns true. The response's `error` is a sentence the page can show
+// as-is (it says when the limit resets); `code: 'limit_reached'` is for pages that want
+// to show it in the shared notice instead. Fail-open on Firestore errors, same
 // reasoning as checkRateLimit.
 async function checkAndIncrementUsage(uid, res, kind) {
   try {
-    const plan = await getUserPlan(uid);
-    const limit = PLAN_LIMITS[plan].ai;
+    const limit = USAGE_LIMITS.ai;
     _ensureAdmin();
     const db = getDb();
     const month = _monthKey();
@@ -354,7 +338,10 @@ async function checkAndIncrementUsage(uid, res, kind) {
     });
 
     if (!result.ok) {
-      res.status(402).json({ error: 'limit_reached', used: result.used, limit: result.limit, plan });
+      res.status(429).json({
+        code: 'limit_reached', used: result.used, limit: result.limit,
+        error: `You've used all ${result.limit} AI actions for this month. The limit resets at the start of next month.`,
+      });
       return false;
     }
     return true;
@@ -365,12 +352,11 @@ async function checkAndIncrementUsage(uid, res, kind) {
 
 // Per-day YouTube-conversion counter for SIGNED-IN users at
 // users/{uid}/ytLimit/{YYYY-MM-DD}. Anonymous guests keep using
-// checkGuestYoutubeLimit above, unchanged. Same 402 shape/fail-open behavior
+// checkGuestYoutubeLimit above, unchanged. Same response shape and fail-open behavior
 // as checkAndIncrementUsage.
 async function checkYoutubeDailyLimit(uid, res) {
   try {
-    const plan = await getUserPlan(uid);
-    const limit = PLAN_LIMITS[plan].yt;
+    const limit = USAGE_LIMITS.yt;
     _ensureAdmin();
     const db = getDb();
     const today = _todayKey();
@@ -386,7 +372,10 @@ async function checkYoutubeDailyLimit(uid, res) {
     });
 
     if (!result.ok) {
-      res.status(402).json({ error: 'limit_reached', used: result.used, limit: result.limit, plan });
+      res.status(429).json({
+        code: 'limit_reached', used: result.used, limit: result.limit,
+        error: `You've used today's ${result.limit} YouTube conversions. The limit resets tomorrow.`,
+      });
       return false;
     }
     return true;
@@ -404,8 +393,7 @@ module.exports = {
   isAllowedOrigin,
   _ensureAdmin,
   getDb,
-  getUserPlan,
   checkAndIncrementUsage,
   checkYoutubeDailyLimit,
-  PLAN_LIMITS,
+  USAGE_LIMITS,
 };

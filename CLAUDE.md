@@ -12,10 +12,10 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
 - Keep it simple: this is an MVP. Hide rather than delete features. Don't add new dependencies or API files without asking.
 
 ### Rules that must not be broken
-1. **Max 12 serverless functions** (Vercel Hobby). We are AT the limit. Never add a new file in `/api` — add an `action` to an existing endpoint instead.
-2. **Every `/api` endpoint (except `webhook.js`) requires a Firebase ID token** via `api/_lib/auth.js` (`verifyAuth` / `verifyAuthFull`). Frontend calls go through `_authFetch`. Anonymous tokens are accepted only for the YouTube converter (`summarize.js`).
+1. **Max 12 serverless functions** (Vercel Hobby). **10 are in use** since payments were removed (Oct 2026), so there are 2 spare. Still prefer adding an `action` to an existing endpoint over a new file in `/api`.
+2. **Every `/api` endpoint requires a Firebase ID token** via `api/_lib/auth.js` (`verifyAuth` / `verifyAuthFull`). Frontend calls go through `_authFetch`. Anonymous tokens are accepted only for the YouTube converter (`summarize.js`).
 3. **CORS allow-list** in `api/_lib/auth.js` (`ALLOWED_ORIGINS`): notecaptain.ai, www.notecaptain.ai, the vercel.app address, localhost. No `*`.
-4. **Never trust the browser for plan/limits.** Plan and usage are checked server-side (`getUserPlan`, `checkAndIncrementUsage`, `checkYoutubeDailyLimit`, `checkGuestYoutubeLimit`).
+4. **Never trust the browser for limits.** Usage is checked server-side (`checkAndIncrementUsage`, `checkYoutubeDailyLimit`, `checkGuestYoutubeLimit`).
 5. **Secrets only in Vercel env vars.** `FIREBASE_SERVICE_ACCOUNT` is parsed by `_parseServiceAccount` (tolerates extra text / base64).
 6. **AI provider is Groq** (OpenAI-compatible endpoint), not OpenAI. Transcription: Supadata (YouTube), Groq Whisper / AssemblyAI (audio).
    - **All model names live in `api/_lib/models.js`** (`MODEL_LARGE`, `MODEL_SMALL`, `MODEL_VISION`, `MODEL_WHISPER`, `MODEL_WHISPER_TURBO`) — never hardcode a Groq model string in any `/api` file. Each has an optional env var override (`GROQ_MODEL_LARGE`, `GROQ_MODEL_SMALL`, `GROQ_MODEL_VISION`) so a future Groq deprecation is fixed in Vercel, not code.
@@ -24,32 +24,34 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
    - **Friendly errors**: every Groq-calling endpoint logs the real error server-side (`console.error`) and returns `"This AI feature is temporarily unavailable. Please try again soon."` (502) to the client when the error looks like a model-not-found/deprecation error (`isModelUnavailableError` in `models.js`, checks Groq's `error.code` first, falls back to message-text matching). Other errors (bad input, rate limits, timeouts) keep their existing specific messages.
 7. **Wikipedia content is CC BY-SA 4.0** — keep the attribution + license link on the result card, the full-screen reader, and notes sent to the Notepad.
 
-### Plans and limits (`PLAN_LIMITS` in `api/_lib/auth.js`)
-| Plan | AI actions / month | Lecture recording / month | YouTube conversions / day |
-|---|---|---|---|
-| Guest (not signed in) | — | — | 3 |
-| Free (signed in) | 10 | 30 min | 3 |
-| Pro ($6.99/mo or $39.99/yr) | 500 (fair use) | 10 hours | 50 |
+### Payments — REMOVED on purpose (Oct 2026)
+Stripe, the Pro plan, `pricing.html`, `js/pricing.js`, `api/checkout.js` and `api/webhook.js` were deleted at the owner's request; everything is free. To bring payments back, restore from the git tag **`before-stripe-removal`**. Do not re-add payment code unless asked.
 
-Limit hit → API returns 402 `limit_reached` → frontend shows the upgrade modal.
+### Usage limits (`USAGE_LIMITS` in `api/_lib/auth.js`) — one set for everyone
+| Who | AI actions / month | Lecture recording / month | YouTube conversions / day |
+|---|---|---|---|
+| Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) |
+| Signed in | 10 | 30 min | 3 |
+
+Limit hit → API returns 429 `{ code: 'limit_reached', error: '<sentence saying when it resets>' }`. Pages can show `error` as-is, or pass it to `gnShowLimitNotice()` in `js/auth-gate.js`. There is no upgrade prompt.
 
 ### Access
-- Free for everyone, no sign-in: Wikipedia search/reader, YouTube converter (guests are signed in anonymously behind the scenes).
-- Sign-in required: Notepad, My Notes, Flashcards, Upload, Record Lecture, all AI tools. Locked items show 🔒 and open the shared sign-in modal (`js/auth-gate.js`).
+- No sign-in needed: Wikipedia search/reader, YouTube converter (guests are signed in anonymously behind the scenes), and — while `LOCKS_ENABLED = false` in `js/auth-gate.js` — opening and using the Notepad and Flashcards (a guest's notes stay in that browser).
+- Sign-in required: Upload, Record Lecture, and all AI tools (the server rejects requests without a real account).
+- `my-notes.html` was removed (redirects to `notepad.html`); the Notepad sidebar is where notes and folders are browsed.
 - Hidden ("Coming soon" overlay): `passwords.html`, `vault.html`.
 
 ### Key files added recently
 - `js/search.js` — single smart search bar (detects YouTube link vs. topic), recent-search chips
 - `js/wiki.js` — Wikipedia summary card, autocomplete, related topics, full-screen article reader, "Send to Notepad" (uses `gn-notepad-pending*` keys)
-- `js/auth-gate.js` — shared sign-in modal and 🔒 gating
-- `api/_lib/auth.js` — CORS, auth, rate limits, plans/usage, shared Firestore handle (`getDb`)
-- `pricing.html` + pricing section on `index.html` (`#pricing`); `startProCheckout(plan)` → `/api/checkout`
+- `js/auth-gate.js` — shared sign-in modal, 🔒 gating (`LOCKS_ENABLED`), and the "limit reached" notice
+- `api/_lib/auth.js` — CORS, auth, rate limits, usage limits, shared Firestore handle (`getDb`)
 
 ### Notepad (`notepad.html`)
 Simplified in Oct 2026: one continuous "pageless" document by default, notes stored safely for long text, trimmed toolbar with a "More" menu. **Sections further down that describe fixed pages, cross-page Enter/Backspace/Delete, rulers and zoom were written before this change — verify against the code before relying on them.**
 
 ### Not done yet (ideas, don't build unless asked)
-Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashcards + quiz mode, Privacy Policy/Terms pages, removing temporary checkout debug output (`_debugVerify`, `x-gn-debug`) once checkout is confirmed working.
+Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashcards + quiz mode, Privacy Policy/Terms pages.
 
 ---
 
@@ -144,15 +146,10 @@ Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashca
 - Authorized domains: `notecaptain.ai`, `www.notecaptain.ai`, plus Firebase defaults
 - Server side uses `firebase-admin` v14 MODULAR imports only (`firebase-admin/app`, `/auth`, `/firestore`), required lazily inside `api/_lib/auth.js`. Never use `admin.auth()` / `admin.firestore()`.
 
-## Stripe (LIVE mode — real charges)
-- Product "GeniusNotes AI" (rename to NoteCaptain in Stripe when convenient)
-- Prices come from env vars `STRIPE_PRICE_MONTHLY` ($6.99/mo) and `STRIPE_PRICE_YEARLY` ($39.99/yr). Never hardcode price IDs.
-- Promotion code `EARLY` = $2 off monthly forever (first 100 users); checkout has `allow_promotion_codes: true`.
-- Webhook: `https://www.notecaptain.ai/api/webhook` (signature verified with `STRIPE_WEBHOOK_SECRET`)
-- Customer Portal ("Manage subscription") is `POST /api/checkout {action:'portal'}` — NOT a separate file (function limit).
-
 ## Vercel Env Vars (values live ONLY in Vercel — never write keys in this file or in code)
-`GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `YOUTUBE_API_KEY`, `YT_COOKIE`
+`GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `YOUTUBE_API_KEY`, `YT_COOKIE`
+
+The code no longer reads any payment-related env vars; any still set in Vercel are unused and can be deleted there.
 
 ## Git / Deploy
 - Remote: `https://github.com/TomHtsk/geniusnotes-ai.git` (branch: `main`). Pushing `main` deploys to production on Vercel.
@@ -394,8 +391,10 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 
 ## API Files
 
-### Deployed (12 functions — Hobby plan limit)
-`writing.js`, `summarize.js`, `interpret.js`, `lyrics.js`, `extract.js`, `transcribe.js`, `homework.js`, `checker.js`, `translate.js`, `checkout.js`, `webhook.js`, `subscription.js`
+### Deployed (10 functions — Hobby plan limit is 12)
+`writing.js`, `summarize.js`, `interpret.js`, `lyrics.js`, `extract.js`, `transcribe.js`, `homework.js`, `checker.js`, `translate.js`, `subscription.js`
+
+`subscription.js` is now only the usage endpoint (this month's usage, `record-check`, `record-log`); it kept its old name so existing calls keep working.
 
 ### Merged (skip in deploy — handled via Vercel rewrites)
 `api/ytsearch.js` → `summarize.js` | `api/musicnotes.js` → `lyrics.js` | `api/chat.js` → `interpret.js` | `api/citation.js` → `writing.js` | `api/textbook.js` → `writing.js`

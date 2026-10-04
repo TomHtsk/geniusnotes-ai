@@ -754,8 +754,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   // This is the one endpoint anonymous Firebase users (the free YouTube converter) may
-  // call — everything else requires a real account. YouTube has its own per-tier daily
-  // cap (guest 3/day, free 3/day, pro 50/day) — separate from the monthly AI-action
+  // call — everything else requires a real account. YouTube has its own daily
+  // cap (guests 3/day, signed-in accounts 3/day) — separate from the monthly AI-action
   // count, and separate from the generic 30/hour rate limit used elsewhere.
   const authed = await verifyAuthFull(req, res, { allowAnonymous: true });
   if (!authed) return;

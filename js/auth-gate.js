@@ -322,6 +322,34 @@
   }
   window.gnApplyLocks = gnApplyLocks;
 
+  // ── "Limit reached" notice ───────────────────────────────────────────────────
+  // Shown when an /api call answers { code: 'limit_reached', error: '<friendly text>' }.
+  // The text comes from the server and already says when the limit resets.
+  function gnShowLimitNotice(message) {
+    _injectStyles();
+    var overlay = document.createElement('div');
+    overlay.className = 'gn-ag-overlay';
+    var box = document.createElement('div');
+    box.className = 'gn-ag-box';
+    var title = document.createElement('div');
+    title.className = 'gn-ag-title';
+    title.textContent = 'Limit reached';
+    var sub = document.createElement('div');
+    sub.className = 'gn-ag-sub';
+    sub.textContent = message || "You've reached the limit for now. Please try again later.";
+    var ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'gn-ag-submit';
+    ok.textContent = 'OK';
+    ok.addEventListener('click', function () { overlay.remove(); });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+    box.appendChild(title); box.appendChild(sub); box.appendChild(ok);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    ok.focus();
+  }
+  window.gnShowLimitNotice = gnShowLimitNotice;
+
   function _init() {
     onAuthChange(function () { gnApplyLocks(); });
   }

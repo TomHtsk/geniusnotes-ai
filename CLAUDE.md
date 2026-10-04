@@ -34,12 +34,23 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
 Stripe, the Pro plan, `pricing.html`, `js/pricing.js`, `api/checkout.js` and `api/webhook.js` were deleted at the owner's request; everything is free. To bring payments back, restore from the git tag **`before-stripe-removal`**. Do not re-add payment code unless asked.
 
 ### Usage limits (`USAGE_LIMITS` in `api/_lib/auth.js`) — one set for everyone
-| Who | AI actions / month | Lecture recording / month | YouTube conversions / day |
-|---|---|---|---|
-| Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) |
-| Signed in | 300 | 30 min | 3 |
+| Who | AI actions / month | Lecture recording / month | YouTube conversions / day | AI pictures / month |
+|---|---|---|---|---|
+| Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) | — |
+| Signed in | 300 | 30 min | 3 | 10 (`USAGE_LIMITS.images`) |
 
 Limit hit → API returns 429 `{ code: 'limit_reached', error: '<sentence saying when it resets>' }`. Pages can show `error` as-is, or pass it to `gnShowLimitNotice()` in `js/auth-gate.js`. There is no upgrade prompt.
+
+### AI pictures — Notepad "Create picture" (Oct 2026)
+- **What it is:** a toolbar button in `notepad.html` (`openPictureModal()`) opens a small window: description (pre-filled from the selected text, else the note title) → Generate → preview → "Insert into note" (picture + caption "AI-generated picture" at the cursor). Signed-out users get `gnRequireSignIn`.
+- **Server:** no new `/api` file. `POST /api/subscription { action: 'generateImage', description }` → `{ image: 'data:image/jpeg;base64,…', imagesLeft }`. Shared code is `api/_lib/images.js` (`generateImage`, `buildImagePrompt`). `GET /api/subscription` now also returns `imagesUsed`, `imagesLimit`, `imagesLeft` (the window's "X of 10 pictures left this month"). `api/subscription.js` `maxDuration` was raised from 10 to 30 seconds in `vercel.json` for this.
+- **Provider:** Cloudflare Workers AI REST API — `POST https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/{model}` with `Authorization: Bearer {CLOUDFLARE_API_TOKEN}` and body `{ prompt, steps: 4 }`; the reply is `{ result: { image: '<base64 JPEG>' }, success, errors }`. The model takes no width/height — it returns one ~1024×1024 picture.
+- **Env vars (Vercel):** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (required), `CF_MODEL_IMAGE` (optional override). **Model:** `CF_MODEL_IMAGE` in `api/_lib/models.js`, default `@cf/black-forest-labs/flux-1-schnell`.
+- **Free allowance: 10,000 Cloudflare "neurons" per day for the WHOLE site** (resets 00:00 UTC). One picture costs about 58 neurons (4 tiles × 4.8 + 4 steps × 9.6), so roughly 170 pictures a day across all users. When it runs out the API answers `"Today's free pictures are used up. Please try again tomorrow."` (429).
+- **Per-user limit:** 10 pictures a month, `imageCount` in `users/{uid}/usage/{YYYY-MM}`. `reserveImage` claims a slot in a transaction before generating (so two requests at once can't both pass) and `refundImage` gives it back whenever no picture is returned — so only successful pictures are counted. A picture the user cancels in the browser after the server already made it is still counted.
+- **Prompt wrapper:** every description is wrapped in a fixed instruction (educational illustration, flat style, white background, NO text/letters/labels/numbers, no photorealistic people, no logos or brand characters) because the model is bad at text. Descriptions are cut to 600 characters.
+- **Size and storage:** the browser shrinks the picture (`_picShrink`: max 1024px wide, JPEG, about 200 KB or less) before inserting it as a data URL inside the note, like the existing 📷 Photo button. Notes over 700,000 characters are already split into 500,000-character chunks in Firestore (`_cloudSaveNote`), and long notes are kept in IndexedDB locally, so a note with several pictures saves and syncs (5 pictures ≈ 1.1 MB → 3 chunks). Limits to know: a note over 700,000 characters (about 3 pictures) stops live-updating its shared link (existing behaviour), and one Firestore write is capped at 10 MB (about 40 pictures in one note).
+- Local test: `node _test_picture.js` (gitignored; fakes Cloudflare and Firestore, runs the Notepad in Edge).
 
 ### Access
 - No sign-in needed: Wikipedia search/reader, YouTube converter (guests are signed in anonymously behind the scenes), and — while `LOCKS_ENABLED = false` in `js/auth-gate.js` — opening and using the Notepad and Flashcards (a guest's notes stay in that browser).
@@ -153,7 +164,7 @@ Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashca
 - Server side uses `firebase-admin` v14 MODULAR imports only (`firebase-admin/app`, `/auth`, `/firestore`), required lazily inside `api/_lib/auth.js`. Never use `admin.auth()` / `admin.firestore()`.
 
 ## Vercel Env Vars (values live ONLY in Vercel — never write keys in this file or in code)
-`GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `YOUTUBE_API_KEY`, `YT_COOKIE`
+`GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `YOUTUBE_API_KEY`, `YT_COOKIE`, `GEMINI_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (the two Cloudflare ones were NOT yet set when the picture feature was built — it cannot work until they are added and the site is redeployed)
 
 The code no longer reads any payment-related env vars; any still set in Vercel are unused and can be deleted there.
 

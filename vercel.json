@@ -2,7 +2,7 @@
   "functions": {
     "api/summarize.js":    { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/extract.js":      { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
-    "api/subscription.js": { "memory": 256, "maxDuration": 10, "includeFiles": "node_modules/firebase-admin/**" },
+    "api/subscription.js": { "memory": 256, "maxDuration": 30, "includeFiles": "node_modules/firebase-admin/**" },
     "api/checker.js":      { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/transcribe.js":   { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/homework.js":     { "memory": 256, "maxDuration": 30, "includeFiles": "node_modules/firebase-admin/**" },

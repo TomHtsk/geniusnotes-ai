@@ -1,4 +1,5 @@
-const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb, reserveImage, refundImage } = require('./_lib/auth');
+const { generateImage, MAX_DESCRIPTION } = require('./_lib/images');
 
 function _monthKey() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM, UTC
@@ -11,6 +12,9 @@ function _monthKey() {
 //   GET                                -> this month's usage and the limits
 //   POST { action: 'record-check' }    -> can the user start a recording right now?
 //   POST { action: 'record-log', seconds } -> report actual Record Lecture duration
+//   POST { action: 'generateImage', description } -> one AI picture for the Notepad
+//        (Cloudflare Workers AI, api/_lib/images.js). Replies { image: 'data:image/jpeg;base64,…',
+//        imagesLeft }. Counts against USAGE_LIMITS.images only when a picture is returned.
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -33,6 +37,9 @@ module.exports = async function handler(req, res) {
       recordSecondsUsed: usage.recordSeconds || 0,
       recordSecondsLimit: USAGE_LIMITS.record,
       ytPerDay: USAGE_LIMITS.yt,
+      imagesUsed: usage.imageCount || 0,
+      imagesLimit: USAGE_LIMITS.images,
+      imagesLeft: Math.max(0, USAGE_LIMITS.images - (usage.imageCount || 0)),
     });
   }
 
@@ -73,6 +80,19 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         return res.status(200).json({ ok: true }); // fire-and-forget, never fail the client
       }
+    }
+
+    if (action === 'generateImage') {
+      const description = String((req.body || {}).description || '').replace(/\s+/g, ' ').trim().slice(0, MAX_DESCRIPTION);
+      if (description.length < 3) return res.status(400).json({ error: 'Please describe the picture you want.' });
+      const reserved = await reserveImage(uid, res);
+      if (!reserved) return; // 429 already sent
+      const out = await generateImage(description);
+      if (!out.ok) {
+        await refundImage(uid); // nothing was returned, so nothing is counted
+        return res.status(out.status).json({ error: out.error });
+      }
+      return res.status(200).json({ image: 'data:image/jpeg;base64,' + out.image, imagesLeft: reserved.left });
     }
 
     return res.status(400).json({ error: 'Unknown action' });

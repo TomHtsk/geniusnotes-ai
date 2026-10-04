@@ -359,3 +359,54 @@
     _init();
   }
 })();
+
+// ── "A new version is available" notice ─────────────────────────────────────────────
+// A tab that was opened before a deploy keeps running the old page until it is reloaded.
+// When the tab is looked at again (and at most every 5 minutes) the page asks the server
+// for its own headers; if the page's fingerprint (ETag / Last-Modified) has changed since
+// it was loaded, a small bar offers a Refresh. It never reloads by itself, so unsaved
+// work is never lost.
+(function () {
+  if (!window.fetch || location.protocol === 'file:') return;
+  var url = location.pathname || '/', first = null, lastCheck = 0, shown = false;
+  function fingerprint() {
+    return fetch(url, { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+      if (!r.ok) return null;
+      return r.headers.get('etag') || r.headers.get('last-modified') || null;
+    }).catch(function () { return null; });
+  }
+  function showBar() {
+    if (shown || !document.body) return;
+    shown = true;
+    var bar = document.createElement('div');
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:12px;max-width:92vw;padding:10px 12px 10px 16px;border-radius:10px;background:#0B0F14;color:#E9EEF2;border:1px solid rgba(255,255,255,0.18);box-shadow:0 8px 28px rgba(0,0,0,0.4);font:500 0.84rem Inter,system-ui,sans-serif;';
+    var txt = document.createElement('span');
+    txt.textContent = 'NoteCaptain was updated.';
+    var go = document.createElement('button');
+    go.type = 'button'; go.textContent = 'Refresh';
+    go.style.cssText = 'background:#5CC4D0;color:#0B0F14;border:none;border-radius:7px;padding:6px 12px;font:700 0.8rem Inter,system-ui,sans-serif;cursor:pointer;';
+    go.addEventListener('click', function () { location.reload(); });
+    var x = document.createElement('button');
+    x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Dismiss');
+    x.style.cssText = 'background:none;border:none;color:#9AA7B2;cursor:pointer;font-size:0.9rem;padding:4px;';
+    x.addEventListener('click', function () { bar.remove(); });
+    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(x);
+    document.body.appendChild(bar);
+  }
+  function check() {
+    if (shown || document.visibilityState !== 'visible') return;
+    var now = Date.now();
+    if (now - lastCheck < 5 * 60 * 1000) return;
+    lastCheck = now;
+    fingerprint().then(function (fp) {
+      if (!fp) return;
+      if (first === null) { first = fp; return; }
+      if (fp !== first) showBar();
+    });
+  }
+  fingerprint().then(function (fp) { first = fp; lastCheck = Date.now(); });
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('focus', check);
+  setInterval(check, 5 * 60 * 1000);
+})();

@@ -350,6 +350,22 @@ async function checkAndIncrementUsage(uid, res, kind) {
   }
 }
 
+// Gives back the one AI action that checkAndIncrementUsage charged, for a request that
+// could not be served because every Groq model was rate-limited (see sendBusyIfNeeded in
+// models.js). Does not touch the checks themselves. Never throws.
+async function refundAiAction(uid) {
+  try {
+    _ensureAdmin();
+    const db = getDb();
+    const ref = db.doc(`users/${uid}/usage/${_monthKey()}`);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const used = snap.exists ? (snap.data().aiActions || 0) : 0;
+      if (used > 0) tx.set(ref, { aiActions: used - 1 }, { merge: true });
+    });
+  } catch (e) { /* worst case the action stays counted */ }
+}
+
 // Per-day YouTube-conversion counter for SIGNED-IN users at
 // users/{uid}/ytLimit/{YYYY-MM-DD}. Anonymous guests keep using
 // checkGuestYoutubeLimit above, unchanged. Same response shape and fail-open behavior
@@ -504,6 +520,7 @@ module.exports = {
   _ensureAdmin,
   getDb,
   checkAndIncrementUsage,
+  refundAiAction,
   checkYoutubeDailyLimit,
   USAGE_LIMITS,
 };

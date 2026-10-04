@@ -1,4 +1,4 @@
-import { MODEL_LARGE } from './_lib/models.js';
+import { MODEL_SMALL, groqChat, BUSY_AI_ERROR } from './_lib/models.js';
 
 const STYLE_NAMES = {
   apa7:      'APA 7th Edition',
@@ -8,22 +8,12 @@ const STYLE_NAMES = {
   ieee:      'IEEE Style',
 };
 
+// groqChat (api/_lib/models.js) retries a rate-limited request on the other model.
 async function groqFetch(body, apiKey) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (r.ok) return r;
-    if (r.status === 429 && attempt < 2) {
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      continue;
-    }
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Groq ${r.status}`);
-  }
+  const r = await groqChat(body, { apiKey, timeoutMs: 25000 });
+  if (r.ok) return r;
+  const err = await r.json().catch(() => ({}));
+  throw new Error(err.error?.message || `Groq ${r.status}`);
 }
 
 export default async function handler(req, res) {
@@ -75,7 +65,7 @@ Return ONLY valid JSON:
 
   try {
     const r = await groqFetch({
-      model: MODEL_LARGE,
+      model: MODEL_SMALL,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 600,
       temperature: 0.05,
@@ -90,6 +80,7 @@ Return ONLY valid JSON:
     const parsed = JSON.parse(raw.slice(start, end + 1));
     return res.json(parsed);
   } catch (err) {
+    if (err.message === BUSY_AI_ERROR) return res.status(429).json({ error: BUSY_AI_ERROR });
     return res.status(500).json({ error: err.message || 'Could not generate citation.' });
   }
 }

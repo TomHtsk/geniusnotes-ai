@@ -1,5 +1,5 @@
 const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit } = require('./_lib/auth');
-const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 function getVideoId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -789,11 +789,7 @@ module.exports = async function handler(req, res) {
       const maxTok = mode === 'flashcards' ? 6000 : mode === 'highlight' ? 3000 : mode === 'notes' ? 3000 : 2200;
       let groqRes, data;
       for (let attempt = 0; attempt < 2; attempt++) {
-        groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3, include_reasoning: false })
-        });
+        groqRes = await groqChat({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: maxTok, temperature: 0.3, include_reasoning: false }, { apiKey });
         data = await groqRes.json();
         if (groqRes.status === 429 && attempt === 0) {
           const msg = data.error?.message || '';
@@ -807,6 +803,7 @@ module.exports = async function handler(req, res) {
         console.error('Groq error (summarize/text):', data.error?.message);
         const e = new Error(data.error?.message || 'Groq error');
         e.code = data.error?.code;
+        if (await sendBusyIfNeeded(e, res, null)) return; // this endpoint charges no AI action
         if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
         return res.status(500).json({ error: e.message });
       }
@@ -904,26 +901,20 @@ module.exports = async function handler(req, res) {
 
     const prompt = getPrompt(mode, transcript, highlightPrompt, noteStyle);
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL_LARGE,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1500,
-        temperature: 0.3,
-        include_reasoning: false
-      })
-    });
+    const groqRes = await groqChat({
+      model: MODEL_LARGE,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1500,
+      temperature: 0.3,
+      include_reasoning: false
+    }, { apiKey });
 
     const data = await groqRes.json();
     if (!groqRes.ok) {
       console.error('Groq error (summarize):', data.error?.message);
       const e = new Error(data.error?.message || 'Groq error');
       e.code = data.error?.code;
+      if (await sendBusyIfNeeded(e, res, null)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: e.message });
     }

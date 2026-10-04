@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 const MAX_CHARS = 15000;
 
@@ -67,29 +67,19 @@ Text:\n${t}`,
   return prompts[mode] || `Improve this text:\n${t}`;
 }
 
+// groqChat (api/_lib/models.js) retries a rate-limited request on the other model.
 async function groqFetch(body, apiKey) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (r.ok) return r;
-    if (r.status === 429 && attempt < 2) {
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      continue;
-    }
-    const err = await r.json().catch(() => ({}));
-    const e = new Error(err.error?.message || `Groq ${r.status}`);
-    e.code = err.error?.code;
-    throw e;
-  }
+  const r = await groqChat(body, { apiKey, timeoutMs: 25000 });
+  if (r.ok) return r;
+  const err = await r.json().catch(() => ({}));
+  const e = new Error(err.error?.message || `Groq ${r.status}`);
+  e.code = err.error?.code;
+  throw e;
 }
 
 // ── citation merged from api/citation.js ────────────────────────────────────
 const _CIT_STYLES={apa7:'APA 7th Edition',mla9:'MLA 9th Edition',chicago18:'Chicago 18th Edition (Notes-Bibliography)',turabian9:'Turabian 9th Edition',ieee:'IEEE Style'};
-async function _citGroq(b,k){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${k}`},body:JSON.stringify(b),signal:AbortSignal.timeout(25000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));const e=new Error(err.error?.message||`Groq ${r.status}`);e.code=err.error?.code;throw e;}}
+const _citGroq=groqFetch;
 
 // ── textbook merged from api/textbook.js ────────────────────────────────────
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
@@ -116,12 +106,13 @@ module.exports = async function handler(req, res) {
       if (!fieldLines.trim()) return res.status(400).json({ error: 'No source information provided.' });
       const styleName=_CIT_STYLES[style]||'APA 7th Edition';
       const prompt=`Generate a precisely formatted ${styleName} citation for this ${sourceType||'source'}.\n\n${fieldLines}\n\nReturn ONLY valid JSON:\n{"citation":"Full reference entry per ${styleName}","inText":"In-text or footnote format"}\n\n- Match ${styleName} punctuation, capitalization, italics (*Title*), and field order exactly\n- IEEE: use [1] format. Chicago/Turabian: footnote in inText. No text outside JSON.`;
-      const r=await _citGroq({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:600,temperature:0.05,include_reasoning:false,response_format:{type:'json_object'}},GROQ);
+      const r=await _citGroq({model:MODEL_SMALL,messages:[{role:'user',content:prompt}],max_tokens:600,temperature:0.05,include_reasoning:false,response_format:{type:'json_object'}},GROQ);
       const data=await r.json();const raw=data.choices?.[0]?.message?.content||'';const start=raw.indexOf('{'),end=raw.lastIndexOf('}');
       if(start===-1||end===-1)throw new Error('No JSON in response');
       return res.json(JSON.parse(raw.slice(start,end+1)));
     } catch(err){
       console.error('Groq error (citation):', err.message);
+      if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: err.message||'Could not generate citation.' });
     }
@@ -142,15 +133,16 @@ module.exports = async function handler(req, res) {
       }
       if (!questions) return res.status(400).json({ error: 'No questions provided.' });
       const prompt=`You are a study assistant. A student has textbook questions and chapter text. For each question, find 1–3 short exact phrases or sentences from the chapter that directly answer or relate to that question. The phrases MUST be verbatim substrings of the chapter text (exact match, same spelling and punctuation).\n\nQUESTIONS:\n${questions}\n\nCHAPTER TEXT:\n${chapter.slice(0,18000)}\n\nReturn ONLY valid JSON, no markdown fences:\n{\n  "matches": [\n    { "question": "full question text", "phrases": ["exact phrase from chapter"] }\n  ]\n}`;
-      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ}`},body:JSON.stringify({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:3000,temperature:0.1,include_reasoning:false,response_format:{type:'json_object'}})});
+      const r=await groqChat({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:3000,temperature:0.1,include_reasoning:false,response_format:{type:'json_object'}},{apiKey:GROQ});
       const data=await r.json();
-      if(!r.ok){ console.error('Groq error (textbook):', data.error?.message); const e=new Error(data.error?.message||'AI error'); e.code=data.error?.code; if(isModelUnavailableError(e)) return res.status(502).json({error:FRIENDLY_AI_ERROR}); return res.status(500).json({error:e.message}); }
+      if(!r.ok){ console.error('Groq error (textbook):', data.error?.message); const e=new Error(data.error?.message||'AI error'); e.code=data.error?.code; if(await sendBusyIfNeeded(e,res,uid)) return; if(isModelUnavailableError(e)) return res.status(502).json({error:FRIENDLY_AI_ERROR}); return res.status(500).json({error:e.message}); }
       let raw=(data.choices?.[0]?.message?.content?.trim()||'').replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();const s=raw.indexOf('{'),e2=raw.lastIndexOf('}');if(s!==-1&&e2>s)raw=raw.slice(s,e2+1);
       let result;try{result=JSON.parse(raw);}catch{result=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}
       result.matches=(result.matches||[]).map((m,i)=>({...m,color:_TB_COLORS[i%_TB_COLORS.length]}));
       return res.status(200).json({matches:result.matches,questionsExtracted:questions});
     } catch(err){
       console.error('Groq error (textbook):', err.message);
+      if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: err.message });
     }
@@ -211,6 +203,7 @@ Output ONLY the marked original text, nothing else.`;
     return res.status(200).json({ result });
   } catch (err) {
     console.error('Groq error (writing):', err.message);
+    if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }

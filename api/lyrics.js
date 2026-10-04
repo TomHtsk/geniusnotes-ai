@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -15,12 +15,13 @@ module.exports = async function handler(req, res) {
     const { lyrics, title, key, style } = req.body;
     if (!lyrics.trim()) return res.status(400).json({ error: 'No lyrics provided' });
     const prompt = `You are a music composer. Convert the following song lyrics into ABC notation format.\n\nRules:\n- Output ONLY valid ABC notation — no explanations, no markdown code blocks, no extra text\n- Include X:, T:, M:, L:, Q:, K: headers\n- Write a simple, singable melody — quarter and eighth notes mostly\n- Add chord symbols above the staff using "Chord" format (e.g. "C", "Am", "G7", "F")\n- Include ALL lyrics under the notes using w: lines after each staff line\n- Split syllables with hyphens in w: lines (e.g. "hap-py birth-day to you")\n- Use 4/4 time unless lyrics clearly suggest otherwise\n- Default to C major unless the user specified a different key\n- Keep it 1–2 lines of music maximum\n\nSong title: ${title||'Song'}\nKey: ${key||'C major'}\nStyle: ${style||'folk/pop'}\n\nLyrics:\n${lyrics.slice(0,1200)}\n\nOutput ONLY the ABC notation:`;
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${process.env.GROQ_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:2200,temperature:0.65,include_reasoning:false})});
+    const resp = await groqChat({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:2200,temperature:0.65,include_reasoning:false});
     if (!resp.ok) {
       const errData = await resp.json().catch(() => ({}));
       console.error('Groq error (musicnotes):', errData.error?.message);
       const e = new Error(errData.error?.message || 'Groq API error');
       e.code = errData.error?.code;
+      if (await sendBusyIfNeeded(e, res, uid)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(502).json({ error: 'Groq API error' });
     }
@@ -104,7 +105,7 @@ module.exports = async function handler(req, res) {
     } else {
       songTitle = input;
     }
-    return findLyrics(res, songTitle, artist);
+    return findLyrics(res, songTitle, artist, uid);
 
   } catch (err) {
     return res.status(500).json({ error: 'Server error: ' + (err.message || 'Unknown') });
@@ -121,7 +122,7 @@ function coreTitle(title) {
     .trim();
 }
 
-async function findLyrics(res, songTitle, artist) {
+async function findLyrics(res, songTitle, artist, uid) {
   const clean   = coreTitle(songTitle);
   const isRemix = clean !== songTitle;
 
@@ -141,7 +142,7 @@ async function findLyrics(res, songTitle, artist) {
     if (lyricsOvh) return res.status(200).json({ lyrics: lyricsOvh, source: 'lyrics', songTitle: clean || songTitle, artist });
   }
 
-  return aiLyrics(res, clean || songTitle, isRemix ? '' : artist);
+  return aiLyrics(res, clean || songTitle, isRemix ? '' : artist, uid);
 }
 
 async function tryLrclib(trackName, artistName) {
@@ -182,7 +183,7 @@ async function tryLyricsOvh(artist, title) {
   } catch (_) { return null; }
 }
 
-async function aiLyrics(res, songTitle, artist) {
+async function aiLyrics(res, songTitle, artist, uid) {
   const GROQ_KEY = process.env.GROQ_API_KEY;
   if (!GROQ_KEY) return res.status(404).json({ error: `Lyrics not found for "${songTitle}". Try: Song name — Artist` });
 
@@ -190,14 +191,15 @@ async function aiLyrics(res, songTitle, artist) {
   const prompt = `Write out the complete, accurate lyrics to the song ${who}. Output ONLY the lyrics — no intro, no explanation, no headers. If you do not know the lyrics, respond with exactly: [NOT FOUND]`;
 
   try {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
-      body: JSON.stringify({ model: MODEL_SMALL, messages: [{ role: 'user', content: prompt }], max_tokens: 2200, temperature: 0.05, include_reasoning: false }),
-      signal: AbortSignal.timeout(20000),
-    });
+    const r = await groqChat(
+      { model: MODEL_SMALL, messages: [{ role: 'user', content: prompt }], max_tokens: 2200, temperature: 0.05, include_reasoning: false },
+      { apiKey: GROQ_KEY, timeoutMs: 20000 }
+    );
     const data = await r.json();
-    if (!r.ok) console.error('Groq error (lyrics):', data.error?.message);
+    if (!r.ok) {
+      console.error('Groq error (lyrics):', data.error?.message);
+      if (await sendBusyIfNeeded(data.error, res, uid)) return;
+    }
     const text = data.choices?.[0]?.message?.content?.trim();
     if (!text || text.includes('[NOT FOUND]')) {
       return res.status(404).json({ error: `Lyrics not found for "${songTitle}". Try: Song name — Artist` });

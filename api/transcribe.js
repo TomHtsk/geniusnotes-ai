@@ -3,7 +3,8 @@ const {
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
   checkAudioAllowance, addTranscribedSeconds,
 } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE } = require('./_lib/models');
+const { refundAiAction } = require('./_lib/auth');
 
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
 const CHUNK_BYTES_PER_SEC = 32000;
@@ -96,11 +97,8 @@ module.exports = async function handler(req, res) {
       ? `Label the speakers as: ${nameList.join(', ')} (in order of first appearance).`
       : 'Label each speaker as Speaker 1, Speaker 2, Speaker 3, etc. in order of first appearance.';
     try {
-      const dr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: MODEL_LARGE,
+      const dr = await groqChat({
+          model: MODEL_SMALL,
           temperature: 0.15,
           max_tokens: 3000,
           include_reasoning: false,
@@ -136,10 +134,11 @@ FORMAT:
             },
             { role: 'user', content: `Edit and label this transcript:\n\n${text}` }
           ]
-        })
       });
       const dd = await dr.json();
       if (!dr.ok) console.error('Groq error (transcribe/label):', dd.error?.message);
+      // Every model rate-limited: the text goes back unedited, so don't charge for it.
+      if (dd.error?.code === BUSY_AI_CODE) await refundAiAction(uid);
       const labeled = dd.choices?.[0]?.message?.content?.trim();
       return res.status(200).json({ transcript: labeled || text });
     } catch (err) {
@@ -232,11 +231,8 @@ FORMAT:
         ? `The speakers are: ${nameList.join(', ')}. Use their exact names as labels.`
         : 'Label speakers as Speaker 1, Speaker 2, Speaker 3, etc.';
       try {
-        const dr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: MODEL_LARGE,
+        const dr = await groqChat({
+            model: MODEL_SMALL,
             temperature: 0.2,
             max_tokens: 3000,
             include_reasoning: false,
@@ -247,7 +243,6 @@ FORMAT:
               },
               { role: 'user', content: `Label all speakers:\n\n${transcript}` }
             ]
-          })
         });
         const dd = await dr.json();
         if (!dr.ok) console.error('Groq error (transcribe/diarize-label):', dd.error?.message);

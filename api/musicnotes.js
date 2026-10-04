@@ -1,4 +1,4 @@
-import { MODEL_LARGE } from './_lib/models.js';
+import { MODEL_SMALL, groqChat, BUSY_AI_ERROR } from './_lib/models.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -28,23 +28,17 @@ ${lyrics.slice(0, 1200)}
 
 Output ONLY the ABC notation:`;
 
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: MODEL_LARGE,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2200,
-      temperature: 0.65,
-      include_reasoning: false
-    })
+  const resp = await groqChat({
+    model: MODEL_SMALL,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 2200,
+    temperature: 0.65,
+    include_reasoning: false
   });
 
   if (!resp.ok) {
     const err = await resp.text();
+    if (err.includes(BUSY_AI_ERROR)) return res.status(429).json({ error: BUSY_AI_ERROR });
     return res.status(502).json({ error: 'Groq API error', details: err });
   }
 

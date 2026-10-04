@@ -1,4 +1,4 @@
-const { MODEL_LARGE, MODEL_VISION } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_VISION, groqChat, BUSY_AI_ERROR } = require('./_lib/models');
 
 const TB_COLORS = ['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
@@ -58,13 +58,10 @@ Return ONLY valid JSON, no markdown fences:
   ]
 }`;
 
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ}` },
-      body: JSON.stringify({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: 3000, temperature: 0.1, include_reasoning: false, response_format: { type: 'json_object' } })
-    });
+    const r = await groqChat({ model: MODEL_LARGE, messages: [{ role: 'user', content: prompt }], max_tokens: 3000, temperature: 0.1, include_reasoning: false, response_format: { type: 'json_object' } }, { apiKey: GROQ });
 
     const data = await r.json();
+    if (data.error?.message === BUSY_AI_ERROR) return res.status(429).json({ error: BUSY_AI_ERROR });
     if (!r.ok) return res.status(500).json({ error: data.error?.message || 'AI error' });
 
     let raw = data.choices?.[0]?.message?.content?.trim() || '';

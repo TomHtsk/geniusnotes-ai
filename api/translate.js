@@ -1,24 +1,14 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
+// groqChat (api/_lib/models.js) retries a rate-limited request on the other model.
 async function groqFetch(body, apiKey) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(20000),
-    });
-    if (r.ok) return r;
-    if (r.status === 429 && attempt < 2) {
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      continue;
-    }
-    const err = await r.json().catch(() => ({}));
-    const e = new Error(err.error?.message || `Groq ${r.status}`);
-    e.code = err.error?.code;
-    throw e;
-  }
+  const r = await groqChat(body, { apiKey, timeoutMs: 20000 });
+  if (r.ok) return r;
+  const err = await r.json().catch(() => ({}));
+  const e = new Error(err.error?.message || `Groq ${r.status}`);
+  e.code = err.error?.code;
+  throw e;
 }
 
 module.exports = async function handler(req, res) {
@@ -52,6 +42,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ translation });
   } catch (err) {
     console.error('Groq error (translate):', err.message);
+    if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }

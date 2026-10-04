@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -112,20 +112,13 @@ ${t}`
   if (!prompt) return res.status(400).json({ error: 'Invalid mode' });
 
   try {
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: MODEL_LARGE,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 3000,
-        temperature: 0.2,
-        include_reasoning: false,
-        response_format: { type: 'json_object' }
-      })
+    const groqRes = await groqChat({
+      model: MODEL_LARGE,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 3000,
+      temperature: 0.2,
+      include_reasoning: false,
+      response_format: { type: 'json_object' }
     });
 
     const groqData = await groqRes.json();
@@ -133,6 +126,7 @@ ${t}`
       console.error('Groq error (checker):', groqData.error?.message);
       const e = new Error(groqData.error?.message || 'Groq error');
       e.code = groqData.error?.code;
+      if (await sendBusyIfNeeded(e, res, uid)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: e.message });
     }

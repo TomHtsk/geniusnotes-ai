@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 async function ddgLookup(query) {
   try {
@@ -11,19 +11,16 @@ async function ddgLookup(query) {
   } catch { return ''; }
 }
 
-async function groqCall(prompt, apiKey) {
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: MODEL_LARGE,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 750,
-      temperature: 0.5,
-      include_reasoning: false
-    }),
-    signal: AbortSignal.timeout(20000)
-  });
+// Define and Comprehend are short, simple answers (MODEL_SMALL); the deeper "interpret"
+// mode passes MODEL_LARGE.
+async function groqCall(prompt, apiKey, model) {
+  const r = await groqChat({
+    model: model || MODEL_SMALL,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 750,
+    temperature: 0.5,
+    include_reasoning: false
+  }, { apiKey, timeoutMs: 20000 });
   const data = await r.json();
   if (!r.ok) {
     console.error('Groq error (interpret):', data.error?.message);
@@ -35,7 +32,7 @@ async function groqCall(prompt, apiKey) {
 }
 
 const _CHAT_SYSTEM = `You are an expert AI study tutor for NoteCaptain AI. Help students learn effectively.\n- Explain concepts clearly — start simple, build up\n- Use examples and real-world connections\n- Keep responses concise: 2-4 paragraphs or a short list\n- Use **bold** for key terms\n- Be encouraging but academically rigorous`;
-async function _chatGroq(body,apiKey){for(let a=0;a<3;a++){const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});if(r.ok)return r;if(r.status===429&&a<2){await new Promise(r=>setTimeout(r,1000*(a+1)));continue;}const err=await r.json().catch(()=>({}));const e=new Error(err.error?.message||`Groq ${r.status}`);e.code=err.error?.code;throw e;}}
+async function _chatGroq(body,apiKey){const r=await groqChat(body,{apiKey,timeoutMs:20000});if(r.ok)return r;const err=await r.json().catch(()=>({}));const e=new Error(err.error?.message||`Groq ${r.status}`);e.code=err.error?.code;throw e;}
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -61,6 +58,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ reply });
     } catch(err) {
       console.error('Groq error (chat):', err.message);
+      if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: err.message });
     }
@@ -89,7 +87,7 @@ module.exports = async function handler(req, res) {
       webSnippet = await ddgLookup(text + ' meaning origin');
       const webHint = webSnippet ? `\n\nRelevant web context: "${webSnippet}"` : '';
       const prompt = `You are a scholar with broad knowledge across all fields — philosophy, science, religion, literature, history, law, medicine, and more. ${ctx}\n\nFirst, identify what field, tradition, or context this passage most likely comes from based solely on the text and note context. Then interpret it accurately within that context.\n\nUncover the layers:\n1. What it says on the surface\n2. What it actually means in its proper context\n3. Any deeper or non-obvious meaning hidden in the phrasing\n\nDo not name or label traditions unless directly quoting them. Just interpret clearly and accurately.${webHint}\n\nPassage: "${text}"`;
-      result = await groqCall(prompt, GROQ);
+      result = await groqCall(prompt, GROQ, MODEL_LARGE);
 
     } else {
       // comprehend
@@ -102,6 +100,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ result });
   } catch(err) {
     console.error('Groq error (interpret):', err.message);
+    if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
     return res.status(500).json({ error: err.message });
   }

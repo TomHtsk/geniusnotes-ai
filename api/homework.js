@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -57,20 +57,16 @@ Return ONLY valid JSON (no markdown fences, no extra text):
   if (text) reqBody.include_reasoning = false; // only the gpt-oss text model supports this param
 
   try {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify(reqBody)
-    });
+    // Typed problems fall back to the small model when rate-limited; the image path
+    // (MODEL_VISION) has no fallback.
+    const r = await groqChat(reqBody);
 
     const data = await r.json();
     if (!r.ok) {
       console.error('Groq error (homework):', data.error?.message);
       const e = new Error(data.error?.message || 'Vision model error');
       e.code = data.error?.code;
+      if (await sendBusyIfNeeded(e, res, uid)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(500).json({ error: e.message });
     }

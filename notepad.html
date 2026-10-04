@@ -508,9 +508,9 @@
     }
     /* page-content typography (also applies to legacy #editor references) */
     .page-content * { transition: none; }
-    .img-wrap { display:inline-block; position:relative; line-height:0; vertical-align:middle; margin: 4px 0; }
+    .img-wrap { display:inline-block; position:relative; line-height:0; vertical-align:middle; margin: 4px 0; max-width:100%; }
     .img-wrap.selected { outline:2px solid var(--accent); }
-    .img-wrap img { display:block; max-width:none; border-radius:6px; cursor:move; }
+    .img-wrap img { display:block; max-width:100%; border-radius:6px; cursor:move; }
     .img-handle { position:absolute; width:10px; height:10px; background:var(--accent); border:2px solid #fff; border-radius:2px; z-index:10; }
     .img-handle[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
     .img-handle[data-pos="n"]  { top:-5px; left:calc(50% - 5px); cursor:n-resize; }
@@ -9528,21 +9528,72 @@ function recInsertIntoNote() {
     return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
   }
 
+  // Pictures are locked inside the note page: the area a picture may occupy is the page's
+  // text area (the .page-content box minus its padding).
+  function _imgBounds(wrap) {
+    const host = wrap.closest('.page-content');
+    if (!host) return null;
+    const r = host.getBoundingClientRect(), cs = getComputedStyle(host);
+    const k = host.offsetWidth ? (r.width / host.offsetWidth) || 1 : 1; // page zoom
+    const pad = function (v) { return (parseFloat(v) || 0) * k; };
+    return {
+      left: r.left + pad(cs.paddingLeft), right: r.right - pad(cs.paddingRight),
+      top: r.top + pad(cs.paddingTop), bottom: r.bottom - pad(cs.paddingBottom),
+    };
+  }
+  // Screen pixels per note pixel (the Notepad's zoom control scales the page).
+  function _imgScale(wrap) {
+    const w = wrap.offsetWidth;
+    return w ? (wrap.getBoundingClientRect().width / w) || 1 : 1;
+  }
+  // Limits a move of (dx, dy) so the picture stays inside the page. Also used with (0, 0)
+  // to pull back a picture that is already outside (older notes, or after a resize).
+  // dx/dy and the result are in note pixels (what translate() uses), not screen pixels.
+  function _clampImgMove(wrap, dx, dy) {
+    const b = _imgBounds(wrap);
+    if (!b) return { dx: dx, dy: dy };
+    const w = wrap.getBoundingClientRect(), k = _imgScale(wrap);
+    const loX = (b.left - w.left) / k, hiX = (b.right - w.right) / k;
+    const loY = (b.top - w.top) / k, hiY = (b.bottom - w.bottom) / k;
+    return {
+      dx: hiX < loX ? loX : Math.min(hiX, Math.max(loX, dx)),
+      dy: hiY < loY ? loY : Math.min(hiY, Math.max(loY, dy)),
+    };
+  }
+  function keepImgInPage(wrap) {
+    if (!wrap || !wrap.isConnected || !wrap.offsetWidth) return false;
+    const c = _clampImgMove(wrap, 0, 0);
+    if (Math.abs(c.dx) < 0.5 && Math.abs(c.dy) < 0.5) return false;
+    const t = _getTranslate(wrap);
+    const x = Math.round(t.x + c.dx), y = Math.round(t.y + c.dy);
+    wrap.style.transform = (x || y) ? `translate(${x}px, ${y}px)` : '';
+    return true;
+  }
+  let _keepAllTimer = null;
+  function keepAllImgsInPage() {
+    clearTimeout(_keepAllTimer);
+    _keepAllTimer = setTimeout(function () {
+      document.querySelectorAll('#pages-container .img-wrap, #pages-container-right .img-wrap').forEach(keepImgInPage);
+    }, 150);
+  }
+  window.addEventListener('resize', keepAllImgsInPage);
+
   function startDragImg(e) {
     if (e.target.classList.contains('img-handle')) return;
     const wrap = _selWrap;
     if (!wrap) return;
     e.preventDefault();
-    let lastX = e.clientX, lastY = e.clientY, moved = false;
+    const startX = e.clientX, startY = e.clientY, startT = _getTranslate(wrap), k = _imgScale(wrap);
+    let moved = false;
 
     function onMove(ev) {
-      const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
-      if (!moved && Math.hypot(dx, dy) < 5) return;
+      const mx = ev.clientX - startX, my = ev.clientY - startY;
+      if (!moved && Math.hypot(mx, my) < 5) return;
       moved = true;
       ev.preventDefault();
-      lastX = ev.clientX; lastY = ev.clientY;
       const t = _getTranslate(wrap);
-      wrap.style.transform = `translate(${t.x + dx}px, ${t.y + dy}px)`;
+      const c = _clampImgMove(wrap, startT.x + mx / k - t.x, startT.y + my / k - t.y);
+      wrap.style.transform = `translate(${t.x + c.dx}px, ${t.y + c.dy}px)`;
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
@@ -9564,6 +9615,8 @@ function recInsertIntoNote() {
     const startH = img.offsetHeight || img.naturalHeight || 200;
     const ratio = startW / (startH || 1);
     const isCorner = pos.length === 2;
+    const _b = _selWrap ? _imgBounds(_selWrap) : null;
+    const maxW = _b ? Math.max(40, (_b.right - _b.left) / _imgScale(_selWrap)) : Infinity;
 
     function onMove(ev) {
       const dx = ev.clientX - startX, dy = ev.clientY - startY;
@@ -9573,19 +9626,23 @@ function recInsertIntoNote() {
       if (pos.includes('w')) newW = Math.max(40, startW - dx);
       if (pos.includes('s')) newH = Math.max(40, startH + dy);
       if (pos.includes('n')) newH = Math.max(40, startH - dy);
+      if (!isCorner) newW = Math.min(newW, maxW);
 
       if (isCorner) {
         // Lock aspect ratio on corners
         if (pos.includes('e') || pos.includes('w')) newH = newW / ratio;
         else newW = newH * ratio;
+        if (newW > maxW) { newW = maxW; newH = newW / ratio; }
       }
 
       img.style.width  = Math.round(newW) + 'px';
       img.style.height = isCorner ? 'auto' : Math.round(newH) + 'px';
+      if (_selWrap) keepImgInPage(_selWrap);
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      if (_selWrap) keepImgInPage(_selWrap);
       if (typeof scheduleSave === 'function') scheduleSave();
     }
     document.addEventListener('mousemove', onMove);
@@ -9614,12 +9671,14 @@ function recInsertIntoNote() {
 
   const obs = new MutationObserver(() => {
     ['pages-container','pages-container-right'].forEach(id => wrapBareImages(document.getElementById(id)));
+    keepAllImgsInPage();
   });
   ['pages-container','pages-container-right'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       wrapBareImages(el);
       obs.observe(el, { childList:true, subtree:true });
+      keepAllImgsInPage();
     }
   });
 

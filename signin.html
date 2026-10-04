@@ -19,7 +19,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; transition: background 0.2s, color 0.2s; }
 
-    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 60px; border-bottom: 1px solid var(--border); background: rgba(6,6,15,0.92); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 60px; border-bottom: 1px solid var(--border); background: rgba(var(--bg-rgb),0.92); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; }
     :root.light nav { background: rgba(244,244,252,0.92); }
     
     .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 1rem; color: var(--text); }
@@ -44,7 +44,7 @@
     .field { margin-bottom: 16px; }
     .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
     .field input { width: 100%; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.15s; }
-    :root.light .field input { background: #F4F4FC; }
+    :root.light .field input { background: var(--surface2); }
     .field input:focus { border-color: var(--purple); }
     .field input.error { border-color: #EF4444; }
 
@@ -56,7 +56,7 @@
     .forgot { display: block; text-align: right; font-size: 0.8rem; color: var(--purple2); text-decoration: none; margin-bottom: 20px; }
     .forgot:hover { text-decoration: underline; }
 
-    .submit-btn { width: 100%; padding: 13px; border-radius: 10px; border: none; background: var(--purple); color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+    .submit-btn { width: 100%; padding: 13px; border-radius: 10px; border: none; background: var(--primary-bg); color:var(--primary-text); font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
     .submit-btn:hover { opacity: 0.88; }
     .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -71,13 +71,113 @@
     :root.light .logo-lt{display:block!important;}
     :root.light .logo-dk{display:none!important;}
   </style>
-<script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
+<script>if(localStorage.getItem('gn-theme') !== 'dark')document.documentElement.classList.add("light");</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet"/>
+  <script>if(localStorage.getItem('gn-theme')!=='dark')document.documentElement.classList.add('light');</script>
+  <style id="logbook-look">
+    /* ═══ LOGBOOK LOOK — the same palette, fonts, header and buttons as notepad.html / index.html ═══ */
+    :root {
+      --bg: #0B0F14; --surface: #131A21; --surface2: #1A232C; --bg-rgb: 11,15,20;
+      --border: rgba(255,255,255,0.11); --text: #E9EEF2; --muted: #9AA7B2;
+      --accent: #5CC4D0; --accent2: #7FD4DD; --accent-rgb: 92,196,208; --on-accent: #0B0F14;
+      --primary-bg: #FFFFFF; --primary-text: #0B0F14;
+      --purple: var(--accent); --purple2: var(--accent2); /* old names, kept so older rules pick up the new accent */
+      --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+      color-scheme: dark;
+    }
+    :root.light {
+      --bg: #F3F5F7; --surface: #FFFFFF; --surface2: #EDF0F3; --bg-rgb: 243,245,247;
+      --border: #DCE1E6; --text: #0B0F14; --muted: #55606B;
+      --accent: #0F6E7A; --accent2: #0F6E7A; --accent-rgb: 15,110,122; --on-accent: #FFFFFF;
+      --primary-bg: #0B0F14; --primary-text: #FFFFFF;
+      color-scheme: light;
+    }
+    body, :root.light body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    h1, h2 { font-family: var(--serif); letter-spacing: -0.01em; }
+    button, input, select, textarea { font-family: inherit; }
+    input[type=text], input[type=email], input[type=password], input[type=search], textarea, select { border-radius: 10px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Header — same pieces as the homepage and the Notepad's top bar */
+    nav, :root.light nav { position: static; display: block; height: auto; padding: 0; margin: 0; background: none; border: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .hp-header { position: sticky; top: 0; z-index: 100; background: var(--surface); flex-shrink: 0; }
+    .hp-header-row { display: flex; align-items: center; gap: 10px; height: 58px; padding: 0 20px; }
+    .hp-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex-shrink: 0; margin-right: 14px; }
+    .hp-brand img { width: 28px; height: 28px; object-fit: contain; border-radius: 0; }
+    .hp-brand-name { font-family: var(--serif); font-size: 1.08rem; font-weight: 700; letter-spacing: -0.01em; }
+    nav.hp-nav { display: flex; align-items: center; gap: 2px; }
+    .hp-nav a { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 0.86rem; font-weight: 500; color: var(--muted); text-decoration: none; }
+    .hp-nav a:hover { background: var(--surface2); color: var(--text); }
+    .hp-nav a.active { color: var(--accent); font-weight: 600; background: rgba(var(--accent-rgb),0.1); }
+    .hp-spacer { flex: 1; }
+    .np-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: none; color: var(--text); font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background 0.15s; }
+    .np-btn:hover { background: var(--surface2); }
+    .np-btn-primary, .np-btn-primary:hover { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-text); }
+    .np-btn-primary:hover { opacity: 0.88; }
+    .np-back { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border-radius: 10px; font-size: 0.82rem; font-weight: 600; color: var(--accent); text-decoration: none; flex-shrink: 0; white-space: nowrap; }
+    .np-back:hover { background: rgba(var(--accent-rgb),0.1); }
+    .hp-menu-btn { display: none; width: 36px; height: 36px; padding: 0; border: none; background: none; border-radius: 10px; color: var(--text); cursor: pointer; align-items: center; justify-content: center; }
+    .hp-menu-btn:hover { background: var(--surface2); }
+    .hp-header .nav-title { flex: 1; min-width: 0; font-family: var(--serif); font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .np-wave { display: block; width: 100%; height: 9px; color: var(--accent); opacity: 0.5; background: var(--surface); }
+
+    /* Slide-out menu (narrow screens) */
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); box-shadow: none; }
+    .sidebar.open { box-shadow: 0 0 40px rgba(11,15,20,0.3); }
+    .sidebar-overlay { background: rgba(11,15,20,0.45); backdrop-filter: none; }
+    .sb-hd { border-bottom: none; }
+    .sb-logo-row img { border-radius: 0; object-fit: contain; }
+    .sb-logo-row span { font-family: var(--serif); font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .sb-close { color: var(--muted); }
+    .sb-close:hover { color: var(--text); background: var(--surface2); }
+    .sb-item { color: var(--text); font-weight: 500; }
+    .sb-item:hover { background: var(--surface2); color: var(--text); }
+    .sb-item.active { background: rgba(var(--accent-rgb),0.12); color: var(--accent); font-weight: 600; }
+    .sb-footer { border-top: 1px solid var(--border); }
+    .sb-theme { color: var(--muted); }
+    .sb-theme:hover { background: var(--surface2); color: var(--text); }
+
+    /* Logo: white mark on dark theme, dark mark on light theme */
+    .logo-lt { display: none !important; }
+    :root.light .logo-lt { display: block !important; }
+    :root.light .logo-dk { display: none !important; }
+
+    @media (max-width: 720px) {
+      .hp-collapsible nav.hp-nav { display: none; }
+      .hp-collapsible .hp-menu-btn { display: inline-flex; }
+      .hp-header-row { padding: 0 12px; gap: 6px; }
+      .hp-brand { margin-right: 4px; }
+    }
+    @media (max-width: 460px) { .hp-brand-name { display: none; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  </style>
 </head>
 <body>
-<nav>
-  <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">NoteCaptain <span class="ai">AI</span></a>
-  <a href="signup.html" class="nav-link">Create account →</a>
-</nav>
+<header class="hp-header">
+  <div class="hp-header-row">
+    <a class="hp-brand" href="index.html" aria-label="NoteCaptain home">
+      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+      <span class="hp-brand-name">NoteCaptain</span>
+    </a>
+    <nav class="hp-nav" aria-label="Main">
+      <a href="index.html">Home</a>
+    </nav>
+    <div class="hp-spacer"></div>
+    <a href="signup.html" class="np-btn">Create account</a>
+    <button class="np-btn" id="gn-theme-btn" onclick="gnToggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+  </div>
+  <svg class="np-wave" aria-hidden="true" focusable="false">
+    <defs><pattern id="nc-wave" width="56" height="9" patternUnits="userSpaceOnUse"><path d="M0 5.5 Q 14 0.5 28 5.5 T 56 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></pattern></defs>
+    <rect width="100%" height="9" fill="url(#nc-wave)"/>
+  </svg>
+</header>
+<script>
+// Theme button: same behaviour as the homepage and the Notepad (light unless "dark" was chosen).
+function gnSyncThemeBtn(){var b=document.getElementById('gn-theme-btn');if(b)b.textContent=document.documentElement.classList.contains('light')?'Dark':'Light';}
+function gnToggleTheme(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');gnSyncThemeBtn();}
+window.addEventListener('storage',function(e){if(e.key==='gn-theme'){document.documentElement.classList.toggle('light',e.newValue!=='dark');gnSyncThemeBtn();}});
+gnSyncThemeBtn();
+</script>
 
 <div class="auth-wrap">
   <div class="auth-card">
@@ -137,13 +237,13 @@
           <div style="font-size:2.5rem;margin-bottom:16px">👋</div>
           <h1 style="margin-bottom:8px">You're signed in</h1>
           <p class="subtitle">Signed in as <strong>${user.email}</strong></p>
-          <a href="notepad.html" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--purple);color:#fff;font-weight:700;font-size:0.95rem;text-decoration:none;margin-bottom:12px;">Go to Notepad →</a>
+          <a href="notepad.html" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--primary-bg);color:var(--primary-text);font-weight:700;font-size:0.95rem;text-decoration:none;margin-bottom:12px;">Go to Notepad →</a>
           <button onclick="firebase.auth().signOut().then(()=>location.reload())" style="width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--muted);font-size:0.875rem;cursor:pointer;">Sign out &amp; use different account</button>
         </div>`;
     }
   });
 
-  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue === 'light'); });
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue !== 'dark'); });
 
   const emailEl   = document.getElementById('email');
   const passEl    = document.getElementById('password');

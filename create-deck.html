@@ -280,6 +280,9 @@ gnSyncThemeBtn();
     <div class="cards-label">
       <span>Cards</span>
     </div>
+    <!-- Notices about the generated cards live here, OUTSIDE the Magic Assist panel: that
+         panel closes when the cards arrive, so anything inside it would be hidden. -->
+    <div id="ma-note" role="status" style="display:none;margin:0 0 12px;padding:9px 13px;background:rgba(var(--accent-rgb),0.1);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:8px;font-size:0.8rem;color:var(--text);"></div>
     <div class="cards-list" id="cards-list"></div>
     <button class="btn-add" onclick="addRow()">＋ Add Card</button>
 
@@ -396,6 +399,7 @@ gnSyncThemeBtn();
     btn.disabled = true; btn.textContent = '…';
     document.getElementById('ma-loading').style.display = 'flex';
     document.getElementById('ma-err').style.display = 'none';
+    showMANote('');
 
     try {
       const prompt = text.length < 200 ? `Generate ${count} flashcards about: ${text}` : text;
@@ -425,7 +429,7 @@ gnSyncThemeBtn();
 
       // close the MA strip
       document.getElementById('ma-body').classList.remove('open');
-      if (data.truncated) showMAErr('This text is long, so the cards were made from the first part of it.');
+      if (data.truncated) showMANote('This text is long, so the cards were made from the first part of it.');
 
       // scroll to first card
       document.getElementById('cards-list').scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -438,6 +442,8 @@ gnSyncThemeBtn();
   }
 
   function showMAErr(msg) { const el=document.getElementById('ma-err'); el.textContent=msg; el.style.display='block'; }
+  // A notice shown above the cards (stays visible after the Magic Assist panel closes).
+  function showMANote(msg) { const el=document.getElementById('ma-note'); el.textContent=msg||''; el.style.display=msg?'block':'none'; }
 
   // ── Manual card rows ──
   let rowN = 0;

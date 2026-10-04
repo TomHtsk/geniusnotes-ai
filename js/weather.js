@@ -4,6 +4,10 @@
 //   Forecast: https://api.open-meteo.com/v1/forecast
 // Weather data by Open-Meteo.com (CC BY 4.0) — the credit link in the card is required.
 //
+// Signed-in users only: a signed-out visitor sees the chip with a lock, and clicking it opens the
+// sign-in pop-up (js/auth-gate.js). No location is asked for and no forecast is fetched or shown
+// until a real account is signed in.
+//
 // Privacy: nothing is requested until the visitor clicks the chip. Clicking it makes the BROWSER
 // ask for the location (its own permission pop-up). That is the only way a place is chosen:
 // there is no city search and no picker of ours. The place is remembered in this browser only
@@ -32,7 +36,8 @@
     open: false,
     locating: false,   // true while the browser is being asked for the location
     denied: false,     // the browser did not share a location
-    note: ''           // quiet status line in the card
+    note: '',          // quiet status line in the card
+    authed: false      // a real (non-anonymous) account is signed in
   };
 
   // ── Units ──────────────────────────────────────────────────────────────────
@@ -99,6 +104,7 @@
       '.gn-wx-chip:hover { background:var(--surface2,#EDF0F3); }' +
       '.gn-wx-chip .gn-wx-icon { color:var(--accent,#0F6E7A); flex-shrink:0; }' +
       '.gn-wx-chip-city { overflow:hidden; text-overflow:ellipsis; color:var(--muted,#55606B); font-weight:500; }' +
+      '.gn-wx-chip .gn-wx-lock { color:var(--muted,#55606B); flex-shrink:0; }' +
       '.gn-wx-card { position:absolute; left:0; bottom:calc(100% + 10px); z-index:300; width:320px; max-width:calc(100vw - 32px); padding:16px; background:var(--surface,#fff); color:var(--text,#0B0F14); border:1px solid var(--border,#DCE1E6); border-radius:12px; box-shadow:0 1px 2px rgba(11,15,20,0.06), 0 12px 32px rgba(11,15,20,0.18); text-align:left; font-size:0.84rem; line-height:1.45; }' +
       '.gn-wx-card[hidden] { display:none; }' +
       '.gn-wx-hd { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }' +
@@ -134,8 +140,26 @@
   // ── Data ────────────────────────────────────────────────────────────────────
   function fresh() { return state.data && (Date.now() - state.fetchedAt) < TTL; }
 
+  // True only for a real account. Works with either Firebase SDK style used on the site.
+  function signedIn() {
+    try {
+      var u = window._fauth ? window._fauth.currentUser : null;
+      if (!u && typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) u = firebase.auth().currentUser;
+      return !!(u && !u.isAnonymous);
+    } catch (e) { return false; }
+  }
+  // Re-checks sign-in and updates the widget when it changed.
+  function syncAuth() {
+    var a = signedIn();
+    if (a === state.authed) return;
+    state.authed = a;
+    if (!a) { state.open = false; state.locating = false; }
+    render();
+    if (a && state.place && !fresh()) fetchForecast();
+  }
+
   function fetchForecast() {
-    if (!state.place || state.loading) return;
+    if (!state.authed || !state.place || state.loading) return;
     state.loading = true; state.error = false;
     render();
     var p = state.place;
@@ -185,7 +209,11 @@
   // ── Rendering ───────────────────────────────────────────────────────────────
   function renderChip() {
     var html, label;
-    if (state.locating) {
+    if (!state.authed) {
+      html = icon('partly-day', 16) + '<span>Weather</span>' +
+        '<svg class="gn-wx-lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+      label = 'Weather: sign in to use';
+    } else if (state.locating) {
       html = icon('partly-day', 16) + '<span>Locating…</span>';
       label = 'Weather: waiting for your browser to share a location';
     } else if (!state.place) {
@@ -316,7 +344,15 @@
     mount.appendChild(chip);
     mount.appendChild(card);
 
-    chip.addEventListener('click', function () { if (state.open) close(false); else open(); });
+    chip.addEventListener('click', function () {
+      syncAuth();
+      if (!state.authed) {
+        // Signed out: ask to sign in instead (same pop-up the other locked buttons use).
+        if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to see the weather', function () { syncAuth(); if (state.authed) open(); });
+        return;
+      }
+      if (state.open) close(false); else open();
+    });
     card.addEventListener('click', onCardClick);
     document.addEventListener('click', function (e) {
       if (!state.open) return;
@@ -328,9 +364,21 @@
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.open) close(true); });
 
+    state.authed = signedIn();
+    // Follow sign-in / sign-out. index.html calls window._gnOnAuthChange(user) on every change;
+    // the timed checks cover the case where that fired before this hook was in place.
+    var prevHook = window._gnOnAuthChange;
+    window._gnOnAuthChange = function (user) {
+      if (typeof prevHook === 'function') prevHook(user);
+      syncAuth();
+    };
+    setTimeout(syncAuth, 1500);
+    setTimeout(syncAuth, 4000);
+
     render();
-    // A remembered place shows automatically; the cache keeps this to one request per 15 minutes.
-    if (state.place && !fresh()) fetchForecast();
+    // A remembered place shows automatically for a signed-in user; the cache keeps this to one
+    // request per 15 minutes.
+    if (state.authed && state.place && !fresh()) fetchForecast();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -606,6 +606,22 @@
     @keyframes hpGlow { 0%,100% { opacity: 0.88; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.05); } }
     /* Chalkboard-style physics and math formulas written across the hero background (decorative). */
     .hp-eq-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; user-select: none; }
+    /* Subtle starry background behind the formulas: a sparse, tiled field of tiny dots.
+       It is the layer's first painted thing, so the formulas (and everything else) sit on top. */
+    .hp-eq-layer::before { content: ''; position: absolute; inset: 0; opacity: 0.55;
+      background-image:
+        radial-gradient(1.2px 1.2px at 7% 14%, rgba(255,255,255,0.85) 50%, transparent 51%),
+        radial-gradient(1px 1px at 23% 62%, rgba(255,255,255,0.6) 50%, transparent 51%),
+        radial-gradient(1.4px 1.4px at 38% 27%, rgba(255,255,255,0.75) 50%, transparent 51%),
+        radial-gradient(1px 1px at 52% 81%, rgba(255,255,255,0.55) 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 64% 9%, rgba(255,255,255,0.7) 50%, transparent 51%),
+        radial-gradient(1px 1px at 71% 48%, rgba(255,255,255,0.5) 50%, transparent 51%),
+        radial-gradient(1.5px 1.5px at 86% 71%, rgba(255,255,255,0.8) 50%, transparent 51%),
+        radial-gradient(1px 1px at 93% 33%, rgba(255,255,255,0.6) 50%, transparent 51%),
+        radial-gradient(1px 1px at 14% 90%, rgba(255,255,255,0.5) 50%, transparent 51%),
+        radial-gradient(1.2px 1.2px at 46% 54%, rgba(255,255,255,0.45) 50%, transparent 51%);
+      background-size: 380px 320px; background-repeat: repeat; }
+    :root.light .hp-eq-layer::before { opacity: 0.3; filter: invert(1); }
     .hp-eq { position: absolute; font-family: 'Mynerve', 'Caveat', 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive; font-weight: 500; color: #fff; opacity: 0.24; white-space: nowrap; line-height: 1.1; letter-spacing: 0.01em; text-shadow: 0 0 7px rgba(255,255,255,0.28); }
     .hp-eq sup, .hp-eq sub { font-size: 0.6em; line-height: 0; }
     .hp-eq .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.8em; line-height: 1.08; margin: 0 0.14em; }

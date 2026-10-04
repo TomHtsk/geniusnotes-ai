@@ -1514,37 +1514,63 @@
 
 <!-- HOMEWORK SOLVER MODAL -->
 <!-- SHARE MODAL -->
-<div id="share-modal" onclick="if(event.target===this)closeShareModal()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#131A21;border:1px solid rgba(52,211,153,0.3);border-radius:16px;padding:28px;width:480px;max-width:92vw;box-shadow:0 24px 64px rgba(0,0,0,0.7);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="font-size:1rem;font-weight:700;color:#e0e0f0;">🔗 Share Note</div>
-      <button onclick="closeShareModal()" style="background:none;border:none;color:#666;cursor:pointer;font-size:1.1rem;padding:2px 6px;">✕</button>
+<div id="share-modal" onclick="if(event.target===this)closeShareModal()" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div class="share-card">
+    <div class="share-head">
+      <div class="share-title">Share note</div>
+      <button onclick="closeShareModal()" class="share-x" aria-label="Close">✕</button>
+    </div>
+    <div id="share-status" class="share-status" aria-live="polite"></div>
+
+    <!-- The link is created automatically when this window opens -->
+    <div id="share-link-row" class="share-link-row">
+      <input id="share-link-input" readonly aria-label="Share link" placeholder="Creating link…">
+      <button onclick="copyShareLink()" id="share-copy-btn" class="share-primary">Copy link</button>
+      <button onclick="openShareInTab()" class="share-ghost" title="Open in new tab" aria-label="Open in new tab">↗</button>
     </div>
 
-    <!-- Two mode buttons -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-      <button onclick="generateShareLink(false)" id="share-btn-view" style="background:rgba(52,211,153,0.12);border:1.5px solid rgba(52,211,153,0.4);border-radius:10px;color:#34d399;font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
-        <span style="font-size:1.3rem;">👁</span>
-        <span>View Only</span>
-        <span style="font-size:0.65rem;font-weight:400;color:#555;">Read-only link</span>
-      </button>
-      <button onclick="generateShareLink(true)" id="share-btn-collab" style="background:rgba(var(--accent-rgb),0.12);border:1.5px solid rgba(var(--accent-rgb),0.4);border-radius:10px;color:var(--accent2);font-size:0.8rem;font-weight:700;padding:12px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all 0.15s;">
-        <span style="font-size:1.3rem;">🔴</span>
-        <span>Live Collaboration</span>
-        <span style="font-size:0.65rem;font-weight:400;color:#555;">Both can edit in real-time</span>
-      </button>
+    <!-- Shown only once the link exists -->
+    <div id="share-mode-row" style="display:none;">
+      <div class="share-label">Anyone with the link can</div>
+      <div class="share-seg" role="group" aria-label="What people with the link can do">
+        <button onclick="setShareMode(false)" id="share-btn-view">View only</button>
+        <button onclick="setShareMode(true)" id="share-btn-collab">Edit together</button>
+      </div>
+      <div id="share-mode-hint" class="share-hint"></div>
     </div>
 
-    <div id="share-status" style="font-size:0.82rem;color:#34d399;margin-bottom:10px;min-height:18px;"></div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-      <input id="share-link-input" readonly style="flex:1;background:#1A232C;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;font-size:0.78rem;color:#C9D3DB;font-family:monospace;outline:none;" placeholder="Click a button above to generate…">
-      <button onclick="copyShareLink()" id="share-copy-btn" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);border-radius:8px;color:#34d399;font-size:0.78rem;font-weight:700;padding:9px 14px;cursor:pointer;font-family:inherit;white-space:nowrap;">Copy</button>
-      <button onclick="openShareInTab()" title="Open in new tab" style="background:rgba(var(--accent-rgb),0.15);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:8px;color:var(--accent2);font-size:0.9rem;padding:9px 12px;cursor:pointer;">↗</button>
+    <div class="share-foot">
+      <button onclick="revokeShareLink()" id="share-revoke-btn" class="share-link-btn" style="display:none;">Stop sharing</button>
+      <button onclick="generateShareLink(false)" id="share-new-btn" class="share-primary" style="display:none;">Create a new link</button>
     </div>
     <input type="hidden" id="share-collab-toggle">
-    <button onclick="revokeShareLink()" style="background:rgba(255,80,80,0.06);border:1px solid rgba(255,80,80,0.2);border-radius:8px;color:#ff8080;font-size:0.73rem;font-weight:700;padding:6px 14px;cursor:pointer;font-family:inherit;">🗑 Revoke Link</button>
   </div>
 </div>
+<style>
+  .share-card { background:var(--surface); color:var(--text); border:1px solid rgba(128,140,150,0.28); border-radius:14px; padding:22px 24px 18px; width:440px; max-width:92vw; box-shadow:0 24px 64px rgba(0,0,0,0.45); font-family:inherit; }
+  .share-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .share-title { font-size:1.02rem; font-weight:700; }
+  .share-x { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem; padding:4px 6px; border-radius:6px; }
+  .share-x:hover { color:var(--text); }
+  .share-status { font-size:0.8rem; color:var(--muted); min-height:20px; margin-bottom:10px; }
+  .share-status.ok { color:var(--accent); }
+  .share-status.err { color:#e5484d; }
+  .share-link-row { display:flex; gap:8px; margin-bottom:16px; }
+  .share-link-row input { flex:1; min-width:0; background:rgba(128,140,150,0.10); border:1px solid rgba(128,140,150,0.28); border-radius:8px; padding:9px 12px; font-size:0.78rem; color:var(--text); font-family:ui-monospace,Menlo,Consolas,monospace; outline:none; }
+  .share-primary { background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:0.8rem; font-weight:700; padding:9px 14px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  :root:not(.light) .share-primary { color:#0B0F14; }
+  .share-primary:disabled, .share-seg button:disabled { opacity:0.5; cursor:default; }
+  .share-ghost { background:none; border:1px solid rgba(128,140,150,0.28); border-radius:8px; color:var(--text); font-size:0.9rem; padding:9px 12px; cursor:pointer; }
+  .share-label { font-size:0.74rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+  .share-seg { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:rgba(128,140,150,0.12); border-radius:9px; padding:4px; }
+  .share-seg button { background:none; border:none; border-radius:6px; padding:8px 10px; font-size:0.8rem; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; }
+  .share-seg button.on { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.25); }
+  :root:not(.light) .share-seg button.on { background:rgba(var(--accent-rgb),0.2); color:var(--accent); box-shadow:none; }
+  .share-hint { font-size:0.74rem; color:var(--muted); margin-top:8px; min-height:18px; }
+  .share-foot { display:flex; justify-content:space-between; align-items:center; margin-top:14px; min-height:20px; }
+  .share-link-btn { background:none; border:none; padding:0; color:#e5484d; font-size:0.76rem; font-weight:600; cursor:pointer; font-family:inherit; }
+  .share-link-btn:hover { text-decoration:underline; }
+</style>
 
 <div id="hw-solver-modal" onclick="if(event.target===this)closeHwSolver()" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,0.78);flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
   <div style="background:#131A21;border:1px solid rgba(var(--accent-rgb),0.35);border-radius:16px;width:min(700px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
@@ -7852,66 +7878,146 @@ function _cloudDeleteFolder(id) {
 
 
 // ── SHARE ────────────────────────────────────────────────────
-function openShareModal() {
-  if (!activeId) return;
-  document.getElementById('share-modal').style.display = 'flex';
-  document.getElementById('share-status').textContent = '';
-  const note = notes.find(n => n.id === activeId);
-  if (note && note.shareId) {
-    document.getElementById('share-link-input').value = location.origin + '/share.html?id=' + note.shareId;
-    document.getElementById('share-status').textContent = '✓ Link active';
-  } else {
-    document.getElementById('share-link-input').value = '';
-    document.getElementById('share-status').textContent = 'No link yet — click New Link to generate one.';
-    document.getElementById('share-status').style.color = '#888';
+// The link is created automatically when the Share window opens (view only, the safer
+// choice). Only after the link exists is the user asked what people with it can do:
+// "View only" or "Edit together". Switching keeps the same link.
+let _shareCollab = false, _shareSeq = 0;
+
+function _shareLinkFor(id) { return location.origin + '/share.html?id=' + id; }
+function _shareStatus(msg, kind) {
+  const el = document.getElementById('share-status');
+  el.textContent = msg || '';
+  el.className = 'share-status' + (kind ? ' ' + kind : '');
+  el.style.color = '';
+}
+// state: 'working' (creating/checking), 'ready' (link exists), 'off' (no link), 'blocked' (can't share)
+function _shareUi(state) {
+  const ready = state === 'ready', working = state === 'working';
+  document.getElementById('share-link-row').style.display = (ready || working) ? 'flex' : 'none';
+  document.getElementById('share-mode-row').style.display = ready ? '' : 'none';
+  document.getElementById('share-revoke-btn').style.display = ready ? '' : 'none';
+  document.getElementById('share-new-btn').style.display = state === 'off' ? '' : 'none';
+  document.getElementById('share-copy-btn').disabled = !ready;
+  if (ready) {
+    document.getElementById('share-btn-view').classList.toggle('on', !_shareCollab);
+    document.getElementById('share-btn-collab').classList.toggle('on', _shareCollab);
+    document.getElementById('share-mode-hint').textContent = _shareCollab
+      ? 'They can edit this note with you, live.'
+      : 'They can read this note but not change it.';
   }
 }
-
-function closeShareModal() {
-  document.getElementById('share-modal').style.display = 'none';
+function _shareModeBusy(busy) {
+  document.getElementById('share-btn-view').disabled = busy;
+  document.getElementById('share-btn-collab').disabled = busy;
 }
-
-async function generateShareLink(collaborative) {
-  if (!activeId) { alert('Open a note first.'); return; }
-  if (!_fbDb) { alert('Sign in to share notes.'); return; }
-  const note = notes.find(n => n.id === activeId);
-  if (!note) return;
-  const statusEl = document.getElementById('share-status');
-  // Highlight active button
-  document.getElementById('share-btn-view').style.opacity = collaborative ? '0.5' : '1';
-  document.getElementById('share-btn-collab').style.opacity = collaborative ? '1' : '0.5';
-
-  // Generate ID and show link immediately — don't wait for Firestore
-  const shareId = note.shareId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-  note.shareId = shareId;
-  saveNotes();
-  const link = location.origin + '/share.html?id=' + shareId;
-  document.getElementById('share-link-input').value = link;
-  statusEl.textContent = '⏳ Uploading note…';
-  statusEl.style.color = '#888';
-
-  // Upload to Firestore in background
-  const shareData = {
-    id: shareId,
+// Writes the shared copy of the note (creating the link id if there isn't one yet).
+function _shareUpload(note, collaborative) {
+  if (!note.shareId) {
+    note.shareId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    saveNotes();
+  }
+  return _fbDb.collection('shared_notes').doc(note.shareId).set({
+    id: note.shareId,
     noteId: note.id,
     title: note.title || 'Untitled',
     content: note.content || '',
     sharedBy: _fbUid || 'anonymous',
     sharedAt: Date.now(),
-    collaborative
-  };
-  _fbDb.collection('shared_notes').doc(shareId).set(shareData)
-    .then(() => {
-      statusEl.textContent = collaborative
-        ? '✓ Live collaboration link ready.'
-        : '✓ Link ready — anyone with it can view this note.';
-      statusEl.style.color = '#34d399';
-      if (collaborative) _startCollabSync(shareId);
-    })
-    .catch(e => {
-      statusEl.textContent = '⚠ Upload failed: ' + (e.message || 'try again.');
-      statusEl.style.color = '#ff8080';
-    });
+    collaborative: !!collaborative
+  });
+}
+
+async function openShareModal() {
+  if (!activeId) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note) return;
+  const seq = ++_shareSeq;
+  const stale = () => seq !== _shareSeq || activeId !== note.id;
+  document.getElementById('share-modal').style.display = 'flex';
+  document.getElementById('share-link-input').value = note.shareId ? _shareLinkFor(note.shareId) : '';
+  if (!_fbDb) { _shareUi('blocked'); _shareStatus('Sign in to share notes.', 'err'); return; }
+  _shareUi('working');
+  _shareStatus(note.shareId ? 'Checking your link…' : 'Creating your link…');
+  try {
+    let collab = false, exists = false;
+    if (note.shareId) {
+      const doc = await _fbDb.collection('shared_notes').doc(note.shareId).get();
+      exists = doc.exists;
+      collab = exists && !!doc.data().collaborative;
+    }
+    // A live-editing link is left alone (collaborators may have typed since); a view-only
+    // link, or a brand-new one, gets the note's current text.
+    if (!(exists && collab)) await _shareUpload(note, false);
+    if (stale()) return;
+    _shareCollab = collab;
+    document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
+    _shareUi('ready');
+    _shareStatus(exists ? 'Link is active.' : 'Link created.', 'ok');
+  } catch (e) {
+    if (stale()) return;
+    _shareUi('off');
+    _shareStatus("Couldn't create the link. Check your connection and try again.", 'err');
+  }
+}
+
+function closeShareModal() {
+  _shareSeq++;
+  document.getElementById('share-modal').style.display = 'none';
+}
+
+// Used by "Create a new link" and by Copy / Open when there is no link yet.
+async function generateShareLink(collaborative) {
+  if (!activeId) { alert('Open a note first.'); return; }
+  if (!_fbDb) { alert('Sign in to share notes.'); return; }
+  const note = notes.find(n => n.id === activeId);
+  if (!note) return;
+  const seq = ++_shareSeq;
+  _shareUi('working');
+  _shareStatus('Creating your link…');
+  try {
+    await _shareUpload(note, !!collaborative);
+    if (seq !== _shareSeq) return;
+    _shareCollab = !!collaborative;
+    document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
+    _shareUi('ready');
+    _shareStatus('Link created.', 'ok');
+    if (_shareCollab) _startCollabSync(note.shareId);
+  } catch (e) {
+    if (seq !== _shareSeq) return;
+    _shareUi('off');
+    _shareStatus("Couldn't create the link. Check your connection and try again.", 'err');
+  }
+}
+
+// "View only" / "Edit together": same link, different permission.
+async function setShareMode(collaborative) {
+  collaborative = !!collaborative;
+  if (!activeId || !_fbDb) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note || !note.shareId) return generateShareLink(collaborative);
+  if (collaborative === _shareCollab) return;
+  const seq = _shareSeq;
+  _shareModeBusy(true);
+  _shareStatus('Updating…');
+  try {
+    await _shareUpload(note, collaborative);
+    if (seq !== _shareSeq) return;
+    _shareCollab = collaborative;
+    if (collaborative) {
+      _startCollabSync(note.shareId);
+    } else if (_collabUnsub) {
+      _collabUnsub(); _collabUnsub = null;
+      if (typeof _clearRemoteCursors === 'function') _clearRemoteCursors();
+    }
+    _shareUi('ready');
+    _shareStatus(collaborative ? 'Anyone with the link can now edit.' : 'The link is now view only.', 'ok');
+  } catch (e) {
+    if (seq !== _shareSeq) return;
+    _shareUi('ready');
+    _shareStatus("Couldn't change that. Check your connection and try again.", 'err');
+  } finally {
+    _shareModeBusy(false);
+  }
 }
 
 async function revokeShareLink() {
@@ -7922,12 +8028,13 @@ async function revokeShareLink() {
     await _fbDb.collection('shared_notes').doc(note.shareId).delete();
     delete note.shareId;
     saveNotes();
+    if (_collabUnsub) { _collabUnsub(); _collabUnsub = null; if (typeof _clearRemoteCursors === 'function') _clearRemoteCursors(); }
+    _shareCollab = false;
     document.getElementById('share-link-input').value = '';
-    const statusEl = document.getElementById('share-status');
-    statusEl.textContent = 'Link revoked.';
-    statusEl.style.color = '#ff8080';
+    _shareUi('off');
+    _shareStatus('Sharing stopped. The old link no longer works.');
   } catch(e) {
-    alert('Failed to revoke: ' + e.message);
+    _shareStatus("Couldn't stop sharing. Check your connection and try again.", 'err');
   }
 }
 
@@ -7939,12 +8046,16 @@ function openShareInTab() {
 
 function copyShareLink() {
   const val = document.getElementById('share-link-input').value;
-  if (!val) { generateShareLink(); return; }
-  navigator.clipboard.writeText(val).then(() => {
-    const btn = document.getElementById('share-copy-btn');
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
-  });
+  if (!val) { generateShareLink(false); return; }
+  const btn = document.getElementById('share-copy-btn');
+  const done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy link'; }, 2000); };
+  const fallback = function () {
+    const inp = document.getElementById('share-link-input');
+    inp.focus(); inp.select();
+    try { if (document.execCommand('copy')) done(); } catch (e) {}
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(val).then(done, fallback);
+  else fallback();
 }
 
 let _collabUnsub = null;

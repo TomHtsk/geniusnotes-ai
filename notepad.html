@@ -971,8 +971,16 @@
     #np-sb-backdrop { display: none; }
     /* With the sidebar open on desktop, the top bar hides its own logo and "New note" */
     @media (min-width: 761px) {
-      body.rail-open .np-header .np-brand, body.rail-open .np-header .np-btn-primary { display: none; }
+      body.rail-open .np-header .np-btn-primary { display: none; }
+      /* Home / Flashcards are in the top bar on desktop; the sidebar copies are for phones only */
+      .np-sidebar .sbx-nav { display: none; }
     }
+    /* Top-bar navigation — same links and look as the other pages' header */
+    .np-nav { display: flex; align-items: center; gap: 2px; flex-shrink: 0; margin-right: 6px; }
+    .np-nav a { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 0.86rem; font-weight: 500; color: var(--muted); text-decoration: none; }
+    .np-nav a:hover { background: var(--surface2); color: var(--text); }
+    .np-nav a.active { color: var(--accent); font-weight: 600; background: rgba(var(--accent-rgb),0.1); }
+    @media (max-width: 760px) { .np-nav { display: none; } }
     /* Phones: the sidebar slides over the page, with a dimmed backdrop */
     @media (max-width: 760px) {
       .np-sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 800; width: 260px; min-width: 260px; max-width: 86vw; box-shadow: 0 0 40px rgba(11,15,20,0.3); transform: translateX(0); transition: transform 0.2s ease; }
@@ -999,6 +1007,11 @@
     <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
     <span class="np-brand-name">NoteCaptain</span>
   </a>
+  <nav class="np-nav" aria-label="Main">
+    <a href="index.html">Home</a>
+    <a href="notepad.html" class="active" aria-current="page">Notepad</a>
+    <a href="flashcards.html">Flashcards</a>
+  </nav>
   <input id="note-title-input" class="np-title-input" type="text" placeholder="Note title" aria-label="Note title" oninput="onTitleChange()" />
   <div class="np-header-right">
     <button class="np-btn np-btn-primary" onclick="newNote()" title="Create a new note" aria-label="New note">
@@ -1053,10 +1066,7 @@
 
   <!-- SIDEBAR -->
   <div class="np-sidebar" id="np-sidebar">
-    <a class="sbx-brand" href="index.html" aria-label="NoteCaptain home">
-      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
-      <span>NoteCaptain</span>
-    </a>
+    <!-- The logo and the Home / Flashcards links live in the top bar now (see .np-nav). -->
     <!-- Search -->
     <div class="sb-search">
       <div class="sb-search-wrap">

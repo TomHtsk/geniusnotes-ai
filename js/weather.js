@@ -1,12 +1,13 @@
 // Small weather widget for the homepage footer (next to the NoteCaptain logo).
 //
 // Data comes straight from Open-Meteo in the browser — no API key, no server code.
-//   Forecast:    https://api.open-meteo.com/v1/forecast
-//   City search: https://geocoding-api.open-meteo.com/v1/search
+//   Forecast: https://api.open-meteo.com/v1/forecast
 // Weather data by Open-Meteo.com (CC BY 4.0) — the credit link in the card is required.
 //
-// Privacy: nothing is requested until the visitor clicks the chip and picks a place. The place
-// is remembered in this browser only (localStorage) and is sent only to Open-Meteo.
+// Privacy: nothing is requested until the visitor clicks the chip. Clicking it makes the BROWSER
+// ask for the location (its own permission pop-up). That is the only way a place is chosen:
+// there is no city search and no picker of ours. The place is remembered in this browser only
+// (localStorage) and is sent only to Open-Meteo.
 // Usage: put <div id="gn-weather"></div> where the chip should appear and load this file.
 (function () {
   'use strict';
@@ -29,9 +30,9 @@
     loading: false,
     error: false,
     open: false,
-    picking: false,    // true while the "choose a place" view is showing
-    results: null,     // city search results
-    note: ''           // quiet status line in the picker
+    locating: false,   // true while the browser is being asked for the location
+    denied: false,     // the browser did not share a location
+    note: ''           // quiet status line in the card
   };
 
   // ── Units ──────────────────────────────────────────────────────────────────
@@ -121,16 +122,7 @@
       '.gn-wx-btn:hover { background:var(--surface2,#EDF0F3); }' +
       '.gn-wx-btn-primary, .gn-wx-btn-primary:hover { background:var(--primary-bg,#0B0F14); border-color:var(--primary-bg,#0B0F14); color:var(--primary-text,#fff); }' +
       '.gn-wx-btn-primary:hover { opacity:0.88; }' +
-      '.gn-wx-btn-wide { width:100%; height:36px; margin-bottom:10px; }' +
-      '.gn-wx-row { display:flex; gap:6px; }' +
-      '.gn-wx-input { flex:1; min-width:0; height:36px; padding:0 10px; border-radius:10px; border:1px solid var(--border,#DCE1E6); background:var(--surface2,#EDF0F3); color:var(--text,#0B0F14); font-family:inherit; font-size:0.84rem; }' +
-      '.gn-wx-input::placeholder { color:var(--muted,#55606B); }' +
-      '.gn-wx-results { display:flex; flex-direction:column; gap:2px; margin-top:8px; }' +
-      '.gn-wx-result { text-align:left; padding:7px 9px; border:none; background:none; border-radius:8px; color:var(--text,#0B0F14); font-family:inherit; font-size:0.82rem; cursor:pointer; }' +
-      '.gn-wx-result:hover { background:var(--surface2,#EDF0F3); }' +
-      '.gn-wx-result span { color:var(--muted,#55606B); }' +
       '.gn-wx-note { color:var(--muted,#55606B); font-size:0.78rem; margin-top:8px; min-height:1em; }' +
-      '.gn-wx-or { color:var(--muted,#55606B); font-size:0.74rem; text-align:center; margin:0 0 10px; }' +
       '.gn-wx-credit { color:var(--muted,#55606B); font-size:0.7rem; }' +
       '.gn-wx-credit a { color:var(--accent,#0F6E7A); }' +
       // Phones: icon + temperature only, and the card lines up with the left edge of the footer
@@ -165,43 +157,41 @@
   }
 
   function setPlace(place) {
-    state.place = place; state.data = null; state.fetchedAt = 0; state.picking = false; state.results = null; state.note = '';
+    state.place = place; state.data = null; state.fetchedAt = 0; state.denied = false; state.note = '';
     lsSet(KEY_PLACE, place);
     lsDel(KEY_CACHE);
     fetchForecast();
   }
 
+  // Asks the browser for the location. This is what shows the browser's own permission pop-up.
   function useMyLocation() {
-    if (!navigator.geolocation) { state.note = 'Location is not available in this browser. Type a city instead.'; render(); return; }
-    state.note = 'Asking your browser for your location…'; render();
+    if (state.locating) return;
+    function fail() {
+      state.locating = false;
+      if (state.place) { state.note = 'Your browser did not share a location, so this one was kept.'; }
+      else { state.denied = true; state.open = true; }
+      render();
+    }
+    if (!navigator.geolocation) { fail(); return; }
+    state.locating = true; state.note = '';
+    render();
     navigator.geolocation.getCurrentPosition(function (pos) {
+      state.locating = false; state.denied = false; state.open = true;
       // Two decimals (~1 km) is plenty for a forecast and keeps the request less precise.
       setPlace({ name: 'My location', lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100 });
-    }, function () {
-      state.note = 'Location was not shared. Type a city instead.'; render();
-    }, { timeout: 10000, maximumAge: 10 * 60 * 1000 });
-  }
-
-  function searchCity(q) {
-    q = String(q || '').trim();
-    if (q.length < 2) { state.note = 'Type at least two letters.'; state.results = null; render(); return; }
-    state.note = 'Searching…'; state.results = null; render();
-    fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) + '&count=5&language=en&format=json')
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (d) {
-        state.results = (d && d.results) || [];
-        state.note = state.results.length ? '' : 'No places found. Check the spelling and try again.';
-        render();
-      })
-      .catch(function () { state.note = 'Search is unavailable right now. Please try again.'; state.results = null; render(); });
+    }, fail, { timeout: 15000, maximumAge: 10 * 60 * 1000 });
   }
 
   // ── Rendering ───────────────────────────────────────────────────────────────
   function renderChip() {
     var html, label;
-    if (!state.place) {
+    if (state.locating) {
+      html = icon('partly-day', 16) + '<span>Locating…</span>';
+      label = 'Weather: waiting for your browser to share a location';
+    } else if (!state.place) {
       html = icon('partly-day', 16) + '<span>Weather</span>';
-      label = 'Weather: choose a location';
+      label = state.denied ? 'Weather: your browser did not share a location. Open to try again'
+                           : 'Weather: your browser will ask to share your location';
     } else if (state.data && !state.error) {
       var c = state.data.current;
       var k = kind(c.weather_code, c.is_day !== 0);
@@ -219,23 +209,13 @@
     chip.setAttribute('aria-expanded', state.open ? 'true' : 'false');
   }
 
-  function pickerHtml() {
-    var res = '';
-    if (state.results && state.results.length) {
-      res = '<div class="gn-wx-results">' + state.results.map(function (r, i) {
-        var where = [r.admin1, r.country].filter(Boolean).join(', ');
-        return '<button type="button" class="gn-wx-result" data-wx="pick" data-i="' + i + '">' + esc(r.name) + (where ? ' <span>— ' + esc(where) + '</span>' : '') + '</button>';
-      }).join('') + '</div>';
-    }
+  // Shown only when the browser did not share a location.
+  function deniedHtml() {
     return '<div class="gn-wx-hd"><div class="gn-wx-place">Weather</div><button type="button" class="gn-wx-x" data-wx="close" aria-label="Close weather">×</button></div>' +
-      '<button type="button" class="gn-wx-btn gn-wx-btn-primary gn-wx-btn-wide" data-wx="geo">Use my location</button>' +
-      '<div class="gn-wx-or">or type a city</div>' +
-      '<form class="gn-wx-row" data-wx-form><input class="gn-wx-input" type="text" placeholder="City name" aria-label="City name" autocomplete="off">' +
-      '<button type="submit" class="gn-wx-btn">Search</button></form>' +
-      res +
-      '<div class="gn-wx-note" aria-live="polite">' + esc(state.note) + '</div>' +
-      (state.place ? '<div class="gn-wx-actions" style="margin:8px 0 0;"><button type="button" class="gn-wx-btn" data-wx="cancel">Cancel</button></div>' : '') +
-      creditHtml();
+      '<div class="gn-wx-sub" style="margin-bottom:12px;">Your browser did not share a location. Allow location for this site in your browser, then try again.</div>' +
+      '<div class="gn-wx-actions">' +
+        '<button type="button" class="gn-wx-btn gn-wx-btn-primary" data-wx="geo">Try again</button>' +
+      '</div>' + creditHtml();
   }
 
   function creditHtml() {
@@ -261,9 +241,9 @@
       '<div class="gn-wx-days">' + days + '</div>' +
       '<div class="gn-wx-actions">' +
         '<button type="button" class="gn-wx-btn" data-wx="units" aria-label="Switch temperature units">' + (state.units === 'us' ? 'Show °C' : 'Show °F') + '</button>' +
-        '<button type="button" class="gn-wx-btn" data-wx="change">Change location</button>' +
+        '<button type="button" class="gn-wx-btn" data-wx="geo">Update location</button>' +
         '<button type="button" class="gn-wx-btn" data-wx="remove">Remove</button>' +
-      '</div>' + creditHtml();
+      '</div>' + (state.note ? '<div class="gn-wx-note" style="margin:0 0 8px;" aria-live="polite">' + esc(state.note) + '</div>' : '') + creditHtml();
   }
 
   function unavailableHtml() {
@@ -271,7 +251,7 @@
       '<div class="gn-wx-sub" style="margin-bottom:12px;">' + (state.loading ? 'Loading the forecast…' : 'Weather unavailable right now.') + '</div>' +
       '<div class="gn-wx-actions">' +
         (state.loading ? '' : '<button type="button" class="gn-wx-btn gn-wx-btn-primary" data-wx="retry">Retry</button>') +
-        '<button type="button" class="gn-wx-btn" data-wx="change">Change location</button>' +
+        '<button type="button" class="gn-wx-btn" data-wx="geo">Update location</button>' +
         '<button type="button" class="gn-wx-btn" data-wx="remove">Remove</button>' +
       '</div>' + creditHtml();
   }
@@ -279,30 +259,24 @@
   function renderCard() {
     card.hidden = !state.open;
     if (!state.open) return;
-    // keep whatever the visitor has typed when the picker re-renders
-    var prev = card.querySelector('.gn-wx-input');
-    var typed = prev ? prev.value : '';
-    var hadFocus = prev && document.activeElement === prev;
-    if (!state.place || state.picking) card.innerHTML = pickerHtml();
+    if (!state.place) card.innerHTML = deniedHtml();
     else if (state.data && !state.error) card.innerHTML = forecastHtml();
     else card.innerHTML = unavailableHtml();
-    var input = card.querySelector('.gn-wx-input');
-    if (input) { input.value = typed; if (hadFocus) input.focus(); }
   }
 
   function render() { if (!chip) return; renderChip(); renderCard(); }
 
   // ── Open / close ────────────────────────────────────────────────────────────
   function open() {
+    // No place yet: let the browser ask (its own pop-up). Our card only opens afterwards.
+    if (!state.place && !state.denied) { useMyLocation(); return; }
     state.open = true;
-    if (state.place && !state.picking && !fresh()) fetchForecast();
+    if (state.place && !fresh()) fetchForecast();
     render();
-    var first = card.querySelector('.gn-wx-input') || card.querySelector('.gn-wx-x');
-    if (first && !state.place) first.focus();
   }
   function close(returnFocus) {
     if (!state.open) return;
-    state.open = false; state.picking = false; state.results = null; state.note = '';
+    state.open = false; state.note = '';
     render();
     if (returnFocus) chip.focus();
   }
@@ -313,14 +287,8 @@
     var act = b.getAttribute('data-wx');
     if (act === 'close') close(true);
     else if (act === 'geo') useMyLocation();
-    else if (act === 'pick') {
-      var r = state.results && state.results[parseInt(b.getAttribute('data-i'), 10)];
-      if (r) setPlace({ name: r.name, lat: r.latitude, lon: r.longitude });
-    }
     else if (act === 'units') { state.units = state.units === 'us' ? 'metric' : 'us'; lsSet(KEY_UNITS, state.units); render(); }
-    else if (act === 'change') { state.picking = true; state.results = null; state.note = ''; render(); var i = card.querySelector('.gn-wx-input'); if (i) i.focus(); }
-    else if (act === 'cancel') { state.picking = false; state.results = null; state.note = ''; render(); }
-    else if (act === 'remove') { state.place = null; state.data = null; state.error = false; state.picking = false; lsDel(KEY_PLACE); lsDel(KEY_CACHE); render(); }
+    else if (act === 'remove') { state.place = null; state.data = null; state.error = false; state.denied = false; state.open = false; lsDel(KEY_PLACE); lsDel(KEY_CACHE); render(); }
     else if (act === 'retry') fetchForecast();
   }
 
@@ -350,11 +318,6 @@
 
     chip.addEventListener('click', function () { if (state.open) close(false); else open(); });
     card.addEventListener('click', onCardClick);
-    card.addEventListener('submit', function (e) {
-      if (!e.target.matches('[data-wx-form]')) return;
-      e.preventDefault();
-      searchCity(card.querySelector('.gn-wx-input').value);
-    });
     document.addEventListener('click', function (e) {
       if (!state.open) return;
       // composedPath(), not mount.contains(): a click inside the card usually re-renders it, so by

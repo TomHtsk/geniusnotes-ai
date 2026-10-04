@@ -39,6 +39,8 @@ Stripe, the Pro plan, `pricing.html`, `js/pricing.js`, `api/checkout.js` and `ap
 | Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) |
 | Signed in | 300 | 30 min | 3 |
 
+`/api/summarize` limits by request type: a YouTube **link** uses the daily YouTube allowance; **text** (uploads, flashcards, notebook summaries) is a normal monthly AI action, needs a real account, and never touches the YouTube allowance; a video **search** only hits the hourly rate limit. To reset every YouTube daily counter, bump `YT_COUNTER_RESET_TAG` in `api/_lib/auth.js`.
+
 Limit hit → API returns 429 `{ code: 'limit_reached', error: '<sentence saying when it resets>' }`. Pages can show `error` as-is, or pass it to `gnShowLimitNotice()` in `js/auth-gate.js`. There is no upgrade prompt.
 
 ### Create picture — diagrams drawn by OUR templates, not by the AI (Oct 2026)

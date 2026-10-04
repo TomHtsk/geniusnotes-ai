@@ -245,6 +245,12 @@ async function checkRateLimit(uid, res) {
 
 const GUEST_YT_LIMIT = 3;
 
+// One-time reset of every YouTube daily counter: the counters only count a day whose
+// stored key matches _ytDayKey(), so changing this tag makes all of today's counts start
+// again from zero (for guests and accounts). Bump it (r2, r3, ...) to reset again.
+const YT_COUNTER_RESET_TAG = 'r1';
+function _ytDayKey() { return _todayKey() + '-' + YT_COUNTER_RESET_TAG; }
+
 function _todayKey() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD, UTC
 }
@@ -269,7 +275,7 @@ async function checkGuestYoutubeLimit(req, uid, res) {
   try {
     _ensureAdmin();
     const db = getDb();
-    const today = _todayKey();
+    const today = _ytDayKey();
     const ipKey = _sanitizeIp(_clientIp(req));
     const uidRef = db.doc(`guestLimits/${uid}`);
     const ipRef = db.doc(`guestLimitsByIp/${ipKey}`);
@@ -375,7 +381,7 @@ async function checkYoutubeDailyLimit(uid, res) {
     const limit = USAGE_LIMITS.yt;
     _ensureAdmin();
     const db = getDb();
-    const today = _todayKey();
+    const today = _ytDayKey();
     const ref = db.doc(`users/${uid}/ytLimit/${today}`);
 
     const result = await db.runTransaction(async (tx) => {

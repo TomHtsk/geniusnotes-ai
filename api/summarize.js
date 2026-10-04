@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
 const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 function getVideoId(url) {
@@ -760,7 +760,22 @@ module.exports = async function handler(req, res) {
   const authed = await verifyAuthFull(req, res, { allowAnonymous: true });
   if (!authed) return;
   const { uid, isAnonymous } = authed;
-  if (isAnonymous) {
+  // Three different kinds of request arrive here, and each is limited on its own:
+  //  - a YouTube LINK to convert  -> the daily YouTube allowance (guests and accounts)
+  //  - TEXT (uploads, flashcards) -> a normal monthly AI action; needs a real account.
+  //                                  It never touches the YouTube allowance.
+  //  - a video SEARCH             -> no AI is used; only the general hourly rate limit.
+  const _b = req.body || {};
+  const isSearch = !!_b.q, isText = !isSearch && !!_b.text;
+  let chargedAiAction = false;
+  if (isSearch) {
+    if (!(await checkRateLimit(uid, res))) return;
+  } else if (isText) {
+    if (isAnonymous) return res.status(401).json({ error: 'sign_in_required', message: 'Sign in free to use this feature.' });
+    if (!(await checkRateLimit(uid, res))) return;
+    if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+    chargedAiAction = true;
+  } else if (isAnonymous) {
     if (!(await checkGuestYoutubeLimit(req, uid, res))) return;
   } else {
     if (!(await checkYoutubeDailyLimit(uid, res))) return;
@@ -816,12 +831,13 @@ module.exports = async function handler(req, res) {
         console.error('Groq error (summarize/text):', data.error?.message);
         const e = new Error(data.error?.message || 'Groq error');
         e.code = data.error?.code;
-        if (await sendBusyIfNeeded(e, res, null)) return; // this endpoint charges no AI action
+        if (chargedAiAction) await refundAiAction(uid); // a failed request costs the user nothing
+        if (await sendBusyIfNeeded(e, res, null)) return;
         if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
         return res.status(500).json({ error: e.message });
       }
       const summary = data.choices?.[0]?.message?.content;
-      if (!summary) return res.status(500).json({ error: 'No result returned' });
+      if (!summary) { if (chargedAiAction) await refundAiAction(uid); return res.status(500).json({ error: 'No result returned' }); }
 
       // For flashcards mode, parse the JSON array and return it directly
       if (mode === 'flashcards') {

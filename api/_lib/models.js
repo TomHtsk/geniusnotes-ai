@@ -4,14 +4,12 @@
 //
 // History: llama-3.3-70b-versatile and llama-3.1-8b-instant were shut down by Groq
 // (replaced by the openai/gpt-oss-* models below). meta-llama/llama-4-scout-17b-16e-instruct
-// (the old vision/OCR model) was also deprecated; no confirmed vision-capable
-// replacement exists on Groq as of this fix — MODEL_VISION intentionally still
-// defaults to the deprecated name until a replacement is confirmed (see CLAUDE.md).
-// Image upload/OCR is a known, deferred gap — not a regression introduced here.
+// (the old vision/OCR model) was also deprecated; Groq's docs (Oct 2026) list
+// qwen/qwen3.8-27b as the model that accepts images, so MODEL_VISION defaults to it.
 
 const MODEL_LARGE = process.env.GROQ_MODEL_LARGE || 'openai/gpt-oss-120b';
 const MODEL_SMALL = process.env.GROQ_MODEL_SMALL || 'openai/gpt-oss-20b';
-const MODEL_VISION = process.env.GROQ_MODEL_VISION || 'meta-llama/llama-4-scout-17b-16e-instruct';
+const MODEL_VISION = process.env.GROQ_MODEL_VISION || 'qwen/qwen3.8-27b';
 const MODEL_WHISPER = 'whisper-large-v3';
 const MODEL_WHISPER_TURBO = 'whisper-large-v3-turbo';
 

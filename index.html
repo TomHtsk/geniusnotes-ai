@@ -1664,7 +1664,7 @@ async function umHandleFile(file) {
       text = await umExtractPdf(file, ctl.signal);
     } else if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
       document.getElementById('um-proc-label').textContent = 'Transcribing image text…';
-      const dataUrl = await umToDataUrl(file);
+      const dataUrl = await umImageForOcr(file);
       const d = await umPostJson('/api/extract', { ocrImages: [dataUrl] }, ctl.signal);
       text = d.text || '';
     } else if (['mp4','mov','webm','mkv','m4a','mp3','wav'].includes(ext)) {
@@ -1850,6 +1850,43 @@ function umToDataUrl(file) {
     fr.onerror = rej;
     fr.readAsDataURL(file);
   });
+}
+// Photos are shrunk in the browser before they are sent for text reading: phone photos
+// are often 3-10 MB, and Vercel refuses any request over 4.5 MB ("too large to send").
+// Longest side is capped at 2000px (plenty for reading text) and saved as JPEG; if the
+// result is still big, quality is lowered until it is safely under the limit.
+async function umImageForOcr(file) {
+  const MAX_SIDE = 2000, MAX_CHARS = 3000000; // ~3 MB of base64 text
+  let img;
+  try {
+    const url = URL.createObjectURL(file);
+    try {
+      img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => rej(new Error('decode'));
+        im.src = url;
+      });
+    } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  } catch (e) {
+    throw new Error("This image can't be read in your browser. Try a JPG or PNG file.");
+  }
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) throw new Error("This image can't be read in your browser. Try a JPG or PNG file.");
+  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * scale));
+  canvas.height = Math.max(1, Math.round(h * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; // transparent PNGs get a white background, not black
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  let out = '';
+  for (const q of [0.85, 0.7, 0.55, 0.4]) {
+    out = canvas.toDataURL('image/jpeg', q);
+    if (out.length <= MAX_CHARS) break;
+  }
+  return out;
 }
 async function umExtractPdf(file, signal) {
   // Reads the PDF's real text layer in the browser (free, instant, no AI). Only pages

@@ -1660,7 +1660,7 @@ async function umHandleFile(file) {
       const d = await umPostJson('/api/extract', { content: b64, fileType: 'pptx' }, ctl.signal);
       text = d.text || '';
     } else if (ext === 'pdf') {
-      document.getElementById('um-proc-label').textContent = 'Rendering PDF pages…';
+      document.getElementById('um-proc-label').textContent = 'Reading PDF…';
       text = await umExtractPdf(file, ctl.signal);
     } else if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
       document.getElementById('um-proc-label').textContent = 'Transcribing image text…';
@@ -1852,23 +1852,77 @@ function umToDataUrl(file) {
   });
 }
 async function umExtractPdf(file, signal) {
+  // Reads the PDF's real text layer in the browser (free, instant, no AI). Only pages
+  // with no text layer (scanned pages) are rendered to an image and sent for OCR,
+  // one page per request so no request gets near Vercel's 4.5 MB body limit.
   if (typeof pdfjsLib === 'undefined') throw new Error('PDF library not loaded. Try refreshing.');
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const MAX_PAGES = 60, MAX_OCR_PAGES = 15;
+  const label = document.getElementById('um-proc-label');
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const canvas = document.createElement('canvas');
-  const images = [];
-  for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
-    document.getElementById('um-proc-label').textContent = `Rendering page ${i} of ${Math.min(pdf.numPages,10)}…`;
+  const total = Math.min(pdf.numPages, MAX_PAGES);
+  const pages = new Array(total).fill('');
+  const scanned = [];
+
+  for (let i = 1; i <= total; i++) {
+    if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    label.textContent = `Reading page ${i} of ${total}…`;
     const page = await pdf.getPage(i);
-    const vp = page.getViewport({ scale: 1.5 });
-    canvas.width = vp.width; canvas.height = vp.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-    images.push(canvas.toDataURL('image/jpeg', 0.85));
+    const tc = await page.getTextContent();
+    // Rebuild lines from the positioned text items: a new line starts when the
+    // vertical position changes or pdf.js marks an end-of-line.
+    let out = '', lastY = null;
+    for (const it of tc.items) {
+      if (typeof it.str !== 'string') continue;
+      const y = it.transform ? it.transform[5] : null;
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && out && !out.endsWith('\n')) out += '\n';
+      out += it.str;
+      if (it.hasEOL && !out.endsWith('\n')) out += '\n';
+      if (y !== null) lastY = y;
+    }
+    out = out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (out.replace(/\s/g, '').length >= 20) pages[i - 1] = out;
+    else scanned.push(i);
   }
-  document.getElementById('um-proc-label').textContent = 'Extracting text via AI…';
-  const d = await umPostJson('/api/extract', { ocrImages: images }, signal);
-  return d.text || '';
+
+  // Scanned pages: OCR one at a time. If image reading is unavailable, keep whatever
+  // text we already have instead of failing the whole upload.
+  let ocrFailed = '';
+  if (scanned.length) {
+    const canvas = document.createElement('canvas');
+    const todo = scanned.slice(0, MAX_OCR_PAGES);
+    for (let k = 0; k < todo.length; k++) {
+      if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      const n = todo[k];
+      label.textContent = `Reading scanned page ${k + 1} of ${todo.length}…`;
+      try {
+        const page = await pdf.getPage(n);
+        const vp = page.getViewport({ scale: 1.5 });
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const d = await umPostJson('/api/extract', { ocrImages: [canvas.toDataURL('image/jpeg', 0.8)] }, signal);
+        pages[n - 1] = (d.text || '').trim();
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        ocrFailed = (e && e.message) || 'Image reading failed';
+        break;
+      }
+    }
+  }
+
+  const haveText = pages.some(t => t);
+  if (!haveText) {
+    if (ocrFailed) throw new Error('This PDF is made of scanned images, and image reading is unavailable right now. PDFs with selectable text work normally.');
+    return '';
+  }
+  let text = pages.map((t, idx) => t ? (total > 1 ? `Page ${idx + 1}\n${t}` : t) : '').filter(Boolean).join('\n\n');
+  const notes = [];
+  if (ocrFailed) notes.push(`${scanned.length} scanned page(s) could not be read because image reading is unavailable right now.`);
+  else if (scanned.length > MAX_OCR_PAGES) notes.push(`Only the first ${MAX_OCR_PAGES} scanned pages were read.`);
+  if (pdf.numPages > MAX_PAGES) notes.push(`This PDF has ${pdf.numPages} pages; only the first ${MAX_PAGES} were read.`);
+  if (notes.length) text += '\n\n[Note: ' + notes.join(' ') + ']';
+  return text;
 }
 
 function umImportToNotepad() {

@@ -10,9 +10,6 @@
 const MODEL_LARGE = process.env.GROQ_MODEL_LARGE || 'openai/gpt-oss-120b';
 const MODEL_SMALL = process.env.GROQ_MODEL_SMALL || 'openai/gpt-oss-20b';
 const MODEL_VISION = process.env.GROQ_MODEL_VISION || 'qwen/qwen3.8-27b';
-// Picture generation (Notepad "Create picture") runs on Cloudflare Workers AI, not Groq —
-// see api/_lib/images.js. Override with CF_MODEL_IMAGE in Vercel.
-const CF_MODEL_IMAGE = process.env.CF_MODEL_IMAGE || '@cf/black-forest-labs/flux-1-schnell';
 const MODEL_WHISPER = 'whisper-large-v3';
 const MODEL_WHISPER_TURBO = 'whisper-large-v3-turbo';
 
@@ -89,7 +86,7 @@ async function sendBusyIfNeeded(err, res, uid) {
 }
 
 module.exports = {
-  MODEL_LARGE, MODEL_SMALL, MODEL_VISION, MODEL_WHISPER, MODEL_WHISPER_TURBO, CF_MODEL_IMAGE,
+  MODEL_LARGE, MODEL_SMALL, MODEL_VISION, MODEL_WHISPER, MODEL_WHISPER_TURBO,
   FRIENDLY_AI_ERROR, isModelUnavailableError,
   BUSY_AI_ERROR, BUSY_AI_CODE, groqChat, isBusyError, sendBusyIfNeeded,
 };

@@ -1,5 +1,6 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
+const { buildDiagramMessages, validateDiagram, parseDiagramReply, MAX_NOTE_CHARS, DIAGRAM_FAILED } = require('./_lib/diagram');
+const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
 
 const MAX_CHARS = 15000;
 
@@ -95,6 +96,43 @@ module.exports = async function handler(req, res) {
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
+
+  // diagram route — Notepad "Create picture". The AI returns DATA only (one of the fixed
+  // shapes in api/_lib/diagram.js); the browser draws it with js/diagram-templates.js.
+  // One AI action. Invalid data is retried once; if it is still invalid the action is
+  // given back and a friendly error is returned.
+  if (req.body?.action === 'diagram') {
+    const noteText = String(req.body.text || '').trim().slice(0, MAX_NOTE_CHARS);
+    if (noteText.length < 3) {
+      await refundAiAction(uid);
+      return res.status(400).json({ error: 'Write or select something in your note first.' });
+    }
+    try {
+      let diagram = null;
+      for (let attempt = 0; attempt < 2 && !diagram; attempt++) {
+        try {
+          const r = await groqFetch({ model: MODEL_LARGE, messages: buildDiagramMessages(noteText), max_tokens: 2000, temperature: attempt ? 0.2 : 0, include_reasoning: false, response_format: { type: 'json_object' } }, GROQ);
+          const data = await r.json();
+          diagram = validateDiagram(parseDiagramReply(data.choices?.[0]?.message?.content), noteText);
+          if (!diagram) console.error('Diagram: AI reply did not fit a template (attempt ' + (attempt + 1) + ')');
+        } catch (err) {
+          if (isBusyError(err) || isModelUnavailableError(err)) throw err;
+          console.error('Groq error (diagram, attempt ' + (attempt + 1) + '):', err.message);
+        }
+      }
+      if (!diagram) {
+        await refundAiAction(uid);
+        return res.status(502).json({ error: DIAGRAM_FAILED });
+      }
+      return res.status(200).json({ diagram });
+    } catch (err) {
+      console.error('Groq error (diagram):', err.message);
+      if (await sendBusyIfNeeded(err, res, uid)) return;
+      await refundAiAction(uid);
+      if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
+      return res.status(502).json({ error: DIAGRAM_FAILED });
+    }
+  }
 
   // citation route (rewired from /api/citation)
   if (req.body?.sourceType !== undefined) {

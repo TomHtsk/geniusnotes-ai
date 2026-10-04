@@ -307,7 +307,7 @@ async function checkGuestYoutubeLimit(req, uid, res) {
 // Change the numbers here. `record` is in seconds (1800s = 30 min). `yt` is per day;
 // `ai` and `record` are per month. Guests (not signed in) only get the YouTube converter,
 // limited by GUEST_YT_LIMIT above.
-const USAGE_LIMITS = { ai: 300, record: 1800, yt: 3, images: 10 }; // images = AI pictures per month
+const USAGE_LIMITS = { ai: 300, record: 1800, yt: 3 };
 
 function _monthKey(d) {
   return (d || new Date()).toISOString().slice(0, 7); // YYYY-MM, UTC
@@ -348,52 +348,6 @@ async function checkAndIncrementUsage(uid, res, kind) {
   } catch (e) {
     return true;
   }
-}
-
-// Monthly AI-picture counter (`imageCount` in users/{uid}/usage/{YYYY-MM}). reserveImage
-// claims one slot BEFORE generating — inside a transaction, so two requests at once can't
-// both slip past the limit — and sends the 429 itself when the month's pictures are used
-// up. The caller MUST call refundImage if no picture is returned, so only successful
-// pictures end up counted. Returns the number left after this one, or false (429 sent).
-// Fail-open on Firestore errors, same reasoning as checkRateLimit.
-async function reserveImage(uid, res) {
-  try {
-    const limit = USAGE_LIMITS.images;
-    _ensureAdmin();
-    const db = getDb();
-    const month = _monthKey();
-    const ref = db.doc(`users/${uid}/usage/${month}`);
-    const result = await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const used = snap.exists ? (snap.data().imageCount || 0) : 0;
-      if (used >= limit) return { ok: false, used };
-      tx.set(ref, { month, imageCount: used + 1 }, { merge: true });
-      return { ok: true, used: used + 1 };
-    });
-    if (!result.ok) {
-      res.status(429).json({
-        code: 'limit_reached', used: result.used, limit, imagesLeft: 0,
-        error: `You've used all ${limit} pictures for this month. The limit resets at the start of next month.`,
-      });
-      return false;
-    }
-    return { left: Math.max(0, limit - result.used) };
-  } catch (e) {
-    return { left: null };
-  }
-}
-
-async function refundImage(uid) {
-  try {
-    _ensureAdmin();
-    const db = getDb();
-    const ref = db.doc(`users/${uid}/usage/${_monthKey()}`);
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const used = snap.exists ? (snap.data().imageCount || 0) : 0;
-      if (used > 0) tx.set(ref, { imageCount: used - 1 }, { merge: true });
-    });
-  } catch (e) { /* worst case the picture stays counted */ }
 }
 
 // Gives back the one AI action that checkAndIncrementUsage charged, for a request that
@@ -567,8 +521,6 @@ module.exports = {
   getDb,
   checkAndIncrementUsage,
   refundAiAction,
-  reserveImage,
-  refundImage,
   checkYoutubeDailyLimit,
   USAGE_LIMITS,
 };

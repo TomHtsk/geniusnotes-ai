@@ -842,17 +842,13 @@
     .cp-ok:hover { opacity:0.85; }
     /* "Create picture" window (AI picture) */
     #picture-modal { display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,0.65); align-items:center; justify-content:center; padding:16px; }
-    .pic-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px 20px; max-width:420px; width:100%; max-height:92vh; overflow-y:auto; color:var(--text); }
-    .pic-sub { font-size:0.78rem; color:var(--muted); margin:2px 0 12px; }
-    .pic-text { width:100%; min-height:84px; resize:vertical; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.9rem; color:var(--text); font-family:inherit; outline:none; box-sizing:border-box; }
-    .pic-text:focus { border-color:var(--accent); }
-    .pic-left { font-size:0.76rem; color:var(--muted); margin:8px 0 14px; }
+    .pic-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px 20px; max-width:640px; width:100%; max-height:92vh; overflow-y:auto; color:var(--text); }
+    .pic-message { font-size:0.9rem; line-height:1.5; color:var(--text); margin:10px 0 18px; }
     .pic-row { display:flex; gap:8px; }
-    .pic-error { display:none; font-size:0.82rem; color:#e5484d; margin:0 0 12px; }
     .pic-busy { text-align:center; padding:26px 0 18px; font-size:0.88rem; color:var(--muted); }
     .pic-spin { width:34px; height:34px; border:3px solid rgba(var(--accent-rgb),0.25); border-top-color:var(--accent); border-radius:50%; animation:picspin 0.8s linear infinite; margin:0 auto 12px; }
     @keyframes picspin { to { transform:rotate(360deg); } }
-    .pic-preview { display:block; width:100%; border-radius:10px; border:1px solid var(--border); background:#fff; margin-bottom:6px; }
+    .pic-preview { display:block; width:100%; border-radius:10px; border:1px solid var(--border); background:#fff; margin:10px 0 6px; }
     .pic-note { font-size:0.72rem; color:var(--muted); margin-bottom:12px; }
     #save-dest-modal.open { display:flex !important; }
     .sd-card { background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.3); border-radius:16px; padding:22px 20px; width:310px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
@@ -1012,6 +1008,7 @@
 </head>
 <body>
 <script src="js/auth-gate.js"></script>
+<script src="js/diagram-templates.js"></script>
 <script>gnGuardPage();</script>
 
 <!-- HEADER -->
@@ -1177,7 +1174,7 @@
           </div>
         </div>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="openPictureModal()" title="Create an AI picture from a description" id="pic-tb-btn">🖼 Create picture</button>
+        <button class="tb-btn" onclick="openPictureModal()" title="Make a diagram from the selected text or the whole note" id="pic-tb-btn">🖼 Create picture</button>
         <div class="tb-sep"></div>
         <!-- Everything else lives in More ▾ — same buttons/handlers, just relocated -->
         <div style="position:relative;" id="tb-more-wrap">
@@ -1665,29 +1662,26 @@
   </div>
 </div>
 
-<!-- "Create picture" window: AI picture from a description (Cloudflare Workers AI via /api/subscription) -->
+<!-- "Create picture" window: a diagram drawn by js/diagram-templates.js from data the AI reads out of the note -->
 <div id="picture-modal" onclick="if(event.target.id==='picture-modal')closePictureModal()">
   <div class="pic-card">
     <div class="cp-title">Create picture</div>
-    <div id="pic-step-form">
-      <div class="pic-sub">Describe a simple illustration for your notes. Pictures can't include words or labels.</div>
-      <textarea class="pic-text" id="pic-desc" maxlength="600" placeholder="For example: the water cycle with clouds, rain, a river and the sea"></textarea>
-      <div class="pic-left" id="pic-left">&nbsp;</div>
-      <div class="pic-error" id="pic-error"></div>
+    <div id="pic-step-busy" style="display:none">
+      <div class="pic-busy"><div class="pic-spin"></div><span id="pic-busy-text">Reading your note…</span></div>
+      <div class="pic-row"><button class="cp-btn cp-cancel" onclick="closePictureModal()">Cancel</button></div>
+    </div>
+    <div id="pic-step-message" style="display:none">
+      <div class="pic-message" id="pic-message"></div>
       <div class="pic-row">
         <button class="cp-btn cp-cancel" onclick="closePictureModal()">Close</button>
-        <button class="cp-btn cp-ok" id="pic-generate-btn" onclick="generatePicture()">Generate</button>
+        <button class="cp-btn cp-ok" id="pic-retry-btn" onclick="generatePicture()">Try again</button>
       </div>
     </div>
-    <div id="pic-step-busy" style="display:none">
-      <div class="pic-busy"><div class="pic-spin"></div>Creating your picture…</div>
-      <div class="pic-row"><button class="cp-btn cp-cancel" onclick="cancelPicture()">Cancel</button></div>
-    </div>
     <div id="pic-step-done" style="display:none">
-      <img class="pic-preview" id="pic-preview" alt="AI-generated picture preview">
-      <div class="pic-note" id="pic-done-note"></div>
+      <img class="pic-preview" id="pic-preview" alt="Diagram preview">
+      <div class="pic-note">Made from your note. Check it against your notes before you rely on it.</div>
       <div class="pic-row">
-        <button class="cp-btn cp-cancel" onclick="picTryAgain()">Try again</button>
+        <button class="cp-btn cp-cancel" onclick="generatePicture()">Try again</button>
         <button class="cp-btn cp-ok" onclick="insertPicture()">Insert into note</button>
       </div>
     </div>
@@ -6782,35 +6776,30 @@ function insertPhotos(input) {
 }
 
 
-// ── AI PICTURE ("Create picture") ──
-// Server: POST /api/subscription { action:'generateImage', description } -> { image, imagesLeft }.
-// The picture is shrunk here (max 1024px wide, JPEG, ~100-200 KB) before it goes into the
-// note, so a note with a few pictures still fits the cloud chunking in _cloudSaveNote.
-const PIC_MAX_W = 1024, PIC_TARGET_BYTES = 200 * 1024;
-let _picRange = null, _picAbort = null, _picRun = 0, _picDataUrl = '', _picDesc = '';
+// ── CREATE PICTURE (diagram from the note) ──
+// The AI never draws. POST /api/writing { action:'diagram', text } returns DATA in a fixed
+// shape (api/_lib/diagram.js); js/diagram-templates.js (GNDiagram) builds the SVG from one
+// fixed template per kind, and the PNG made from it is what goes into the note.
+const PIC_NOTHING = 'Nothing in this note looks drawable yet. Select an equation or a process and try again.';
+const PIC_FAILED = "We couldn't make a diagram from this note just now. Please try again.";
+const PIC_CAPTION = 'Diagram made from your note - check it against your notes';
+let _picRange = null, _picAbort = null, _picRun = 0, _picDataUrl = '', _picText = '', _picTitle = '', _picWidth = 0;
 
 function _picShow(step) {
-  ['form', 'busy', 'done'].forEach(function (s) {
+  ['busy', 'message', 'done'].forEach(function (s) {
     document.getElementById('pic-step-' + s).style.display = s === step ? '' : 'none';
   });
 }
-function _picError(msg) {
-  const el = document.getElementById('pic-error');
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
+function _picMessage(msg, canRetry) {
+  document.getElementById('pic-message').textContent = msg;
+  document.getElementById('pic-retry-btn').style.display = canRetry ? '' : 'none';
+  _picShow('message');
 }
-function _picSetLeft(left, limit) {
-  const el = document.getElementById('pic-left');
-  if (typeof left !== 'number') { el.innerHTML = '&nbsp;'; return; }
-  el.textContent = left + ' of ' + (limit || 10) + ' pictures left this month';
-  document.getElementById('pic-generate-btn').disabled = left <= 0;
-  document.getElementById('pic-generate-btn').style.opacity = left <= 0 ? '0.5' : '';
-}
-// Reads a reply as text first so a non-JSON reply never shows a raw parser error.
-async function _picFetchJson(opts) {
+// Reads the reply as text first so a non-JSON reply never shows a raw parser error.
+async function _picFetchJson(payload, signal) {
   let resp, raw;
   try {
-    resp = await _authFetch('/api/subscription', opts);
+    resp = await _authFetch('/api/writing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: signal });
     raw = await resp.text();
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
@@ -6818,11 +6807,9 @@ async function _picFetchJson(opts) {
   }
   let data = null;
   try { data = JSON.parse(raw); } catch (e) {}
-  if (!data || typeof data !== 'object') throw new Error("We couldn't create a picture just now. Please try again.");
+  if (!data || typeof data !== 'object') throw new Error(PIC_FAILED);
   if (!resp.ok || data.error) {
-    const err = new Error(resp.status === 401 ? 'Please sign in to create pictures.' : (typeof data.error === 'string' && data.error) || "We couldn't create a picture just now. Please try again.");
-    err.data = data;
-    throw err;
+    throw new Error(resp.status === 401 ? 'Please sign in to create pictures.' : (typeof data.error === 'string' && data.error) || PIC_FAILED);
   }
   return data;
 }
@@ -6832,91 +6819,55 @@ function openPictureModal() {
     if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to create pictures', openPictureModal);
     return;
   }
-  // Remember where the cursor is — typing in this window moves focus out of the note.
+  // The selected text if there is a selection, otherwise the whole note. The cursor
+  // position is remembered so the picture can be inserted there afterwards.
   _picRange = null;
-  let seed = '';
+  let text = '';
   const sel = window.getSelection();
   if (sel && sel.rangeCount) {
     const r = sel.getRangeAt(0);
     const host = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentElement;
     if (host && host.closest && host.closest('.page-content')) {
       _picRange = r.cloneRange();
-      seed = sel.toString().replace(/\s+/g, ' ').trim();
+      text = sel.toString().trim();
     }
   }
-  if (!seed) {
-    const note = notes.find(n => n.id === (_activeEditor === 'right' && _rightNoteId ? _rightNoteId : activeId));
-    const title = note && note.title ? String(note.title).trim() : '';
-    if (title && !/^untitled/i.test(title)) seed = title;
+  if (!text) {
+    const pages = _activeEditor === 'right' ? Array.from(document.querySelectorAll('#pages-container-right .page-content')) : _getAllPageContents();
+    text = pages.map(function (pc) { return pc.innerText || ''; }).join('\n').trim();
   }
-  document.getElementById('pic-desc').value = seed.slice(0, 300);
-  _picError('');
-  _picSetLeft(null);
-  _picShow('form');
+  _picText = text.replace(/\u00a0/g, ' ').slice(0, 6000);
   document.getElementById('picture-modal').style.display = 'flex';
-  setTimeout(function () { document.getElementById('pic-desc').focus(); }, 50);
-  _picFetchJson({ method: 'GET' }).then(function (d) { _picSetLeft(d.imagesLeft, d.imagesLimit); }).catch(function () {});
+  if (_picText.length < 3) { _picMessage('Write or select something in your note first.', false); return; }
+  generatePicture();
 }
 function closePictureModal() {
-  cancelPicture();
-  document.getElementById('picture-modal').style.display = 'none';
-}
-function cancelPicture() {
   _picRun++;
   if (_picAbort) { try { _picAbort.abort(); } catch (e) {} _picAbort = null; }
-  _picShow('form');
-}
-function picTryAgain() { _picDataUrl = ''; _picShow('form'); }
-
-// Shrinks to at most PIC_MAX_W wide and re-saves as JPEG, lowering quality until it is
-// around PIC_TARGET_BYTES.
-function _picShrink(dataUrl) {
-  return new Promise(function (resolve, reject) {
-    const img = new Image();
-    img.onload = function () {
-      const scale = Math.min(1, PIC_MAX_W / img.naturalWidth);
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(img, 0, 0, c.width, c.height);
-      let out = '';
-      for (const q of [0.82, 0.72, 0.62, 0.52, 0.42]) {
-        out = c.toDataURL('image/jpeg', q);
-        if (out.length * 0.75 <= PIC_TARGET_BYTES) break;
-      }
-      resolve(out);
-    };
-    img.onerror = function () { reject(new Error("We couldn't create a picture just now. Please try again.")); };
-    img.src = dataUrl;
-  });
+  document.getElementById('picture-modal').style.display = 'none';
 }
 
 async function generatePicture() {
-  const desc = document.getElementById('pic-desc').value.replace(/\s+/g, ' ').trim();
-  if (desc.length < 3) { _picError('Please describe the picture you want.'); return; }
-  _picError('');
+  _picDataUrl = '';
+  document.getElementById('pic-busy-text').textContent = 'Reading your note…';
   _picShow('busy');
   const run = ++_picRun;
   const ctl = _picAbort = new AbortController();
   try {
-    const d = await _picFetchJson({
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'generateImage', description: desc }), signal: ctl.signal,
-    });
-    const small = await _picShrink(d.image);
+    const d = await _picFetchJson({ action: 'diagram', text: _picText }, ctl.signal);
     if (run !== _picRun) return; // cancelled meanwhile
-    _picDataUrl = small; _picDesc = desc;
-    if (typeof d.imagesLeft === 'number') _picSetLeft(d.imagesLeft);
-    document.getElementById('pic-preview').src = small;
-    document.getElementById('pic-done-note').textContent =
-      typeof d.imagesLeft === 'number' ? d.imagesLeft + ' of 10 pictures left this month' : '';
+    if (!d.diagram || d.diagram.kind === 'none') { _picMessage(PIC_NOTHING, false); return; }
+    document.getElementById('pic-busy-text').textContent = 'Drawing the diagram…';
+    let drawn;
+    try { drawn = window.GNDiagram.render(d.diagram); } catch (e) { throw new Error(PIC_FAILED); }
+    const png = await window.GNDiagram.toPng(drawn);
+    if (run !== _picRun) return;
+    _picDataUrl = png; _picTitle = d.diagram.title || 'Diagram'; _picWidth = drawn.width;
+    document.getElementById('pic-preview').src = png;
     _picShow('done');
   } catch (err) {
     if (run !== _picRun || (err && err.name === 'AbortError')) return;
-    if (err.data && typeof err.data.imagesLeft === 'number') _picSetLeft(err.data.imagesLeft);
-    _picShow('form');
-    _picError(err.message);
+    _picMessage(err.message || PIC_FAILED, true);
   }
 }
 
@@ -6933,8 +6884,9 @@ function insertPicture() {
   }
   _undoSave();
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const html = '<span class="img-wrap" contenteditable="false"><img src="' + _picDataUrl + '" alt="AI-generated picture: ' + esc(_picDesc) + '" style="width:420px" draggable="false"></span><br>' +
-    '<span class="ai-pic-caption" style="font-size:0.75rem;font-style:italic;color:#7a8591;">AI-generated picture</span><br>';
+  const shown = Math.min(600, _picWidth || 600); // fits the page; drag a corner to resize
+  const html = '<span class="img-wrap" contenteditable="false"><img src="' + _picDataUrl + '" alt="Diagram: ' + esc(_picTitle) + '" style="width:' + shown + 'px" draggable="false"></span><br>' +
+    '<span class="ai-pic-caption" style="font-size:0.75rem;font-style:italic;color:#7a8591;">' + PIC_CAPTION + '</span><br>';
   document.execCommand('insertHTML', false, html);
   if (_activeEditor === 'right' && _rightNoteId) {
     const note = notes.find(n => n.id === _rightNoteId);

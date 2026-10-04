@@ -307,7 +307,7 @@ async function checkGuestYoutubeLimit(req, uid, res) {
 // Change the numbers here. `record` is in seconds (1800s = 30 min). `yt` is per day;
 // `ai` and `record` are per month. Guests (not signed in) only get the YouTube converter,
 // limited by GUEST_YT_LIMIT above.
-const USAGE_LIMITS = { ai: 10, record: 1800, yt: 3 };
+const USAGE_LIMITS = { ai: 300, record: 1800, yt: 3 };
 
 function _monthKey(d) {
   return (d || new Date()).toISOString().slice(0, 7); // YYYY-MM, UTC

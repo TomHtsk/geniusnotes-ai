@@ -31,7 +31,7 @@ Stripe, the Pro plan, `pricing.html`, `js/pricing.js`, `api/checkout.js` and `ap
 | Who | AI actions / month | Lecture recording / month | YouTube conversions / day |
 |---|---|---|---|
 | Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) |
-| Signed in | 10 | 30 min | 3 |
+| Signed in | 300 | 30 min | 3 |
 
 Limit hit → API returns 429 `{ code: 'limit_reached', error: '<sentence saying when it resets>' }`. Pages can show `error` as-is, or pass it to `gnShowLimitNotice()` in `js/auth-gate.js`. There is no upgrade prompt.
 

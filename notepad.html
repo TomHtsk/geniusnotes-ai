@@ -1378,6 +1378,7 @@
           <button class="cp-pick" onclick="cpLaunch('academic')">🎓 Academic</button>
           <button class="cp-pick" onclick="cpLaunch('homework')">🧠 Homework</button>
           <button class="cp-pick" onclick="cpLaunch('highlight')">✦ Highlight</button>
+          <button class="cp-pick" style="grid-column:1 / -1;" onmousedown="event.preventDefault()" onclick="cpLaunch('picture')">🖼 Create picture</button>
         </div>
         <div id="cp-messages">
           <div id="cp-empty">
@@ -4870,6 +4871,7 @@ function cpLaunch(mode) {
   closeConvPanel();
   if (mode === 'flashcards') { sendNoteToFlashcards(); return; }
   if (mode === 'homework')   { openHomeworkSolver();   return; }
+  if (mode === 'picture')    { openPictureModal();     return; }
   openDocFormat(mode);
 }
 

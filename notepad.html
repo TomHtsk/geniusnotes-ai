@@ -1618,7 +1618,7 @@
     <button class="sel-btn sel-btn-grammar" onclick="runInterpret('spelling')">🔤 Spelling</button>
     <button class="sel-btn sel-btn-sticky" onclick="addStickyNote()">📌 Sticky Note</button>
   </div>
-  <div style="height:1px;background:rgba(255,255,255,0.07);margin:4px 0;"></div>
+  <div id="sel-tools-divider" style="height:1px;background:rgba(255,255,255,0.07);margin:4px 0;"></div>
   <div style="display:flex;align-items:center;gap:7px;padding:2px 4px;">
     <span style="font-size:0.62rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.06em;white-space:nowrap;">HIGHLIGHT</span>
     <button class="hl-color-dot" style="background:#FFD600;" title="Yellow"  onclick="applyManualHighlight('rgba(255,214,0,0.45)')"></button>
@@ -5834,9 +5834,14 @@ function showSelectionPopup() {
   _selText = text;
   try { _selRange = sel.getRangeAt(0).cloneRange(); } catch(e) {}
   const rect = sel.getRangeAt(0).getBoundingClientRect();
+  // The popup shows only FONT SIZE and HIGHLIGHT. The Define / Comprehend / Grammar /
+  // Spelling / Sticky Note buttons are hidden, not deleted — set SEL_POPUP_TOOLS = true
+  // to bring them back.
+  const SEL_POPUP_TOOLS = false;
   const isSingleWord = text.trim().split(/\s+/).length === 1;
-  document.getElementById('sel-multi-row').style.display = isSingleWord ? 'none' : 'flex';
-  document.getElementById('sel-single-row').style.display = isSingleWord ? 'flex' : 'none';
+  document.getElementById('sel-multi-row').style.display = SEL_POPUP_TOOLS && !isSingleWord ? 'flex' : 'none';
+  document.getElementById('sel-single-row').style.display = SEL_POPUP_TOOLS && isSingleWord ? 'flex' : 'none';
+  document.getElementById('sel-tools-divider').style.display = SEL_POPUP_TOOLS ? '' : 'none';
   // Show font size of selected text
   try {
     const anchorEl = sel.anchorNode?.nodeType === 3 ? sel.anchorNode.parentElement : sel.anchorNode;

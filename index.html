@@ -608,6 +608,10 @@
     .ha-icon { width: 17px; height: 17px; }
     @media(max-width:480px) { .ha-btn span.ha-label { display: inline; } .ha-btn { flex: 1 1 auto; justify-content: center; padding: 0 14px; } }
     .wiki-logo-icon { border: 1px solid #DCE1E6; }
+    /* No YouTube / Wikipedia logos in the search bar (the elements stay in the page because
+       js/search.js switches between them; they are just not shown). */
+    .smart-search-bar .smart-icon-static, .smart-search-bar .smart-search-icon, .smart-search-bar .smart-divider { display: none !important; }
+    .smart-search-input { text-overflow: ellipsis; }
 
     /* Wikipedia result card — a white card with a soft border */
     .wiki-status { color: var(--muted); max-width: 720px; }
@@ -754,7 +758,7 @@ _syncThemeBtn();
           <div class="yt-logo-icon fade-icon" id="smart-icon-yt" style="display:none;">▶</div>
         </div>
         <div class="smart-divider"></div>
-        <input id="smart-search-input" class="smart-search-input" type="text" placeholder="Search any topic or paste a YouTube link…" aria-label="Search any topic or paste a YouTube link" autocomplete="off" />
+        <input id="smart-search-input" class="smart-search-input" type="text" placeholder="Search any topic on Wikipedia or paste a YouTube link" aria-label="Search any topic on Wikipedia or paste a YouTube link" autocomplete="off" />
         <button type="submit" class="smart-search-btn" id="smart-search-btn">Search</button>
       </form>
       <!-- Kept for goYtTranscribe(), which reads this id directly -->

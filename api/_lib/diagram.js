@@ -1,25 +1,30 @@
 // Notepad "Create picture": the AI never draws. It returns structured data in one of a few
 // fixed shapes; the browser (js/diagram-templates.js) draws the diagram from fixed
-// templates. This file holds the prompt and the strict validation of the AI's JSON.
-// Called from api/writing.js (action: 'diagram').
+// templates. This file holds the prompt, the request sizing and the strict validation of
+// the AI's JSON. Called from api/writing.js (action: 'diagram').
 
-const MAX_NOTE_CHARS = 6000;
+const MAX_NOTE_CHARS = 20000;   // hard cap on how much of a note is read
+const MAX_ITEMS = 5;            // pictures per whole-note request
 const LIMITS = {
   title: 80, subtitle: 100, formula: 24, name: 40, condition: 40, location: 60,
-  label: 40, detail: 120, heading: 40, point: 120,
+  label: 40, detail: 120, heading: 40, point: 120, anchor: 200,
   substancesPerSide: 4, steps: 8, minSteps: 2, columns: 4, minColumns: 2, points: 6, count: 99,
 };
 const NOTHING_DRAWABLE = 'Nothing in this note looks drawable yet. Select an equation or a process and try again.';
 const DIAGRAM_FAILED = "We couldn't make a diagram from this note just now. Please try again.";
+const NOTE_TOO_LONG = 'This note is too long to read in one go right now. Select the part you want a picture of and try again.';
 
-function buildDiagramMessages(noteText) {
-  const system = `You turn a student's note into DATA for one diagram. You never draw and never write SVG. Reply with ONE JSON object and nothing else.
+// Groq's free plan allows 8,000 tokens per minute per model, and a request is refused if
+// (prompt + note + max_tokens) is over that. So the note is trimmed to what fits while
+// leaving the AI enough room to answer. Raise GROQ_DIAGRAM_TOKEN_BUDGET in Vercel if the
+// Groq plan is upgraded; MAX_NOTE_CHARS still applies.
+const TOKEN_BUDGET = Number(process.env.GROQ_DIAGRAM_TOKEN_BUDGET) || 7600;
+const CHARS_PER_TOKEN = 3.6;     // deliberately cautious estimate
+const OUTPUT_TOKENS_MULTI = 3000, OUTPUT_TOKENS_SINGLE = 2000, OUTPUT_TOKENS_MAX = 6000;
 
-Find the single most important drawable thing in the note. Prefer, in this order: an equation, a process, a cycle, a comparison.
-
-Allowed shapes (use exactly these keys):
-1. Chemical equation that the note writes with chemical formulas:
-{"kind":"equation","title":"","subtitle":"","reactants":[{"count":1,"formula":"","name":""}],"products":[{"count":1,"formula":"","name":""}],"condition":"","location":""}
+const SHAPES = `Each item is ONE of these shapes (use exactly these keys):
+1. A chemical equation that the note writes with chemical formulas:
+{"kind":"equation","title":"","subtitle":"","reactants":[{"count":1,"formula":"","name":""}],"products":[{"count":1,"formula":"","name":""}],"condition":"","location":"","anchor":""}
 - count: the whole number written in front of the formula in the note (1 if none).
 - formula: exactly as written in the note, plain characters like CO2 or C6H12O6. No spaces.
 - name: the plain name of the substance ONLY if the note gives it; otherwise "".
@@ -27,25 +32,53 @@ Allowed shapes (use exactly these keys):
 - location: where the note says it happens; otherwise "".
 - At most ${LIMITS.substancesPerSide} reactants and ${LIMITS.substancesPerSide} products.
 2. Steps that happen in order and then stop:
-{"kind":"process","title":"","steps":[{"label":"","detail":""}]}
+{"kind":"process","title":"","steps":[{"label":"","detail":""}],"anchor":""}
 3. Steps that repeat in a loop:
-{"kind":"cycle","title":"","steps":[{"label":"","detail":""}]}
+{"kind":"cycle","title":"","steps":[{"label":"","detail":""}],"anchor":""}
 - process and cycle: ${LIMITS.minSteps} to ${LIMITS.steps} steps, in the note's order. label is a few words; detail is one short phrase or "".
 4. Two to four things compared side by side:
-{"kind":"comparison","title":"","columns":[{"heading":"","points":[""]}]}
+{"kind":"comparison","title":"","columns":[{"heading":"","points":[""]}],"anchor":""}
 - ${LIMITS.minColumns} to ${LIMITS.columns} columns, 1 to ${LIMITS.points} short points each.
-5. Nothing drawable:
-{"kind":"none"}
 
 STRICT RULES
 - Copy all wording from the note exactly. Do not add facts, numbers, names, steps or substances that the note does not contain. Do not correct the note, even if you think it is wrong (for example do not balance an equation).
 - title: a short title taken from the note's own words. subtitle may be "".
+- anchor: a short exact quote of 5 to 12 consecutive words copied character for character from the part of the note where that topic is discussed. It is used to place the picture next to that text.
 - Keep every text short: titles under ${LIMITS.title} characters, labels and headings under ${LIMITS.label}, details and points under ${LIMITS.detail}.
-- If the note has no equation written with formulas, no ordered steps, no loop and nothing to compare, reply {"kind":"none"}.`;
+- Prefer, in this order: an equation, a process, a cycle, a comparison.`;
+
+function buildDiagramMessages(noteText, multi) {
+  const task = multi
+    ? `You turn a student's note into DATA for diagrams. You never draw and never write SVG. Reply with ONE JSON object of the form {"items":[ ... ]} and nothing else.
+
+Read the WHOLE note from beginning to end and find every separate topic worth drawing, up to ${MAX_ITEMS}. Cover the most important parts of the note: choose the topics a student most needs to understand, and spread them across the whole note instead of taking only the first paragraphs.
+- One item per topic. Do NOT merge separate topics into one diagram. Example: a note about photosynthesis overall, the light-dependent reactions and the Calvin cycle gives three items: one equation and two process or cycle diagrams.
+- Do NOT return two items that show the same thing.
+- List the items in the order their topics appear in the note.
+- If nothing in the note is drawable, reply {"items":[]}.`
+    : `You turn a piece of a student's note into DATA for one diagram. You never draw and never write SVG. Reply with ONE JSON object of the form {"items":[ ... ]} with exactly one item, and nothing else.
+
+Find the single most important drawable thing in the text.
+- If nothing in it is drawable, reply {"items":[]}.`;
   return [
-    { role: 'system', content: system },
-    { role: 'user', content: 'NOTE:\n' + String(noteText).slice(0, MAX_NOTE_CHARS) },
+    { role: 'system', content: task + '\n\n' + SHAPES },
+    { role: 'user', content: 'NOTE:\n' + noteText },
   ];
+}
+
+// Decides how much of the note is sent and how much room the AI gets to answer, so the
+// request fits the per-minute token allowance. Returns { text, maxTokens, truncated }.
+function planDiagramRequest(rawText, multi) {
+  let text = String(rawText || '').replace(/ /g, ' ').trim();
+  let truncated = false;
+  if (text.length > MAX_NOTE_CHARS) { text = text.slice(0, MAX_NOTE_CHARS); truncated = true; }
+  const wantOut = multi ? OUTPUT_TOKENS_MULTI : OUTPUT_TOKENS_SINGLE;
+  const promptTokens = Math.ceil(buildDiagramMessages('', multi)[0].content.length / CHARS_PER_TOKEN) + 30;
+  const roomForNote = Math.floor((TOKEN_BUDGET - promptTokens - wantOut) * CHARS_PER_TOKEN);
+  if (text.length > roomForNote) { text = text.slice(0, Math.max(0, roomForNote)); truncated = true; }
+  const noteTokens = Math.ceil(text.length / CHARS_PER_TOKEN);
+  const maxTokens = Math.max(wantOut, Math.min(OUTPUT_TOKENS_MAX, TOKEN_BUDGET - promptTokens - noteTokens));
+  return { text, maxTokens, truncated };
 }
 
 function _str(v, max, required) {
@@ -64,13 +97,16 @@ function _normalizeChem(s) {
   return String(s).replace(/[₀-₉]/g, c => sub.indexOf(c)).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, c => sup.indexOf(c))
     .replace(/[⁺]/g, '+').replace(/[⁻−–]/g, '-').replace(/\s+/g, '');
 }
+function _normalizeWords(s) {
+  return String(s).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
 
 function _substances(list, noteChem) {
   if (!Array.isArray(list) || list.length < 1 || list.length > LIMITS.substancesPerSide) return null;
   const out = [];
   for (const item of list) {
     if (!item || typeof item !== 'object') return null;
-    let count = item.count === undefined || item.count === null || item.count === '' ? 1 : Number(item.count);
+    const count = item.count === undefined || item.count === null || item.count === '' ? 1 : Number(item.count);
     if (!Number.isInteger(count) || count < 1 || count > LIMITS.count) return null;
     const formula = _str(item.formula, LIMITS.formula, true);
     if (!formula || !/^[A-Za-z0-9()\[\]+\-·.]+$/.test(_normalizeChem(formula)) || !/[A-Za-z]/.test(formula)) return null;
@@ -95,8 +131,8 @@ function _steps(list) {
   return out;
 }
 
-// Returns a clean diagram object containing ONLY the allowed fields, or null if the AI's
-// reply does not fit one of the shapes exactly.
+// Returns a clean diagram object containing ONLY the allowed fields, or null if it does
+// not fit one of the shapes exactly. { kind: 'none' } passes through.
 function validateDiagram(raw, noteText) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const kind = raw.kind;
@@ -133,6 +169,38 @@ function validateDiagram(raw, noteText) {
   return null;
 }
 
+// Validates the whole reply. Invalid items are DROPPED (the rest are kept), duplicates are
+// removed, and at most `max` are returned as { title, kind, data, anchor }. An anchor that
+// is not really in the note is blanked (the browser then uses its fallback placement).
+// `understood` is false when the reply was not a recognisable reply at all (worth a retry).
+function validateItems(raw, noteText, max) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { items: [], understood: false };
+  let list;
+  if (Array.isArray(raw.items)) list = raw.items;
+  else if (typeof raw.kind === 'string') list = [raw];          // a single bare diagram
+  else return { items: [], understood: false };
+
+  const noteWords = _normalizeWords(noteText || '');
+  const items = [], seen = new Set();
+  for (const entry of list) {
+    if (items.length >= max) break;
+    if (!entry || typeof entry !== 'object') continue;
+    const source = entry.data && typeof entry.data === 'object' && !Array.isArray(entry.data)
+      ? Object.assign({}, entry.data, { kind: entry.data.kind || entry.kind, title: entry.data.title || entry.title })
+      : entry;
+    const data = validateDiagram(source, noteText);
+    if (!data || data.kind === 'none') continue;
+    const body = Object.assign({}, data, { title: '', subtitle: '' });
+    const key1 = JSON.stringify(body), key2 = data.kind + '|' + data.title.toLowerCase();
+    if (seen.has(key1) || seen.has(key2)) continue;             // same thing twice
+    seen.add(key1); seen.add(key2);
+    let anchor = _str(entry.anchor, LIMITS.anchor, false) || '';
+    if (anchor && !noteWords.includes(_normalizeWords(anchor))) anchor = '';
+    items.push({ title: data.title, kind: data.kind, data, anchor });
+  }
+  return { items, understood: true };
+}
+
 // Pulls the JSON object out of the model's reply (tolerates code fences / stray text).
 function parseDiagramReply(text) {
   if (typeof text !== 'string') return null;
@@ -141,4 +209,7 @@ function parseDiagramReply(text) {
   try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { return null; }
 }
 
-module.exports = { buildDiagramMessages, validateDiagram, parseDiagramReply, MAX_NOTE_CHARS, NOTHING_DRAWABLE, DIAGRAM_FAILED, LIMITS };
+module.exports = {
+  buildDiagramMessages, planDiagramRequest, validateDiagram, validateItems, parseDiagramReply,
+  MAX_NOTE_CHARS, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG, LIMITS,
+};

@@ -850,6 +850,14 @@
     @keyframes picspin { to { transform:rotate(360deg); } }
     .pic-preview { display:block; width:100%; border-radius:10px; border:1px solid var(--border); background:#fff; margin:10px 0 6px; }
     .pic-note { font-size:0.72rem; color:var(--muted); margin-bottom:12px; }
+    .pic-list { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+    .pic-item { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); }
+    .pic-item input[type=checkbox] { width:18px; height:18px; flex-shrink:0; accent-color:var(--accent); cursor:pointer; }
+    .pic-thumb-btn { flex-shrink:0; width:168px; max-width:42%; padding:0; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:zoom-in; overflow:hidden; line-height:0; }
+    .pic-thumb-btn img { display:block; width:100%; height:auto; }
+    .pic-item-text { min-width:0; cursor:pointer; flex:1; }
+    .pic-item-title { font-size:0.88rem; font-weight:700; color:var(--text); overflow-wrap:anywhere; }
+    .pic-item-kind { font-size:0.74rem; color:var(--muted); margin-top:2px; }
     #save-dest-modal.open { display:flex !important; }
     .sd-card { background:var(--surface); border:1px solid rgba(var(--accent-rgb),0.3); border-radius:16px; padding:22px 20px; width:310px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
     .sd-title { font-size:1rem; font-weight:700; color:var(--text); margin-bottom:3px; }
@@ -1662,10 +1670,10 @@
   </div>
 </div>
 
-<!-- "Create picture" window: a diagram drawn by js/diagram-templates.js from data the AI reads out of the note -->
+<!-- "Create picture" window: diagrams drawn by js/diagram-templates.js from data the AI reads out of the note -->
 <div id="picture-modal" onclick="if(event.target.id==='picture-modal')closePictureModal()">
   <div class="pic-card">
-    <div class="cp-title">Create picture</div>
+    <div class="cp-title" id="pic-heading">Create picture</div>
     <div id="pic-step-busy" style="display:none">
       <div class="pic-busy"><div class="pic-spin"></div><span id="pic-busy-text">Reading your note…</span></div>
       <div class="pic-row"><button class="cp-btn cp-cancel" onclick="closePictureModal()">Cancel</button></div>
@@ -1677,13 +1685,27 @@
         <button class="cp-btn cp-ok" id="pic-retry-btn" onclick="generatePicture()">Try again</button>
       </div>
     </div>
+    <!-- exactly one picture -->
     <div id="pic-step-done" style="display:none">
       <img class="pic-preview" id="pic-preview" alt="Diagram preview">
-      <div class="pic-note">Made from your note. Check it against your notes before you rely on it.</div>
+      <div class="pic-note" id="pic-done-note"></div>
       <div class="pic-row">
         <button class="cp-btn cp-cancel" onclick="generatePicture()">Try again</button>
         <button class="cp-btn cp-ok" onclick="insertPicture()">Insert into note</button>
       </div>
+    </div>
+    <!-- several pictures from a whole note -->
+    <div id="pic-step-list" style="display:none">
+      <div class="pic-note" id="pic-list-note"></div>
+      <div class="pic-list" id="pic-list"></div>
+      <div class="pic-row">
+        <button class="cp-btn cp-cancel" onclick="generatePicture()">Try again</button>
+        <button class="cp-btn cp-ok" id="pic-insert-selected" onclick="insertSelectedPictures()">Insert selected</button>
+      </div>
+    </div>
+    <div id="pic-step-zoom" style="display:none">
+      <img class="pic-preview" id="pic-zoom-img" alt="Diagram, larger view">
+      <div class="pic-row"><button class="cp-btn cp-cancel" onclick="_picShow('list')">Back to the list</button></div>
     </div>
   </div>
 </div>
@@ -6776,17 +6798,25 @@ function insertPhotos(input) {
 }
 
 
-// ── CREATE PICTURE (diagram from the note) ──
-// The AI never draws. POST /api/writing { action:'diagram', text } returns DATA in a fixed
-// shape (api/_lib/diagram.js); js/diagram-templates.js (GNDiagram) builds the SVG from one
-// fixed template per kind, and the PNG made from it is what goes into the note.
+// ── CREATE PICTURE (diagrams from the note) ──
+// The AI never draws. POST /api/writing { action:'diagram', text, multi } returns
+// { items:[{ title, kind, data, anchor }] } (api/_lib/diagram.js); js/diagram-templates.js
+// (GNDiagram) builds each SVG from a fixed template, and the PNG made from it goes into the
+// note. Text selected -> ONE picture from the selection, inserted at the selection.
+// Nothing selected -> the whole note, up to 5 pictures, each placed under the paragraph
+// its "anchor" quote is in.
 const PIC_NOTHING = 'Nothing in this note looks drawable yet. Select an equation or a process and try again.';
 const PIC_FAILED = "We couldn't make a diagram from this note just now. Please try again.";
 const PIC_CAPTION = 'Diagram made from your note - check it against your notes';
-let _picRange = null, _picAbort = null, _picRun = 0, _picDataUrl = '', _picText = '', _picTitle = '', _picWidth = 0;
+const PIC_MAX_NOTE_CHARS = 20000;
+const PIC_KIND = { equation: 'Equation', process: 'Process (steps in order)', cycle: 'Cycle (steps that repeat)', comparison: 'Comparison' };
+// A note is saved to the cloud in 500,000-character pieces, so no Firestore document gets
+// near 1 MB; the real ceiling is one save of about 10 MB. Stay well under it.
+let PIC_NOTE_MAX_CHARS = 8000000;
+let _picRange = null, _picAbort = null, _picRun = 0, _picText = '', _picWholeNote = false, _picCutShort = false, _picItems = [];
 
 function _picShow(step) {
-  ['busy', 'message', 'done'].forEach(function (s) {
+  ['busy', 'message', 'done', 'list', 'zoom'].forEach(function (s) {
     document.getElementById('pic-step-' + s).style.display = s === step ? '' : 'none';
   });
 }
@@ -6813,14 +6843,17 @@ async function _picFetchJson(payload, signal) {
   }
   return data;
 }
+function _picPages() {
+  return _activeEditor === 'right' ? Array.from(document.querySelectorAll('#pages-container-right .page-content')) : _getAllPageContents();
+}
 
 function openPictureModal() {
   if (!_fbUid) {
     if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in free to create pictures', openPictureModal);
     return;
   }
-  // The selected text if there is a selection, otherwise the whole note. The cursor
-  // position is remembered so the picture can be inserted there afterwards.
+  // Selected text -> one picture from it. Otherwise the whole note. The cursor position is
+  // remembered as the fallback place to insert.
   _picRange = null;
   let text = '';
   const sel = window.getSelection();
@@ -6832,11 +6865,11 @@ function openPictureModal() {
       text = sel.toString().trim();
     }
   }
-  if (!text) {
-    const pages = _activeEditor === 'right' ? Array.from(document.querySelectorAll('#pages-container-right .page-content')) : _getAllPageContents();
-    text = pages.map(function (pc) { return pc.innerText || ''; }).join('\n').trim();
-  }
-  _picText = text.replace(/\u00a0/g, ' ').slice(0, 6000);
+  _picWholeNote = !text;
+  if (_picWholeNote) text = _picPages().map(function (pc) { return pc.innerText || ''; }).join('\n').trim();
+  text = text.replace(/\u00a0/g, ' ');
+  _picCutShort = text.length > PIC_MAX_NOTE_CHARS;
+  _picText = text.slice(0, PIC_MAX_NOTE_CHARS);
   document.getElementById('picture-modal').style.display = 'flex';
   if (_picText.length < 3) { _picMessage('Write or select something in your note first.', false); return; }
   generatePicture();
@@ -6846,33 +6879,102 @@ function closePictureModal() {
   if (_picAbort) { try { _picAbort.abort(); } catch (e) {} _picAbort = null; }
   document.getElementById('picture-modal').style.display = 'none';
 }
+function _picCutShortNote() {
+  return _picCutShort ? 'This note is long, so only the first part of it was used. Select a later part and click Create picture to draw from that.' : '';
+}
 
 async function generatePicture() {
-  _picDataUrl = '';
-  document.getElementById('pic-busy-text').textContent = 'Reading your note…';
+  _picItems = [];
+  document.getElementById('pic-busy-text').textContent = _picWholeNote ? 'Reading your whole note…' : 'Reading your selection…';
   _picShow('busy');
   const run = ++_picRun;
   const ctl = _picAbort = new AbortController();
   try {
-    const d = await _picFetchJson({ action: 'diagram', text: _picText }, ctl.signal);
+    const d = await _picFetchJson({ action: 'diagram', text: _picText, multi: _picWholeNote }, ctl.signal);
     if (run !== _picRun) return; // cancelled meanwhile
-    if (!d.diagram || d.diagram.kind === 'none') { _picMessage(PIC_NOTHING, false); return; }
-    document.getElementById('pic-busy-text').textContent = 'Drawing the diagram…';
-    let drawn;
-    try { drawn = window.GNDiagram.render(d.diagram); } catch (e) { throw new Error(PIC_FAILED); }
-    const png = await window.GNDiagram.toPng(drawn);
-    if (run !== _picRun) return;
-    _picDataUrl = png; _picTitle = d.diagram.title || 'Diagram'; _picWidth = drawn.width;
-    document.getElementById('pic-preview').src = png;
-    _picShow('done');
+    if (d.truncated) _picCutShort = true;
+    const found = Array.isArray(d.items) ? d.items : [];
+    if (!found.length) { _picMessage(d.message || PIC_NOTHING, false); return; }
+    document.getElementById('pic-busy-text').textContent = found.length > 1 ? 'Drawing ' + found.length + ' diagrams…' : 'Drawing the diagram…';
+    const ready = [];
+    for (const it of found) {
+      try { // one bad item must not stop the others
+        const drawn = window.GNDiagram.render(it.data);
+        ready.push({ title: it.title || 'Diagram', kind: it.kind, anchor: it.anchor || '', png: await window.GNDiagram.toPng(drawn), width: drawn.width });
+      } catch (e) {}
+      if (run !== _picRun) return;
+    }
+    if (!ready.length) throw new Error(PIC_FAILED);
+    _picItems = ready;
+    if (ready.length === 1) {
+      document.getElementById('pic-preview').src = ready[0].png;
+      document.getElementById('pic-done-note').textContent = ('Made from your note. Check it against your notes before you rely on it. ' + _picCutShortNote()).trim();
+      _picShow('done');
+    } else {
+      _picRenderList();
+      _picShow('list');
+    }
   } catch (err) {
     if (run !== _picRun || (err && err.name === 'AbortError')) return;
     _picMessage(err.message || PIC_FAILED, true);
   }
 }
 
+function _picRenderList() {
+  const list = document.getElementById('pic-list');
+  list.textContent = '';
+  _picItems.forEach(function (it, i) {
+    const row = document.createElement('div'); row.className = 'pic-item';
+    const box = document.createElement('input'); box.type = 'checkbox'; box.checked = true; box.id = 'pic-check-' + i; box.setAttribute('data-i', i);
+    box.onchange = _picUpdateInsertButton;
+    const thumb = document.createElement('button'); thumb.type = 'button'; thumb.className = 'pic-thumb-btn'; thumb.title = 'Show larger';
+    thumb.onclick = function () { picZoom(i); };
+    const img = document.createElement('img'); img.src = it.png; img.alt = 'Preview: ' + it.title; thumb.appendChild(img);
+    const text = document.createElement('label'); text.className = 'pic-item-text'; text.htmlFor = box.id;
+    const t = document.createElement('div'); t.className = 'pic-item-title'; t.textContent = it.title;
+    const k = document.createElement('div'); k.className = 'pic-item-kind'; k.textContent = PIC_KIND[it.kind] || it.kind;
+    text.appendChild(t); text.appendChild(k);
+    row.appendChild(box); row.appendChild(thumb); row.appendChild(text);
+    list.appendChild(row);
+  });
+  document.getElementById('pic-list-note').textContent = ('Found ' + _picItems.length + ' things to draw. Untick any you don\u2019t want. Each picture goes under the part of the note it is about. ' + _picCutShortNote()).trim();
+  _picUpdateInsertButton();
+}
+function _picChosen() {
+  return Array.from(document.querySelectorAll('#pic-list input[type=checkbox]')).filter(function (b) { return b.checked; }).map(function (b) { return _picItems[Number(b.getAttribute('data-i'))]; });
+}
+function _picUpdateInsertButton() {
+  const n = _picChosen().length, btn = document.getElementById('pic-insert-selected');
+  btn.disabled = n === 0; btn.style.opacity = n === 0 ? '0.5' : '';
+  btn.textContent = n === _picItems.length ? 'Insert selected' : 'Insert selected (' + n + ')';
+}
+function picZoom(i) {
+  document.getElementById('pic-zoom-img').src = _picItems[i].png;
+  _picShow('zoom');
+}
+
+function _picEsc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function _picHtml(it) {
+  const shown = Math.min(600, it.width || 600); // fits the page; drag a corner to resize
+  return '<span class="img-wrap" contenteditable="false"><img src="' + it.png + '" alt="Diagram: ' + _picEsc(it.title) + '" style="width:' + shown + 'px" draggable="false"></span><br>' +
+    '<span class="ai-pic-caption" style="font-size:0.75rem;font-style:italic;color:#7a8591;">' + PIC_CAPTION + '</span>';
+}
+function _picSaveAfterInsert() {
+  if (_activeEditor === 'right' && _rightNoteId) {
+    const note = notes.find(n => n.id === _rightNoteId);
+    if (note) { note.content = _serializePagesRight(); note.updated = Date.now(); saveNotes(); }
+  } else {
+    const note = notes.find(n => n.id === activeId);
+    if (note) { note.content = _serializePages(); note.updated = Date.now(); scheduleSave(); }
+  }
+  setTimeout(_undoSave, 300); // with the _undoSave() before the insert: ONE Ctrl+Z removes it all
+}
+
+// One picture. From a selection it goes in at the selection (as before); from a whole
+// note it goes under its anchor paragraph like the others.
 function insertPicture() {
-  if (!_picDataUrl) return;
+  if (!_picItems.length) return;
+  if (_picWholeNote) { _picInsertItems([_picItems[0]]); return; }
   const targetEditor = _getActiveEditorEl();
   if (!targetEditor) return;
   document.getElementById('picture-modal').style.display = 'none';
@@ -6883,20 +6985,99 @@ function insertPicture() {
     sel.removeAllRanges(); sel.addRange(_picRange);
   }
   _undoSave();
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const shown = Math.min(600, _picWidth || 600); // fits the page; drag a corner to resize
-  const html = '<span class="img-wrap" contenteditable="false"><img src="' + _picDataUrl + '" alt="Diagram: ' + esc(_picTitle) + '" style="width:' + shown + 'px" draggable="false"></span><br>' +
-    '<span class="ai-pic-caption" style="font-size:0.75rem;font-style:italic;color:#7a8591;">' + PIC_CAPTION + '</span><br>';
-  document.execCommand('insertHTML', false, html);
-  if (_activeEditor === 'right' && _rightNoteId) {
-    const note = notes.find(n => n.id === _rightNoteId);
-    if (note) { note.content = _serializePagesRight(); note.updated = Date.now(); saveNotes(); }
-  } else {
-    const note = notes.find(n => n.id === activeId);
-    if (note) { note.content = _serializePages(); note.updated = Date.now(); scheduleSave(); }
+  document.execCommand('insertHTML', false, _picHtml(_picItems[0]) + '<br>');
+  _picSaveAfterInsert();
+  _picItems = []; _picRange = null;
+}
+function insertSelectedPictures() {
+  const chosen = _picChosen();
+  if (chosen.length) _picInsertItems(chosen);
+}
+
+// The note as a list of "units": each block (paragraph, heading, list, table…) is one
+// unit; loose text between line breaks is one unit per line. `last` is the node a
+// picture is inserted after.
+function _picNormalize(s) { return String(s).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+function _picUnits(pages) {
+  const units = [], BLOCK = /^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|TABLE|PRE|SECTION|HR|DL|FIGURE)$/;
+  pages.forEach(function (pc) {
+    let loose = null;
+    const flush = function () { if (loose) { units.push(loose); loose = null; } };
+    Array.from(pc.childNodes).forEach(function (node) {
+      if (node.nodeType === 1 && BLOCK.test(node.tagName)) { flush(); units.push({ pc: pc, last: node, text: node.textContent || '', nodes: [node] }); return; }
+      if (!loose) loose = { pc: pc, last: node, text: '', nodes: [] };
+      loose.last = node; loose.nodes.push(node); loose.text += node.textContent || '';
+      if (node.nodeType === 1 && node.tagName === 'BR') flush();
+    });
+    flush();
+  });
+  units.forEach(function (u) { u.norm = _picNormalize(u.text); });
+  return units;
+}
+// Index of the unit containing the anchor quote, trying the whole quote first and then
+// its first words; -1 if it is not in the note.
+function _picFindUnit(units, anchor) {
+  const words = _picNormalize(anchor).split(' ').filter(Boolean);
+  if (words.length < 3) return -1;
+  for (const take of [words.length, 8, 6, 4]) {
+    if (take > words.length || (take < words.length && take < 4)) continue;
+    const needle = words.slice(0, take).join(' ');
+    for (let i = 0; i < units.length; i++) if (units[i].norm.indexOf(needle) !== -1) return i;
   }
-  setTimeout(_undoSave, 300);
-  _picDataUrl = ''; _picRange = null;
+  return -1;
+}
+
+function _picInsertItems(chosen) {
+  const pages = _picPages();
+  if (!pages.length) return;
+  document.getElementById('picture-modal').style.display = 'none';
+
+  // Will the note still save and sync? Keep as many as fit, in order.
+  let size = pages.reduce(function (n, pc) { return n + pc.innerHTML.length; }, 0);
+  const fit = [];
+  chosen.forEach(function (it) {
+    const add = it.png.length + 400;
+    if (size + add <= PIC_NOTE_MAX_CHARS) { fit.push(it); size += add; }
+  });
+  const leftOut = chosen.length - fit.length;
+
+  _undoSave();
+  const units = _picUnits(pages);
+  // Fallback place: the remembered cursor position, or the end of the note.
+  let cursorUnit = -1;
+  if (_picRange && _picRange.startContainer.isConnected) {
+    for (let i = 0; i < units.length && cursorUnit < 0; i++) {
+      if (units[i].nodes.some(function (n) { return n === _picRange.startContainer || n.contains(_picRange.startContainer); })) cursorUnit = i;
+    }
+  }
+  const END = units.length; // "after everything"
+  const jobs = fit.map(function (it, order) {
+    let at = it.anchor ? _picFindUnit(units, it.anchor) : -1;
+    if (at < 0) at = cursorUnit >= 0 ? cursorUnit : END;
+    return { it: it, order: order, at: at };
+  });
+  // From the bottom of the note upward, so an insert never moves a later target. Pictures
+  // that share a target go in reverse so they end up in their original order.
+  jobs.sort(function (a, b) { return b.at - a.at || b.order - a.order; });
+  jobs.forEach(function (job) {
+    const p = document.createElement('p');
+    p.className = 'ai-pic-block';
+    p.innerHTML = _picHtml(job.it);
+    if (job.at >= END || !units.length) {
+      const lastPc = pages[pages.length - 1];
+      const tail = units.length ? units[units.length - 1].last : null;
+      if (tail && tail.parentNode === lastPc) lastPc.insertBefore(p, tail.nextSibling); else lastPc.appendChild(p);
+    } else {
+      const u = units[job.at];
+      u.last.parentNode.insertBefore(p, u.last.nextSibling);
+    }
+  });
+  if (typeof _scheduleReflow === 'function') _scheduleReflow();
+  _picSaveAfterInsert();
+  if (leftOut > 0) {
+    _showToast(leftOut + (leftOut === 1 ? ' picture was' : ' pictures were') + ' left out because the note would be too large to save and sync. Remove a picture or split the note, then try again.');
+  }
+  _picItems = []; _picRange = null;
 }
 
 // ── DRAWING PEN (overlay on document) ──

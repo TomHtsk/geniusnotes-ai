@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
-const { buildDiagramMessages, validateDiagram, parseDiagramReply, MAX_NOTE_CHARS, DIAGRAM_FAILED } = require('./_lib/diagram');
+const { buildDiagramMessages, planDiagramRequest, validateItems, parseDiagramReply, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG } = require('./_lib/diagram');
 const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
 
 const MAX_CHARS = 15000;
@@ -97,38 +97,51 @@ module.exports = async function handler(req, res) {
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
 
-  // diagram route — Notepad "Create picture". The AI returns DATA only (one of the fixed
-  // shapes in api/_lib/diagram.js); the browser draws it with js/diagram-templates.js.
-  // One AI action. Invalid data is retried once; if it is still invalid the action is
-  // given back and a friendly error is returned.
+  // diagram route — Notepad "Create picture". The AI returns DATA only (the fixed shapes
+  // in api/_lib/diagram.js); the browser draws it with js/diagram-templates.js.
+  //   { action:'diagram', text, multi } -> { items:[{ title, kind, data, anchor }], truncated }
+  // multi:true (whole note) returns up to MAX_ITEMS pictures; otherwise one (a selection).
+  // Always ONE request to the AI and ONE AI action, however many pictures come back.
+  // Invalid items are dropped. A reply that makes no sense is retried once. If nothing
+  // valid is left, the action is given back and the "nothing drawable" message is returned.
   if (req.body?.action === 'diagram') {
-    const noteText = String(req.body.text || '').trim().slice(0, MAX_NOTE_CHARS);
-    if (noteText.length < 3) {
+    const multi = req.body.multi === true;
+    const plan = planDiagramRequest(req.body.text, multi);
+    if (plan.text.length < 3) {
       await refundAiAction(uid);
       return res.status(400).json({ error: 'Write or select something in your note first.' });
     }
     try {
-      let diagram = null;
-      for (let attempt = 0; attempt < 2 && !diagram; attempt++) {
+      let items = [], understood = false;
+      for (let attempt = 0; attempt < 2 && !items.length; attempt++) {
         try {
-          const r = await groqFetch({ model: MODEL_LARGE, messages: buildDiagramMessages(noteText), max_tokens: 2000, temperature: attempt ? 0.2 : 0, include_reasoning: false, response_format: { type: 'json_object' } }, GROQ);
-          const data = await r.json();
-          diagram = validateDiagram(parseDiagramReply(data.choices?.[0]?.message?.content), noteText);
-          if (!diagram) console.error('Diagram: AI reply did not fit a template (attempt ' + (attempt + 1) + ')');
+          const r = await groqChat({ model: MODEL_LARGE, messages: buildDiagramMessages(plan.text, multi), max_tokens: plan.maxTokens, temperature: attempt ? 0.2 : 0, include_reasoning: false, response_format: { type: 'json_object' } }, { apiKey: GROQ, timeoutMs: 27000 });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            const e = new Error(data.error?.message || ('Groq ' + r.status)); e.code = data.error?.code; e.status = r.status;
+            throw e;
+          }
+          const result = validateItems(parseDiagramReply(data.choices?.[0]?.message?.content), plan.text, multi ? MAX_ITEMS : 1);
+          items = result.items;
+          if (result.understood) { understood = true; if (!items.length) break; } // a clear "nothing drawable" is not retried
+          else console.error('Diagram: AI reply was not usable (attempt ' + (attempt + 1) + ')');
         } catch (err) {
           if (isBusyError(err) || isModelUnavailableError(err)) throw err;
+          if (err.status === 413 || /too large|tokens per minute|\bTPM\b/i.test(err.message || '')) { err.tooLong = true; throw err; }
           console.error('Groq error (diagram, attempt ' + (attempt + 1) + '):', err.message);
         }
       }
-      if (!diagram) {
-        await refundAiAction(uid);
+      if (!items.length) {
+        await refundAiAction(uid); // nothing was drawn, so nothing is counted
+        if (understood) return res.status(200).json({ items: [], message: NOTHING_DRAWABLE, truncated: plan.truncated });
         return res.status(502).json({ error: DIAGRAM_FAILED });
       }
-      return res.status(200).json({ diagram });
+      return res.status(200).json({ items, truncated: plan.truncated, usedChars: plan.text.length });
     } catch (err) {
       console.error('Groq error (diagram):', err.message);
       if (await sendBusyIfNeeded(err, res, uid)) return;
       await refundAiAction(uid);
+      if (err.tooLong) return res.status(413).json({ error: NOTE_TOO_LONG });
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(502).json({ error: DIAGRAM_FAILED });
     }

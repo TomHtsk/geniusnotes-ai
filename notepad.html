@@ -3809,7 +3809,8 @@ function _deleteFolderTree(folderId) {
   folders = folders.filter(f => f.id !== folderId);
   if (_folderFilter === folderId) _folderFilter = null;
   _cloudDeleteFolder(folderId);
-  notes.forEach(n => { if (n.folderId === folderId) { delete n.folderId; _cloudSaveNote(n); } });
+  // null, not delete: a { merge: true } cloud save leaves a missing field untouched in the cloud
+  notes.forEach(n => { if (n.folderId === folderId) { n.folderId = null; _cloudSaveNote(n); } });
 }
 
 function deleteFolder(e, folderId) {
@@ -7747,7 +7748,7 @@ function _startCloudListeners() {
       snap.docChanges().forEach(ch => {
         const d = ch.doc.data();
         if (!d || !d.id) return;
-        if (ch.type === 'removed') {
+        if (ch.type === 'removed' || d.deleted) {
           const i = folders.findIndex(f => f.id === d.id);
           if (i >= 0) folders.splice(i, 1);
         } else {
@@ -7871,9 +7872,12 @@ function _cloudSaveFolder(folder) {
   _fbDb.doc(`users/${_fbUid}/notepad_folders/${folder.id}`).set(folder, { merge: true }).catch(() => {});
 }
 
+// Folders are marked deleted instead of erased: another browser that still has the folder saved
+// re-uploads it with { merge: true }, which would bring an erased folder back, but can't clear
+// this flag. Every reader drops folders with `deleted: true`.
 function _cloudDeleteFolder(id) {
   if (!_fbDb || !_fbUid) return;
-  _fbDb.doc(`users/${_fbUid}/notepad_folders/${id}`).delete().catch(() => {});
+  _fbDb.doc(`users/${_fbUid}/notepad_folders/${id}`).set({ id: id, deleted: true, deletedAt: Date.now() }, { merge: true }).catch(() => {});
 }
 
 

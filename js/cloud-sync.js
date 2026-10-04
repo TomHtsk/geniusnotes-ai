@@ -29,7 +29,8 @@ window.GNSync = (function () {
       const raw = JSON.parse(localStorage.getItem('gn-notepad-folders') || '[]');
       const map = {};
       raw.forEach(f => { if (f && f.id) map[f.id] = f; });
-      docs.forEach(d => { if (d && d.id) map[d.id] = d; });
+      // A folder marked deleted in the cloud is removed here too (see deleteFolder below)
+      docs.forEach(d => { if (d && d.id) { if (d.deleted) delete map[d.id]; else map[d.id] = d; } });
       localStorage.setItem('gn-notepad-folders', JSON.stringify(Object.values(map)));
     } catch {}
   }
@@ -136,7 +137,8 @@ window.GNSync = (function () {
 
   function deleteFolder(uid, db, id) {
     if (!db || !uid || !id) return;
-    db.doc('users/' + uid + '/notepad_folders/' + id).delete().catch(function () {});
+    // Marked deleted, not erased, so a browser with an old copy can't bring it back by re-uploading
+    db.doc('users/' + uid + '/notepad_folders/' + id).set({ id: id, deleted: true, deletedAt: Date.now() }, { merge: true }).catch(function () {});
   }
 
   return { init: init, stop: stop, writeHistItem: writeHistItem, deleteHistItem: deleteHistItem, writeFolder: writeFolder, deleteFolder: deleteFolder };

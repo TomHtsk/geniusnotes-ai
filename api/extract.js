@@ -1,6 +1,6 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, creditsForSize } = require('./_lib/auth');
 const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function ocrImage(base64, mime, apiKey) {
@@ -37,7 +37,8 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+  const _ocr = (req.body || {}).ocrImages;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai', creditsForSize({ pages: Array.isArray(_ocr) ? _ocr.length : 0 })))) return;
 
   try {
     const { content, ocrImages } = req.body || {};

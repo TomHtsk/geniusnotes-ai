@@ -324,7 +324,8 @@
 
   // ── "Limit reached" notice ───────────────────────────────────────────────────
   // Shown when an /api call answers { code: 'limit_reached', error: '<friendly text>' }.
-  // The text comes from the server and already says when the limit resets.
+  // The text comes from the server and already says when the limit resets. A "See plans"
+  // button links to pricing.html (not shown on the Pricing page itself).
   function gnShowLimitNotice(message) {
     _injectStyles();
     var overlay = document.createElement('div');
@@ -343,7 +344,18 @@
     ok.textContent = 'OK';
     ok.addEventListener('click', function () { overlay.remove(); });
     overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
-    box.appendChild(title); box.appendChild(sub); box.appendChild(ok);
+    box.appendChild(title); box.appendChild(sub);
+    if (!/pricing\.html$/.test(location.pathname)) {
+      var plans = document.createElement('a');
+      plans.href = 'pricing.html';
+      plans.className = 'gn-ag-submit';
+      plans.textContent = 'See plans';
+      plans.style.cssText = 'display:block;text-align:center;text-decoration:none;margin-bottom:8px;';
+      box.appendChild(plans);
+      ok.textContent = 'Not now';
+      ok.style.cssText = 'background:none;color:var(--muted,#9AA7B2);border:1px solid var(--border,rgba(255,255,255,0.11));';
+    }
+    box.appendChild(ok);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     ok.focus();

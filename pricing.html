@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — NoteCaptain</title>
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/images/favicon.png" />
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
+  <link rel="canonical" href="https://www.notecaptain.ai/pricing.html" />
+  <meta name="description" content="NoteCaptain plans: Free, Student ($4.99/month) and Pro ($9.99/month). AI credits and lecture transcription for studying." />
+  <script>
+    // Light by default; only an explicit "dark" choice switches it (same rule as the other pages).
+    if (localStorage.getItem('gn-theme') !== 'dark') document.documentElement.classList.add('light');
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <style>
+    /* Same palette as index.html / notepad.html */
+    :root {
+      --bg: #0B0F14; --surface: #131A21; --surface2: #1A232C;
+      --border: rgba(255,255,255,0.11); --text: #E9EEF2; --muted: #9AA7B2;
+      --accent: #5CC4D0; --accent2: #7FD4DD; --accent-rgb: 92,196,208; --on-accent: #0B0F14;
+      --primary-bg: #FFFFFF; --primary-text: #0B0F14;
+      --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+      color-scheme: dark;
+    }
+    :root.light {
+      --bg: #F3F5F7; --surface: #FFFFFF; --surface2: #EDF0F3;
+      --border: #DCE1E6; --text: #0B0F14; --muted: #55606B;
+      --accent: #0F6E7A; --accent2: #0F6E7A; --accent-rgb: 15,110,122; --on-accent: #FFFFFF;
+      --primary-bg: #0B0F14; --primary-text: #FFFFFF;
+      color-scheme: light;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; overflow-x: hidden; }
+    a { color: inherit; text-decoration: none; }
+
+    /* Header (same pieces as index.html) */
+    .hp-header { position: sticky; top: 0; z-index: 100; background: var(--surface); }
+    .hp-header-row { display: flex; align-items: center; gap: 10px; height: 58px; padding: 0 20px; }
+    .hp-brand { display: flex; align-items: center; gap: 8px; color: var(--text); flex-shrink: 0; margin-right: 14px; }
+    .hp-brand img { width: 28px; height: 28px; object-fit: contain; }
+    .hp-brand-name { font-family: var(--serif); font-size: 1.08rem; font-weight: 700; letter-spacing: -0.01em; }
+    .hp-nav { display: flex; align-items: center; gap: 2px; }
+    .hp-nav a { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; font-size: 0.86rem; font-weight: 500; color: var(--muted); }
+    .hp-nav a:hover { background: var(--surface2); color: var(--text); }
+    .hp-nav a.active { color: var(--accent); font-weight: 600; background: rgba(var(--accent-rgb),0.1); }
+    .hp-spacer { flex: 1; }
+    .np-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: none; color: var(--text); font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .np-btn:hover { background: var(--surface2); }
+    .np-btn-primary, .np-btn-primary:hover { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-text); }
+    .np-wave { display: block; width: 100%; height: 9px; color: var(--accent); opacity: 0.5; background: var(--surface); }
+    .hp-menu-btn { display: none; width: 36px; height: 36px; border: none; background: none; border-radius: 10px; color: var(--text); cursor: pointer; align-items: center; justify-content: center; }
+    .hp-menu-btn:hover { background: var(--surface2); }
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(11,15,20,0.45); z-index: 190; opacity: 0; pointer-events: none; transition: opacity 0.22s; }
+    .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; z-index: 200; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0 0; transform: translateX(-100%); pointer-events: none; transition: transform 0.24s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; }
+    .sidebar.open { transform: translateX(0); pointer-events: all; }
+    .sb-hd { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 14px; }
+    .sb-logo-row { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.88rem; }
+    .sb-logo-row img { width: 26px; height: 26px; object-fit: contain; }
+    .sb-close { background: none; border: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; font-size: 1rem; }
+    .sidebar-items { padding: 6px 10px; }
+    .sidebar-item { display: flex; padding: 11px 14px; font-size: 0.88rem; font-weight: 500; color: var(--muted); border-radius: 10px; margin-bottom: 3px; }
+    .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+    .sidebar-item.active { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+    .logo-lt { display: none; }
+    :root.light .logo-dk { display: none; }
+    :root.light .logo-lt { display: inline; }
+    @media (max-width: 760px) {
+      .hp-nav { display: none; }
+      .hp-menu-btn { display: inline-flex; }
+      .hp-header-row { padding: 0 12px; gap: 6px; }
+      .hp-brand { margin-right: 0; }
+      .hp-brand-name { display: none; }
+    }
+
+    /* Pricing */
+    main { max-width: 1040px; margin: 0 auto; padding: 48px 16px 72px; }
+    .pr-head { text-align: center; margin-bottom: 28px; }
+    .pr-title { font-family: var(--serif); font-size: clamp(1.9rem, 4.6vw, 2.7rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+    .pr-sub { color: var(--muted); font-size: 1rem; margin-top: 10px; }
+    .pr-toggle { display: inline-flex; margin: 24px auto 0; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); gap: 4px; }
+    .pr-toggle button { border: none; background: none; color: var(--muted); font: 600 0.86rem Inter, system-ui, sans-serif; padding: 8px 16px; border-radius: 9px; cursor: pointer; }
+    .pr-toggle button[aria-pressed="true"] { background: var(--primary-bg); color: var(--primary-text); }
+    .pr-save { font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-left: 4px; }
+    .pr-toggle button[aria-pressed="true"] .pr-save { color: inherit; opacity: 0.8; }
+
+    .pr-notice { max-width: 640px; margin: 0 auto 24px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(var(--accent-rgb),0.35); background: rgba(var(--accent-rgb),0.08); font-size: 0.9rem; text-align: center; }
+    .pr-notice.warn { border-color: rgba(217,119,6,0.45); background: rgba(217,119,6,0.08); }
+
+    .pr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+    @media (max-width: 860px) { .pr-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; } }
+    .pr-card { position: relative; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px 22px 22px; }
+    .pr-card.featured { border: 2px solid var(--accent); }
+    .pr-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .pr-name { font-size: 1.05rem; font-weight: 700; }
+    .pr-for { color: var(--muted); font-size: 0.84rem; margin-top: 2px; min-height: 3.2em; }
+    @media (max-width: 860px) { .pr-for { min-height: 0; } }
+    .pr-price { margin: 14px 0 2px; display: flex; align-items: baseline; gap: 4px; }
+    .pr-amount { font-family: var(--serif); font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .pr-per { color: var(--muted); font-size: 0.88rem; }
+    .pr-billed { color: var(--muted); font-size: 0.78rem; min-height: 1.3em; }
+    .pr-list { list-style: none; margin: 18px 0 22px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+    .pr-list li { display: flex; gap: 9px; font-size: 0.88rem; line-height: 1.45; }
+    .pr-list li::before { content: '✓'; color: var(--accent); font-weight: 800; flex-shrink: 0; }
+    .pr-list li.no { color: var(--muted); }
+    .pr-list li.no::before { content: '–'; color: var(--muted); }
+    .pr-btn { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 11px; border: 1px solid var(--border); background: none; color: var(--text); font: 700 0.9rem Inter, system-ui, sans-serif; cursor: pointer; width: 100%; }
+    .pr-btn:hover:not(:disabled) { background: var(--surface2); }
+    .pr-btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-text); }
+    .pr-btn.primary:hover:not(:disabled) { opacity: 0.88; background: var(--primary-bg); }
+    .pr-btn:disabled { cursor: default; opacity: 0.6; }
+
+    .pr-rules { max-width: 640px; margin: 22px auto 0; text-align: center; color: var(--muted); font-size: 0.86rem; }
+    .pr-usage { max-width: 640px; margin: 36px auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+    .pr-usage h2 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .pr-usage .pr-plan-line { color: var(--muted); font-size: 0.86rem; margin-bottom: 16px; }
+    .pr-meter { margin-bottom: 14px; }
+    .pr-meter-top { display: flex; justify-content: space-between; font-size: 0.86rem; margin-bottom: 6px; gap: 10px; }
+    .pr-meter-top span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .pr-bar { height: 8px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
+    .pr-bar > div { height: 100%; background: var(--accent); border-radius: 999px; width: 0; }
+    .pr-manage { margin-top: 6px; }
+
+    .pr-faq { max-width: 640px; margin: 44px auto 0; }
+    .pr-faq h2 { font-family: var(--serif); font-size: 1.4rem; font-weight: 700; margin-bottom: 14px; text-align: center; }
+    .pr-faq details { border-bottom: 1px solid var(--border); padding: 14px 2px; }
+    .pr-faq summary { cursor: pointer; font-weight: 600; font-size: 0.94rem; }
+    .pr-faq p { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
+    .pr-test { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 28px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar" aria-label="Menu">
+  <div class="sb-hd">
+    <div class="sb-logo-row"><img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt=""><span>NoteCaptain</span></div>
+    <button class="sb-close" onclick="closeSidebar()" aria-label="Close menu">✕</button>
+  </div>
+  <div class="sidebar-items">
+    <a href="index.html" class="sidebar-item">Home</a>
+    <a href="notepad.html" class="sidebar-item">Notepad</a>
+    <a href="flashcards.html" class="sidebar-item">Flashcards</a>
+    <a href="pricing.html" class="sidebar-item active" aria-current="page">Pricing</a>
+  </div>
+</aside>
+
+<header class="hp-header">
+  <div class="hp-header-row">
+    <button class="hp-menu-btn" onclick="toggleSidebar()" aria-label="Open menu" title="Menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h13"/></svg>
+    </button>
+    <a class="hp-brand" href="index.html" aria-label="NoteCaptain home">
+      <img class="logo-dk" src="images/logo-mark-white.png" alt=""><img class="logo-lt" src="images/logo-mark-dark.png" alt="">
+      <span class="hp-brand-name">NoteCaptain.ai</span>
+    </a>
+    <nav class="hp-nav" aria-label="Main">
+      <a href="index.html">Home</a>
+      <a href="notepad.html">Notepad</a>
+      <a href="flashcards.html">Flashcards</a>
+      <a href="pricing.html" class="active" aria-current="page">Pricing</a>
+    </nav>
+    <div class="hp-spacer"></div>
+    <button class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+    <a href="signin.html" class="np-btn" id="nav-signin" style="display:none">Sign in</a>
+    <a href="signup.html" class="np-btn np-btn-primary" id="nav-tryfree" style="display:none">Get started</a>
+    <button id="nav-signout" class="np-btn" onclick="navSignOut()" style="display:none">Sign out</button>
+  </div>
+  <svg class="np-wave" aria-hidden="true" focusable="false">
+    <defs><pattern id="nc-wave" width="56" height="9" patternUnits="userSpaceOnUse"><path d="M0 5.5 Q 14 0.5 28 5.5 T 56 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></pattern></defs>
+    <rect width="100%" height="9" fill="url(#nc-wave)"/>
+  </svg>
+</header>
+
+<main>
+  <div class="pr-head">
+    <h1 class="pr-title">Plans for every study load</h1>
+    <p class="pr-sub">Start free. Upgrade when you need more AI help or lecture transcription.</p>
+    <div class="pr-toggle" role="group" aria-label="Billing period">
+      <button type="button" id="bill-month" aria-pressed="true" onclick="setInterval_('month')">Monthly</button>
+      <button type="button" id="bill-year" aria-pressed="false" onclick="setInterval_('year')">Yearly <span class="pr-save">2 months free</span></button>
+    </div>
+  </div>
+
+  <div id="pr-notice" class="pr-notice" hidden></div>
+
+  <div class="pr-grid">
+    <section class="pr-card" aria-labelledby="free-name">
+      <div class="pr-name" id="free-name">Free</div>
+      <div class="pr-for">Try NoteCaptain's AI tools.</div>
+      <div class="pr-price"><span class="pr-amount">$0</span></div>
+      <div class="pr-billed">Free forever</div>
+      <ul class="pr-list">
+        <li>10 AI credits a month</li>
+        <li>Wikipedia search and reader</li>
+        <li>3 YouTube conversions a day</li>
+        <li>Notepad and Flashcards</li>
+        <li class="no">No lecture transcription</li>
+      </ul>
+      <button class="pr-btn" id="btn-free" type="button" onclick="choosePlan('free')">Get started</button>
+    </section>
+
+    <section class="pr-card featured" aria-labelledby="student-name">
+      <span class="pr-badge">Most popular</span>
+      <div class="pr-name" id="student-name">Student</div>
+      <div class="pr-for">For weekly classes and regular note-taking.</div>
+      <div class="pr-price"><span class="pr-amount" data-month="$4.99" data-year="$4.16">$4.99</span><span class="pr-per">/month</span></div>
+      <div class="pr-billed" data-month="Billed monthly" data-year="$49.90 billed once a year">Billed monthly</div>
+      <ul class="pr-list">
+        <li>300 AI credits a month</li>
+        <li>8 hours of transcription a month (Record Lecture and audio/video uploads)</li>
+        <li>3 YouTube conversions a day</li>
+        <li>Everything in Free</li>
+      </ul>
+      <button class="pr-btn primary" id="btn-student" type="button" onclick="choosePlan('student')">Choose Student</button>
+    </section>
+
+    <section class="pr-card" aria-labelledby="pro-name">
+      <div class="pr-name" id="pro-name">Pro</div>
+      <div class="pr-for">For heavy course loads and long lectures.</div>
+      <div class="pr-price"><span class="pr-amount" data-month="$9.99" data-year="$8.33">$9.99</span><span class="pr-per">/month</span></div>
+      <div class="pr-billed" data-month="Billed monthly" data-year="$99.90 billed once a year">Billed monthly</div>
+      <ul class="pr-list">
+        <li>1,000 AI credits a month</li>
+        <li>20 hours of transcription a month (Record Lecture and audio/video uploads)</li>
+        <li>3 YouTube conversions a day</li>
+        <li>Everything in Free</li>
+      </ul>
+      <button class="pr-btn" id="btn-pro" type="button" onclick="choosePlan('pro')">Choose Pro</button>
+    </section>
+  </div>
+
+  <p class="pr-rules">Credits and transcription hours renew on the 1st of every month and don't roll over. AI tools use credits, and larger tasks may use more. If you run out, you can wait for the renewal or upgrade — you're never charged anything extra automatically.</p>
+
+  <section class="pr-usage" id="pr-usage" hidden aria-labelledby="usage-title">
+    <h2 id="usage-title">Your plan</h2>
+    <div class="pr-plan-line" id="pr-plan-line"></div>
+    <div class="pr-meter">
+      <div class="pr-meter-top"><span>AI credits this month</span><span id="u-credits"></span></div>
+      <div class="pr-bar"><div id="u-credits-bar"></div></div>
+    </div>
+    <div class="pr-meter" id="u-trans-wrap">
+      <div class="pr-meter-top"><span>Transcription this month</span><span id="u-trans"></span></div>
+      <div class="pr-bar"><div id="u-trans-bar"></div></div>
+    </div>
+    <button class="np-btn pr-manage" id="btn-manage" type="button" onclick="openPortal()" hidden>Manage subscription</button>
+  </section>
+
+  <section class="pr-faq" aria-labelledby="faq-title">
+    <h2 id="faq-title">Questions</h2>
+    <details>
+      <summary>What is an AI credit?</summary>
+      <p>Each AI tool uses credits. Short tasks like Define, Grammar, Translate or the tutor chat cost 1 credit. Bigger tasks, such as summaries, study guides, flashcards, Create picture or reading scanned pages, cost 1 credit for every 5,000 characters (or 2 pages), up to 5 credits. If something fails, the credits are given back.</p>
+    </details>
+    <details>
+      <summary>What counts as transcription?</summary>
+      <p>Record Lecture and turning uploaded audio or video into text. Transcription uses your monthly hours, never your AI credits. The YouTube converter is separate and free for everyone (3 a day).</p>
+    </details>
+    <details>
+      <summary>When do credits and hours reset?</summary>
+      <p>On the 1st of every month. Unused credits and hours don't carry over.</p>
+    </details>
+    <details>
+      <summary>What happens if I run out?</summary>
+      <p>That tool pauses until the 1st of next month, or you can upgrade. You are never charged extra automatically — the only charge is the plan you chose.</p>
+    </details>
+    <details>
+      <summary>Can I cancel or switch plans?</summary>
+      <p>Yes, any time, from "Manage subscription" on this page. If you cancel, you keep your plan until the end of the period you already paid for, then move to Free.</p>
+    </details>
+  </section>
+
+  <p class="pr-test" id="pr-test" hidden>Payments are in test mode — no real money is charged.</p>
+</main>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+function _syncThemeBtn() {
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = document.documentElement.classList.contains('light') ? 'Dark' : 'Light';
+}
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  try { localStorage.setItem('gn-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  _syncThemeBtn();
+}
+_syncThemeBtn();
+</script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import {
+  getAuth, onAuthStateChanged, signOut, signInAnonymously,
+  GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  linkWithCredential, linkWithPopup, EmailAuthProvider,
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+const _fapp = initializeApp({ apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI', authDomain:'geniusnotes-ai.firebaseapp.com', projectId:'geniusnotes-ai', appId:'1:1041746856723:web:fae9072e0292c3946068e6' });
+const _fauth = getAuth(_fapp);
+window._fauth = _fauth;
+// Same helpers index.html exposes, so js/auth-gate.js's sign-in window works here too.
+window._fbModular = {
+  signInAnonymously: () => signInAnonymously(_fauth),
+  signInWithPopup: (provider) => signInWithPopup(_fauth, provider),
+  signInWithEmailAndPassword: (email, pw) => signInWithEmailAndPassword(_fauth, email, pw),
+  createUserWithEmailAndPassword: (email, pw) => createUserWithEmailAndPassword(_fauth, email, pw),
+  linkWithPopup: (user, provider) => linkWithPopup(user, provider),
+  linkWithCredential: (user, credential) => linkWithCredential(user, credential),
+  GoogleAuthProvider,
+  EmailAuthProvider,
+};
+const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+onAuthStateChanged(_fauth, user => {
+  const realUser = !!(user && !user.isAnonymous);
+  show('nav-signin', !realUser); show('nav-tryfree', !realUser); show('nav-signout', realUser);
+  if (typeof window._gnOnAuthChange === 'function') window._gnOnAuthChange(user);
+  window.prOnAuth(realUser ? user : null);
+});
+window.navSignOut = async () => { try { await signOut(_fauth); } catch (e) {} };
+</script>
+
+<script>
+let _interval = 'month';
+let _plan = null;        // the signed-in user's plan, once known ('free' | 'student' | 'pro')
+let _user = null;
+const PLAN_NAMES = { free: 'Free', student: 'Student', pro: 'Pro' };
+
+async function _authFetch(url, opts) {
+  opts = opts || {};
+  const user = window._fauth && window._fauth.currentUser;
+  if (user) {
+    const token = await user.getIdToken();
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+  }
+  return fetch(url, opts);
+}
+
+function setInterval_(iv) {
+  _interval = iv;
+  document.getElementById('bill-month').setAttribute('aria-pressed', iv === 'month');
+  document.getElementById('bill-year').setAttribute('aria-pressed', iv === 'year');
+  document.querySelectorAll('[data-month]').forEach(el => { el.textContent = el.dataset[iv]; });
+}
+
+function notice(text, warn) {
+  const n = document.getElementById('pr-notice');
+  n.textContent = text;
+  n.classList.toggle('warn', !!warn);
+  n.hidden = !text;
+}
+
+function _hours(sec) {
+  const h = sec / 3600;
+  if (h >= 1) return (Math.round(h * 10) / 10) + ' h';
+  return Math.round(sec / 60) + ' min';
+}
+
+function renderButtons() {
+  const btns = { free: document.getElementById('btn-free'), student: document.getElementById('btn-student'), pro: document.getElementById('btn-pro') };
+  btns.free.textContent = _user ? 'Your free plan' : 'Get started';
+  btns.student.textContent = 'Choose Student';
+  btns.pro.textContent = 'Choose Pro';
+  Object.values(btns).forEach(b => { b.disabled = false; });
+  if (!_user || !_plan) return;
+  if (_plan === 'free') { btns.free.textContent = 'Current plan'; btns.free.disabled = true; return; }
+  btns[_plan].textContent = 'Current plan';
+  btns[_plan].disabled = true;
+  btns.free.textContent = 'Switch to Free';
+  const other = _plan === 'student' ? 'pro' : 'student';
+  btns[other].textContent = 'Switch to ' + PLAN_NAMES[other];
+}
+
+async function loadUsage() {
+  try {
+    const r = await _authFetch('/api/subscription');
+    const d = await r.json();
+    if (!r.ok) return;
+    _plan = d.plan || 'free';
+    document.getElementById('pr-usage').hidden = false;
+    let line = 'You are on the ' + (d.planName || PLAN_NAMES[_plan]) + ' plan';
+    if (_plan !== 'free' && d.interval) line += ', billed ' + (d.interval === 'year' ? 'yearly' : 'monthly');
+    if (_plan !== 'free' && d.renewsAt) {
+      const when = new Date(d.renewsAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+      line += d.cancelAtPeriodEnd ? '. It ends on ' + when + ', then you move to Free.' : '. Renews on ' + when + '.';
+    } else line += '.';
+    document.getElementById('pr-plan-line').textContent = line;
+    document.getElementById('u-credits').textContent = d.creditsUsed + ' of ' + d.creditsLimit + ' used';
+    document.getElementById('u-credits-bar').style.width = Math.min(100, 100 * d.creditsUsed / Math.max(1, d.creditsLimit)) + '%';
+    const hasTrans = d.transcribeSecondsLimit > 0;
+    document.getElementById('u-trans').textContent = hasTrans
+      ? _hours(d.transcribeSecondsUsed) + ' of ' + _hours(d.transcribeSecondsLimit) + ' used'
+      : 'Not included in Free';
+    document.getElementById('u-trans-bar').style.width = hasTrans ? Math.min(100, 100 * d.transcribeSecondsUsed / d.transcribeSecondsLimit) + '%' : '0%';
+    document.getElementById('btn-manage').hidden = _plan === 'free';
+    if (d.paymentProblem) notice("Your last payment didn't go through. Please update your card under Manage subscription to keep your plan.", true);
+    renderButtons();
+  } catch (e) { /* the page still works without the usage box */ }
+}
+
+window.prOnAuth = function (user) {
+  _user = user;
+  if (!user) { _plan = null; document.getElementById('pr-usage').hidden = true; renderButtons(); return; }
+  loadUsage();
+};
+
+async function _billing(payload, btn) {
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+  try {
+    const r = await _authFetch('/api/billing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    let d = {};
+    try { d = await r.json(); } catch (e) {}
+    if (r.ok && d.url) { window.location.href = d.url; return; }
+    notice(d.error || 'Something went wrong. Please try again.', true);
+  } catch (e) {
+    notice("We couldn't reach the server. Check your connection and try again.", true);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = old; }
+}
+
+function choosePlan(plan) {
+  if (plan === 'free') {
+    if (!_user) { window.location.href = 'signup.html'; return; }
+    if (_plan && _plan !== 'free') openPortal(); // cancelling happens on Stripe's page
+    return;
+  }
+  const btn = document.getElementById('btn-' + plan);
+  const go = () => _billing({ action: 'checkout', plan, interval: _interval }, btn);
+  if (!_user) {
+    if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in or create a free account to choose a plan', go);
+    else window.location.href = 'signin.html';
+    return;
+  }
+  go();
+}
+
+function openPortal() { _billing({ action: 'portal' }, document.getElementById('btn-manage')); }
+
+// Back from Stripe
+(function () {
+  const p = new URLSearchParams(location.search).get('checkout');
+  if (p === 'success') notice("Thanks! Your plan is active. It can take a few seconds to show up here.");
+  else if (p === 'cancel') notice('Checkout was cancelled. You have not been charged.');
+  if (p) history.replaceState(null, '', location.pathname);
+  // After a successful checkout the webhook may land a moment later — check again.
+  if (p === 'success') setTimeout(() => { if (_user) loadUsage(); }, 4000);
+})();
+
+// While Stripe is in test mode, say so on the page. Remove this line when going live.
+document.getElementById('pr-test').hidden = false;
+</script>
+<script src="js/auth-gate.js"></script>
+</body>
+</html>

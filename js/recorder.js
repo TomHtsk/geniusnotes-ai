@@ -423,6 +423,11 @@
       const d = await withTimeout(res.json(), 8000);
       clearTimeout(safetyTimer);
       if (!res.ok) {
+        if (d && d.code === 'limit_reached') {
+          if (window.gnShowLimitNotice) window.gnShowLimitNotice(d.error);
+          showDone('(' + d.error + ')', false);
+          return;
+        }
         showDone('(API error ' + res.status + ': ' + (d && d.error ? d.error : 'unknown') + ' — ' + Math.round(blob.size/1024) + 'KB)', false);
         return;
       }

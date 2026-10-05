@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction, creditsForSize } = require('./_lib/auth');
 const { buildDiagramMessages, planDiagramRequest, validateItems, parseDiagramReply, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG } = require('./_lib/diagram');
 const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
 
@@ -85,6 +85,21 @@ const _citGroq=groqFetch;
 // ── textbook merged from api/textbook.js ────────────────────────────────────
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
+// Modes that use MODEL_LARGE and are charged by size; the short modes (grammar, improve,
+// math, ...) and citations always cost 1 credit. See creditsForSize in api/_lib/auth.js.
+const LARGE_MODES = ['code', 'format', 'docformat', 'academic', 'email', 'highlight', 'cornell', 'inline', 'bullets', 'outline', 'studyguide'];
+function _writingCredits(b) {
+  b = b || {};
+  const len = (s) => String(s || '').length;
+  if (b.action === 'diagram') return creditsForSize({ chars: Math.min(len(b.text), 20000) });
+  if (b.sourceType !== undefined) return 1;
+  if (b.chapter !== undefined) return creditsForSize({ chars: Math.min(len(b.chapter), 18000) + len(b.questionsText), pages: b.questionsImage ? 1 : 0 });
+  const mode = b.mode || 'improve';
+  if (mode === 'diff') return creditsForSize({ chars: len(b.text) + len(b.tone) });
+  if (LARGE_MODES.includes(mode)) return creditsForSize({ chars: len(b.text) });
+  return 1;
+}
+
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -92,7 +107,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai', _writingCredits(req.body)))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
@@ -108,7 +123,7 @@ module.exports = async function handler(req, res) {
     const multi = req.body.multi === true;
     const plan = planDiagramRequest(req.body.text, multi);
     if (plan.text.length < 3) {
-      await refundAiAction(uid);
+      await refundAiAction(uid, res);
       return res.status(400).json({ error: 'Write or select something in your note first.' });
     }
     try {
@@ -132,7 +147,7 @@ module.exports = async function handler(req, res) {
         }
       }
       if (!items.length) {
-        await refundAiAction(uid); // nothing was drawn, so nothing is counted
+        await refundAiAction(uid, res); // nothing was drawn, so nothing is counted
         if (understood) return res.status(200).json({ items: [], message: NOTHING_DRAWABLE, truncated: plan.truncated });
         return res.status(502).json({ error: DIAGRAM_FAILED });
       }
@@ -140,7 +155,7 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       console.error('Groq error (diagram):', err.message);
       if (await sendBusyIfNeeded(err, res, uid)) return;
-      await refundAiAction(uid);
+      await refundAiAction(uid, res);
       if (err.tooLong) return res.status(413).json({ error: NOTE_TOO_LONG });
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
       return res.status(502).json({ error: DIAGRAM_FAILED });
@@ -228,7 +243,7 @@ Output ONLY the marked original text, nothing else.`;
       return res.status(200).json({ result });
     }
 
-    const isLargeMode = mode === 'code' || mode === 'format' || mode === 'docformat' || mode === 'academic' || mode === 'email' || mode === 'highlight' || mode === 'cornell' || mode === 'inline' || mode === 'bullets' || mode === 'outline' || mode === 'studyguide';
+    const isLargeMode = LARGE_MODES.includes(mode);
     const maxTok = mode === 'cornell' ? 6000 : mode === 'docformat' ? 6000 : mode === 'highlight' ? 6000 : mode === 'academic' ? 4500 : mode === 'studyguide' ? 4500 : mode === 'inline' ? 3800 : isLargeMode ? 4500 : 3000;
     const reqBody = {
       model: isLargeMode ? MODEL_LARGE : MODEL_SMALL,

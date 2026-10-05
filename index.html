@@ -718,6 +718,7 @@
     <a href="index.html" class="sidebar-item active" aria-current="page">Home</a>
     <a href="notepad.html" class="sidebar-item" data-requires-auth data-auth-reason="Sign in free to use the Notepad">Notepad</a>
     <a href="flashcards.html" class="sidebar-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">Flashcards</a>
+    <a href="pricing.html" class="sidebar-item">Pricing</a>
   </div>
 </aside>
 
@@ -738,6 +739,7 @@
       <a href="index.html" class="active" aria-current="page">Home</a>
       <a href="notepad.html" data-requires-auth data-auth-reason="Sign in free to use the Notepad">Notepad</a>
       <a href="flashcards.html" data-requires-auth data-auth-reason="Sign in free to use Flashcards">Flashcards</a>
+      <a href="pricing.html">Pricing</a>
     </nav>
     <div class="hp-spacer"></div>
     <button class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
@@ -861,6 +863,7 @@ _syncThemeBtn();
   </div>
   <div class="footer-links">
     <a href="notepad.html">Notepad</a>
+    <a href="pricing.html">Pricing</a>
     <a href="signin.html">Sign In</a>
     <a href="signup.html">Sign Up</a>
   </div>
@@ -1291,6 +1294,20 @@ function rmToggleRecord() {
   if (_rmRecording) { rmStop(); return; }
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) { alert('Speech recognition not supported in this browser. Try Chrome.'); return; }
+  // Transcription is a Student/Pro feature with monthly hours: ask the server first.
+  const btn = document.getElementById('rm-mic-btn');
+  if (btn.dataset.checking) return;
+  btn.dataset.checking = '1';
+  _authFetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'record-check' }) })
+    .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
+    .catch(() => ({ ok: true, d: {} })) // can't reach the server: let them record
+    .then(({ ok, d }) => {
+      delete btn.dataset.checking;
+      if (!ok && d.code === 'limit_reached') { if (window.gnShowLimitNotice) window.gnShowLimitNotice(d.error); return; }
+      rmStartRecording(SpeechRecognition);
+    });
+}
+function rmStartRecording(SpeechRecognition) {
   _rmRecognition = new SpeechRecognition();
   _rmRecognition.continuous = true;
   _rmRecognition.interimResults = true;
@@ -1325,6 +1342,10 @@ function rmStop() {
   _rmRecording = false;
   clearInterval(_rmTimer);
   if (_rmRecognition) { try { _rmRecognition.stop(); } catch(_) {} }
+  // Count the recording against this month's transcription hours.
+  if (_rmSeconds > 0) {
+    _authFetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'record-log', seconds: _rmSeconds }) }).catch(() => {});
+  }
   const text = document.getElementById('rm-live-text').textContent.trim();
   _rmText = text;
   if (!_rmText) { rmReset(); return; }
@@ -1803,6 +1824,10 @@ async function umTranscribeMedia(file, signal, stillWanted) {
   const label = document.getElementById('um-proc-label');
   document.getElementById('um-cancel-btn').style.display = '';
   label.textContent = 'Checking the file…';
+  // Transcription is a Student/Pro feature with monthly hours: ask before reading the file.
+  // On "no" umPostJson shows the limit notice (with "See plans") and throws.
+  await umPostJson('/api/subscription', { action: 'record-check' }, signal);
+  if (!stillWanted()) return '';
 
   const headerSeconds = await umMediaDuration(file);
   if (headerSeconds && headerSeconds > UM_MAX_MINUTES * 60) throw new Error(umTooLongMessage(headerSeconds));

@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction, creditsForSize } = require('./_lib/auth');
 const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 function getVideoId(url) {
@@ -773,7 +773,9 @@ module.exports = async function handler(req, res) {
   } else if (isText) {
     if (isAnonymous) return res.status(401).json({ error: 'sign_in_required', message: 'Sign in free to use this feature.' });
     if (!(await checkRateLimit(uid, res))) return;
-    if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+    // Flashcards only read about the first 12,000 characters, so they aren't charged for more.
+    const _chars = String(_b.text).length;
+    if (!(await checkAndIncrementUsage(uid, res, 'ai', creditsForSize({ chars: _b.mode === 'flashcards' ? Math.min(_chars, 12000) : _chars })))) return;
     chargedAiAction = true;
   } else if (isAnonymous) {
     if (!(await checkGuestYoutubeLimit(req, uid, res))) return;
@@ -831,13 +833,13 @@ module.exports = async function handler(req, res) {
         console.error('Groq error (summarize/text):', data.error?.message);
         const e = new Error(data.error?.message || 'Groq error');
         e.code = data.error?.code;
-        if (chargedAiAction) await refundAiAction(uid); // a failed request costs the user nothing
+        if (chargedAiAction) await refundAiAction(uid, res); // a failed request costs the user nothing
         if (await sendBusyIfNeeded(e, res, null)) return;
         if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
         return res.status(500).json({ error: e.message });
       }
       const summary = data.choices?.[0]?.message?.content;
-      if (!summary) { if (chargedAiAction) await refundAiAction(uid); return res.status(500).json({ error: 'No result returned' }); }
+      if (!summary) { if (chargedAiAction) await refundAiAction(uid, res); return res.status(500).json({ error: 'No result returned' }); }
 
       // For flashcards mode, parse the JSON array and return it directly
       if (mode === 'flashcards') {

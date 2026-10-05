@@ -1,16 +1,20 @@
-const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb } = require('./_lib/auth');
+const {
+  applyCors, verifyAuthFull, checkRateLimit, getDb,
+  PLANS, YT_PER_DAY, getUserPlan, getTranscribeAllowance, sendTranscribeLimit,
+} = require('./_lib/auth');
 
 function _monthKey() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM, UTC
 }
 
-// Multi-action usage endpoint (one file, to stay well within Vercel Hobby's function
-// limit — see api/_lib/auth.js's USAGE_LIMITS for the numbers). Payments were removed in
-// Oct 2026: there is one set of limits for every signed-in account. The file keeps its old
-// name so existing calls to /api/subscription keep working.
-//   GET                                -> this month's usage and the limits
+// Usage endpoint (the file keeps its old name so existing calls to /api/subscription keep
+// working). Plans and limits are in api/_lib/auth.js (PLANS); buying and managing a plan
+// is in api/billing.js.
+//   GET                                -> the user's plan, this month's usage and the limits
 //   POST { action: 'record-check' }    -> can the user start a recording right now?
-//   POST { action: 'record-log', seconds } -> report actual Record Lecture duration
+//   POST { action: 'record-log', seconds } -> report a Record Lecture that was turned into
+//        text by the browser's own speech recognition (costs us nothing, so the browser's
+//        number is accepted, capped per call)
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -23,16 +27,33 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'GET') {
     let usage = { aiActions: 0, recordSeconds: 0 };
+    let billing = {};
+    const plan = await getUserPlan(uid);
     try {
-      const usageSnap = await db.doc(`users/${uid}/usage/${_monthKey()}`).get();
+      const [usageSnap, billSnap] = await Promise.all([
+        db.doc(`users/${uid}/usage/${_monthKey()}`).get(),
+        db.doc(`billing/${uid}`).get(),
+      ]);
       if (usageSnap.exists) usage = usageSnap.data();
+      if (billSnap.exists) billing = billSnap.data();
     } catch (e) {}
     return res.status(200).json({
+      plan,
+      planName: PLANS[plan].name,
+      interval: plan === 'free' ? null : (billing.interval || null),
+      renewsAt: plan === 'free' ? null : (billing.currentPeriodEnd || null),
+      cancelAtPeriodEnd: plan === 'free' ? false : !!billing.cancelAtPeriodEnd,
+      paymentProblem: billing.status === 'past_due',
+      creditsUsed: usage.aiActions || 0,
+      creditsLimit: PLANS[plan].ai,
+      transcribeSecondsUsed: usage.recordSeconds || 0,
+      transcribeSecondsLimit: PLANS[plan].transcribe,
+      ytPerDay: YT_PER_DAY,
+      // Old names, still read by older pages.
       aiActionsUsed: usage.aiActions || 0,
-      aiActionsLimit: USAGE_LIMITS.ai,
+      aiActionsLimit: PLANS[plan].ai,
       recordSecondsUsed: usage.recordSeconds || 0,
-      recordSecondsLimit: USAGE_LIMITS.record,
-      ytPerDay: USAGE_LIMITS.yt,
+      recordSecondsLimit: PLANS[plan].transcribe,
     });
   }
 
@@ -41,17 +62,9 @@ module.exports = async function handler(req, res) {
 
     if (action === 'record-check') {
       try {
-        const limit = USAGE_LIMITS.record;
-        const ref = db.doc(`users/${uid}/usage/${_monthKey()}`);
-        const snap = await ref.get();
-        const used = snap.exists ? (snap.data().recordSeconds || 0) : 0;
-        if (used >= limit) {
-          return res.status(429).json({
-            code: 'limit_reached', used, limit,
-            error: `You've used this month's ${Math.round(limit / 60)} minutes of lecture recording. The limit resets at the start of next month.`,
-          });
-        }
-        return res.status(200).json({ ok: true });
+        const a = await getTranscribeAllowance(uid);
+        if (a.used >= a.limit) return sendTranscribeLimit(res, a);
+        return res.status(200).json({ ok: true, secondsLeft: a.limit - a.used });
       } catch (e) {
         return res.status(200).json({ ok: true }); // fail open
       }
@@ -59,7 +72,7 @@ module.exports = async function handler(req, res) {
 
     if (action === 'record-log') {
       try {
-        const seconds = Math.max(0, Math.floor(Number((req.body || {}).seconds) || 0));
+        const seconds = Math.min(4 * 3600, Math.max(0, Math.floor(Number((req.body || {}).seconds) || 0)));
         if (seconds > 0) {
           const ref = db.doc(`users/${uid}/usage/${_monthKey()}`);
           await db.runTransaction(async (tx) => {

@@ -308,29 +308,78 @@ async function checkGuestYoutubeLimit(req, uid, res) {
   }
 }
 
-// Usage limits — ONE set for every signed-in account (payments and the Pro plan were removed
-// in Oct 2026; restore from the git tag "before-stripe-removal" if they are ever wanted back).
-// Change the numbers here. `record` is in seconds (1800s = 30 min). `yt` is per day;
-// `ai` and `record` are per month. Guests (not signed in) only get the YouTube converter,
-// limited by GUEST_YT_LIMIT above.
-const USAGE_LIMITS = { ai: 300, record: 1800, yt: 3 };
+// ── Plans (Oct 2026) ─────────────────────────────────────────────────────────────
+// Change the numbers here. `ai` = AI credits per month, `transcribe` = seconds of
+// transcription per month (Record Lecture + uploaded audio/video). Credits and hours
+// reset on the 1st of each month (UTC). There are no top-ups. Prices live in api/billing.js.
+// `yt` (YouTube conversions per day) is the same for everyone; guests (not signed in)
+// are limited by GUEST_YT_LIMIT above.
+const PLANS = {
+  free:    { name: 'Free',    ai: 10,   transcribe: 0 },
+  student: { name: 'Student', ai: 300,  transcribe: 8 * 3600 },
+  pro:     { name: 'Pro',     ai: 1000, transcribe: 20 * 3600 },
+};
+const YT_PER_DAY = 3;
+// Kept for older code that reads USAGE_LIMITS: the Free plan's numbers.
+const USAGE_LIMITS = { ai: PLANS.free.ai, record: PLANS.free.transcribe, yt: YT_PER_DAY };
+
+// How many credits one request costs. A short task is 1 credit; bigger ones cost 1 credit
+// per started CHARS_PER_CREDIT characters of text sent, plus 1 per started PAGES_PER_CREDIT
+// images/pages, capped at MAX_PER_REQUEST. These are a first guess — tune them once real
+// Groq costs are known. Transcription never costs credits (it uses the hours instead).
+const CREDIT_RULES = { CHARS_PER_CREDIT: 5000, PAGES_PER_CREDIT: 2, MAX_PER_REQUEST: 5 };
+function creditsForSize(size) {
+  size = size || {};
+  const chars = Math.max(0, Number(size.chars) || 0);
+  const pages = Math.max(0, Number(size.pages) || 0);
+  const n = Math.ceil(chars / CREDIT_RULES.CHARS_PER_CREDIT) + Math.ceil(pages / CREDIT_RULES.PAGES_PER_CREDIT);
+  return Math.max(1, Math.min(CREDIT_RULES.MAX_PER_REQUEST, n));
+}
+
+// The user's plan, read from billing/{uid} (written only by the Stripe webhook in
+// api/billing.js; the browser can't write it — see firestore.rules). 'past_due' keeps the
+// plan while Stripe retries the card; Stripe cancels the subscription if it never pays.
+const PAID_STATUSES = ['active', 'trialing', 'past_due'];
+async function getUserPlan(uid) {
+  try {
+    const snap = await getDb().doc(`billing/${uid}`).get();
+    const b = snap.exists ? snap.data() : null;
+    if (b && PLANS[b.plan] && b.plan !== 'free' && PAID_STATUSES.includes(b.status)) return b.plan;
+  } catch (e) { /* fall through to free */ }
+  return 'free';
+}
 
 function _monthKey(d) {
   return (d || new Date()).toISOString().slice(0, 7); // YYYY-MM, UTC
 }
 
-// Monthly AI-action counter at users/{uid}/usage/{YYYY-MM}. `kind` is currently
-// always 'ai' (kept as a param for future extensibility). Sends the 429 itself and
-// returns false when the monthly limit is already reached; otherwise increments the
-// counter and returns true. The response's `error` is a sentence the page can show
-// as-is (it says when the limit resets); `code: 'limit_reached'` is for pages that want
-// to show it in the shared notice instead. Fail-open on Firestore errors, same
-// reasoning as checkRateLimit.
-async function checkAndIncrementUsage(uid, res, kind) {
+// "November 1" — the day monthly credits and hours reset (1st of next month, UTC).
+function _resetDateText() {
+  const d = new Date();
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+
+function _creditsLimitMessage(plan, limit) {
+  return `You've used all ${limit} AI credits for this month. Your credits reset on ${_resetDateText()}. ` +
+    (plan === 'pro' ? '' : 'You can wait until then or upgrade for more credits. ') +
+    'Your notes and saved work are still available, and features that don\'t use AI keep working.';
+}
+
+// Monthly AI-credit counter at users/{uid}/usage/{YYYY-MM} (the field is still called
+// `aiActions` so existing counters keep working; it now holds credits). `credits` is the
+// cost of this request (default 1, see creditsForSize). Sends the 429 itself and returns
+// false when there aren't enough credits left; otherwise charges them and returns true.
+// The charged amount is remembered on `res` so refundAiAction can give back the same
+// amount. The response's `error` is a sentence the page can show as-is. Fail-open on
+// Firestore errors, same reasoning as checkRateLimit.
+async function checkAndIncrementUsage(uid, res, kind, credits) {
+  credits = Math.max(1, Math.floor(Number(credits) || 1));
   try {
-    const limit = USAGE_LIMITS.ai;
     _ensureAdmin();
     const db = getDb();
+    const plan = await getUserPlan(uid);
+    const limit = PLANS[plan].ai;
     const month = _monthKey();
     const ref = db.doc(`users/${uid}/usage/${month}`);
 
@@ -338,28 +387,36 @@ async function checkAndIncrementUsage(uid, res, kind) {
       const snap = await tx.get(ref);
       const data = snap.exists ? snap.data() : { month, aiActions: 0, recordSeconds: 0 };
       const used = data.aiActions || 0;
-      if (used >= limit) return { ok: false, used, limit };
-      tx.set(ref, Object.assign({}, data, { month, aiActions: used + 1 }), { merge: true });
-      return { ok: true, used: used + 1, limit };
+      if (used + credits > limit) return { ok: false, used, limit };
+      tx.set(ref, Object.assign({}, data, { month, aiActions: used + credits }), { merge: true });
+      return { ok: true, used: used + credits, limit };
     });
 
     if (!result.ok) {
+      const left = Math.max(0, result.limit - result.used);
       res.status(429).json({
-        code: 'limit_reached', used: result.used, limit: result.limit,
-        error: `You've used all ${result.limit} AI actions for this month. The limit resets at the start of next month.`,
+        code: 'limit_reached', used: result.used, limit: result.limit, plan,
+        error: left > 0
+          ? `This needs ${credits} AI credits and you have ${left} left this month. Try a shorter piece of text, wait until your credits reset on ${_resetDateText()}` +
+            (plan === 'pro' ? '.' : ', or upgrade for more credits.')
+          : _creditsLimitMessage(plan, result.limit),
       });
       return false;
     }
+    res._gnCredits = credits;
     return true;
   } catch (e) {
     return true;
   }
 }
 
-// Gives back the one AI action that checkAndIncrementUsage charged, for a request that
-// could not be served because every Groq model was rate-limited (see sendBusyIfNeeded in
-// models.js). Does not touch the checks themselves. Never throws.
-async function refundAiAction(uid) {
+// Gives back the credits that checkAndIncrementUsage charged for this request (pass the
+// same `res`; without it, 1 credit), for a request that could not be served — e.g. every
+// Groq model was rate-limited (see sendBusyIfNeeded in models.js). Never throws.
+async function refundAiAction(uid, res) {
+  const credits = res ? (res._gnCredits || 0) : 1;
+  if (res) res._gnCredits = 0; // never refund the same request twice
+  if (!credits) return;
   try {
     _ensureAdmin();
     const db = getDb();
@@ -367,9 +424,9 @@ async function refundAiAction(uid) {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const used = snap.exists ? (snap.data().aiActions || 0) : 0;
-      if (used > 0) tx.set(ref, { aiActions: used - 1 }, { merge: true });
+      if (used > 0) tx.set(ref, { aiActions: Math.max(0, used - credits) }, { merge: true });
     });
-  } catch (e) { /* worst case the action stays counted */ }
+  } catch (e) { /* worst case the credits stay counted */ }
 }
 
 // Per-day YouTube-conversion counter for SIGNED-IN users at
@@ -378,7 +435,7 @@ async function refundAiAction(uid) {
 // as checkAndIncrementUsage.
 async function checkYoutubeDailyLimit(uid, res) {
   try {
-    const limit = USAGE_LIMITS.yt;
+    const limit = YT_PER_DAY;
     _ensureAdmin();
     const db = getDb();
     const today = _ytDayKey();
@@ -467,21 +524,36 @@ async function startUploadSession(uid, uploadId, chunkCount) {
   } catch (e) { /* later chunks will be rejected and the user asked to retry */ }
 }
 
-// Same rule as Record Lecture's record-check (api/subscription.js): refuse to START when
-// this month's audio minutes are already used up. Sends the 429 itself. Fail-open.
+// Transcription allowance for the user's plan, in seconds per month, and how much is used.
+async function getTranscribeAllowance(uid) {
+  const plan = await getUserPlan(uid);
+  const limit = PLANS[plan].transcribe;
+  const snap = await getDb().doc(`users/${uid}/usage/${_monthKey()}`).get();
+  const used = snap.exists ? (snap.data().recordSeconds || 0) : 0;
+  return { plan, limit, used };
+}
+
+// The 429 sent when the user can't start a transcription. Free plan: transcription isn't
+// included. Paid plan: this month's hours are used up.
+function sendTranscribeLimit(res, a) {
+  const hours = Math.round(a.limit / 360) / 10;
+  res.status(429).json({
+    code: 'limit_reached', used: a.used, limit: a.limit, plan: a.plan,
+    error: a.limit <= 0
+      ? 'Transcription (Record Lecture and audio/video uploads) is included in the Student and Pro plans.'
+      : `You've used this month's ${hours} hours of transcription. Your hours reset on ${_resetDateText()}.` +
+        (a.plan === 'pro' ? '' : ' You can wait until then or upgrade for more hours.'),
+  });
+}
+
+// Refuse to START a transcription when the plan has none or this month's hours are used
+// up (Record Lecture's record-check in api/subscription.js uses the same rule). Sends the
+// 429 itself. Fail-open on Firestore errors.
 async function checkAudioAllowance(uid, res) {
   try {
-    const limit = USAGE_LIMITS.record;
     _ensureAdmin();
-    const snap = await getDb().doc(`users/${uid}/usage/${_monthKey()}`).get();
-    const used = snap.exists ? (snap.data().recordSeconds || 0) : 0;
-    if (used >= limit) {
-      res.status(429).json({
-        code: 'limit_reached', used, limit,
-        error: `You've used this month's ${Math.round(limit / 60)} minutes of audio transcription. The limit resets at the start of next month.`,
-      });
-      return false;
-    }
+    const a = await getTranscribeAllowance(uid);
+    if (a.used >= a.limit) { sendTranscribeLimit(res, a); return false; }
     return true;
   } catch (e) {
     return true;
@@ -529,4 +601,11 @@ module.exports = {
   refundAiAction,
   checkYoutubeDailyLimit,
   USAGE_LIMITS,
+  PLANS,
+  YT_PER_DAY,
+  CREDIT_RULES,
+  creditsForSize,
+  getUserPlan,
+  getTranscribeAllowance,
+  sendTranscribeLimit,
 };

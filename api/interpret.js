@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, creditsForSize } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 async function ddgLookup(query) {
@@ -41,7 +41,9 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+  const _ib = req.body || {};
+  const _credits = (!_ib.messages && _ib.mode === 'interpret') ? creditsForSize({ chars: String(_ib.text || '').length }) : 1;
+  if (!(await checkAndIncrementUsage(uid, res, 'ai', _credits))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });

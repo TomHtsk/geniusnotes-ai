@@ -75,12 +75,12 @@ function isBusyError(err) {
   return !!err && (err.code === BUSY_AI_CODE || err.message === BUSY_AI_ERROR);
 }
 
-// If `err` is the "every model is rate-limited" error: gives the user's monthly AI action
+// If `err` is the "every model is rate-limited" error: gives the user's AI credits
 // back (pass uid = null for endpoints that don't charge one), sends the 429 with the
 // message the page shows, and returns true. Otherwise returns false and sends nothing.
 async function sendBusyIfNeeded(err, res, uid) {
   if (!isBusyError(err)) return false;
-  if (uid) { try { await require('./auth').refundAiAction(uid); } catch (_) {} }
+  if (uid) { try { await require('./auth').refundAiAction(uid, res); } catch (_) {} }
   res.status(429).json({ error: BUSY_AI_ERROR, code: BUSY_AI_CODE });
   return true;
 }

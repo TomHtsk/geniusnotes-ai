@@ -1,10 +1,9 @@
 const {
-  applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage,
+  applyCors, verifyAuth, checkRateLimit,
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
   checkAudioAllowance, addTranscribedSeconds,
 } = require('./_lib/auth');
-const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE } = require('./_lib/models');
-const { refundAiAction } = require('./_lib/auth');
+const { MODEL_SMALL, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat } = require('./_lib/models');
 
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
 const CHUNK_BYTES_PER_SEC = 32000;
@@ -12,8 +11,9 @@ const CHUNK_MAX_SECONDS = 90;
 
 // ── CHUNKED UPLOAD (video/audio file split in the browser) ─────────────────
 // Body: { audio (base64 WAV), uploadId, chunkIndex, chunkCount, chunkSeconds }.
-// One file = one AI action: only chunk 0 goes through the rate limit and usage check;
-// later chunks must match the session recorded for that uploadId (api/_lib/auth.js).
+// Transcription uses the plan's monthly hours, never AI credits. Only chunk 0 goes through
+// the rate limit and the hours check; later chunks must match the session recorded for
+// that uploadId (api/_lib/auth.js). Every chunk's real length is added to the hours used.
 async function handleUploadChunk(req, res, uid) {
   const { audio, uploadId } = req.body;
   const chunkIndex = Number(req.body.chunkIndex);
@@ -40,7 +40,6 @@ async function handleUploadChunk(req, res, uid) {
   if (claim.status === 'new') {
     if (!(await checkRateLimit(uid, res))) return;
     if (!(await checkAudioAllowance(uid, res))) return;
-    if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
     await startUploadSession(uid, uploadId, chunkCount);
   } else if (claim.status === 'error') {
     if (!(await checkRateLimit(uid, res))) return;
@@ -49,7 +48,7 @@ async function handleUploadChunk(req, res, uid) {
   try {
     const form = new FormData();
     form.append('file', new Blob([buffer], { type: 'audio/wav' }), 'audio.wav');
-    form.append('model', MODEL_WHISPER);
+    form.append('model', MODEL_WHISPER_TURBO);
     form.append('response_format', 'json');
     form.append('language', 'en');
 
@@ -84,7 +83,8 @@ module.exports = async function handler(req, res) {
   if (!uid) return;
   if (req.body && req.body.uploadId !== undefined) return handleUploadChunk(req, res, uid);
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+  // Transcription uses the plan's monthly hours, never AI credits (Free has none).
+  if (!(await checkAudioAllowance(uid, res))) return;
 
   const { audio, mimeType, diarize, spkNames, text } = req.body || {};
   if (!audio && !text) return res.status(400).json({ error: 'Missing audio or text' });
@@ -92,6 +92,9 @@ module.exports = async function handler(req, res) {
   // ── TEXT-ONLY FAST PATH (skip Whisper) ───────────────────
   if (text && !audio) {
     if (!text.trim()) return res.status(200).json({ transcript: text });
+    // The browser already turned the speech into text, so count the recording's length
+    // from the words (about 150 spoken words a minute) — never from a number it sends.
+    await addTranscribedSeconds(uid, String(text).trim().split(/\s+/).length / 2.5);
     const nameList = spkNames ? spkNames.split(',').map(n => n.trim()).filter(Boolean) : [];
     const namesNote = nameList.length > 0
       ? `Label the speakers as: ${nameList.join(', ')} (in order of first appearance).`
@@ -137,8 +140,6 @@ FORMAT:
       });
       const dd = await dr.json();
       if (!dr.ok) console.error('Groq error (transcribe/label):', dd.error?.message);
-      // Every model rate-limited: the text goes back unedited, so don't charge for it.
-      if (dd.error?.code === BUSY_AI_CODE) await refundAiAction(uid);
       const labeled = dd.choices?.[0]?.message?.content?.trim();
       return res.status(200).json({ transcript: labeled || text });
     } catch (err) {
@@ -189,6 +190,7 @@ FORMAT:
           }
           return `${speakerMap[u.speaker]}: ${u.text}`;
         }).join('\n');
+        await addTranscribedSeconds(uid, result.audio_duration);
         return res.status(200).json({ transcript });
       }
     } catch {}
@@ -199,12 +201,14 @@ FORMAT:
   try {
     const ext = (mimeType || 'audio/webm').split('/')[1]?.split(';')[0] || 'webm';
     const blob = new Blob([buffer], { type: mimeType || 'audio/webm' });
-    // Use full large-v3 for final transcriptions (realtime flag uses turbo)
-    const model = req.body.realtime ? MODEL_WHISPER_TURBO : MODEL_WHISPER;
+    // Turbo for everything (about a third of the price of full large-v3). Final
+    // transcriptions ask for verbose_json so Groq tells us the real audio length to count;
+    // realtime previews re-send the same growing recording, so they aren't counted.
+    const isPreview = !!req.body.realtime;
     const form = new FormData();
     form.append('file', blob, `audio.${ext}`);
-    form.append('model', model);
-    form.append('response_format', 'json');
+    form.append('model', MODEL_WHISPER_TURBO);
+    form.append('response_format', isPreview ? 'json' : 'verbose_json');
     form.append('language', 'en');
     // Seed prompt helps Whisper with classroom/lecture vocabulary
     if (req.body.prompt) form.append('prompt', req.body.prompt);
@@ -224,6 +228,7 @@ FORMAT:
     }
 
     let transcript = data.text || '';
+    if (!isPreview) await addTranscribedSeconds(uid, data.duration);
 
     if (diarize && transcript.trim()) {
       const nameList = spkNames ? spkNames.split(',').map(n => n.trim()).filter(Boolean) : [];

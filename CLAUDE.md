@@ -12,7 +12,7 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
 - Keep it simple: this is an MVP. Hide rather than delete features. Don't add new dependencies or API files without asking.
 
 ### Rules that must not be broken
-1. **Max 12 serverless functions** (Vercel Hobby). **10 are in use** since payments were removed (Oct 2026), so there are 2 spare. Still prefer adding an `action` to an existing endpoint over a new file in `/api`.
+1. **Max 12 serverless functions** (Vercel Hobby). **11 are in use** (`billing.js` added for paid plans, Oct 2026), so there is 1 spare. Still prefer adding an `action` to an existing endpoint over a new file in `/api`.
 2. **Every `/api` endpoint requires a Firebase ID token** via `api/_lib/auth.js` (`verifyAuth` / `verifyAuthFull`). Frontend calls go through `_authFetch`. Anonymous tokens are accepted only for the YouTube converter (`summarize.js`).
 3. **CORS allow-list** in `api/_lib/auth.js` (`ALLOWED_ORIGINS`): notecaptain.ai, www.notecaptain.ai, the vercel.app address, localhost. No `*`.
 4. **Never trust the browser for limits.** Usage is checked server-side (`checkAndIncrementUsage`, `checkYoutubeDailyLimit`, `checkGuestYoutubeLimit`).
@@ -30,18 +30,26 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
    - **Friendly errors**: every Groq-calling endpoint logs the real error server-side (`console.error`) and returns `"This AI feature is temporarily unavailable. Please try again soon."` (502) to the client when the error looks like a model-not-found/deprecation error (`isModelUnavailableError` in `models.js`, checks Groq's `error.code` first, falls back to message-text matching). Other errors (bad input, rate limits, timeouts) keep their existing specific messages.
 7. **Wikipedia content is CC BY-SA 4.0** — keep the attribution + license link on the result card, the full-screen reader, and notes sent to the Notepad.
 
-### Payments — REMOVED on purpose (Oct 2026)
-Stripe, the Pro plan, `pricing.html`, `js/pricing.js`, `api/checkout.js` and `api/webhook.js` were deleted at the owner's request; everything is free. To bring payments back, restore from the git tag **`before-stripe-removal`**. Do not re-add payment code unless asked.
+### Paid plans — Stripe (Oct 2026, TEST MODE until the owner goes live)
+| Plan | Price | AI credits / month | Transcription / month | YouTube / day |
+|---|---|---|---|---|
+| Guest (not signed in) | — | — | — | 3 (`GUEST_YT_LIMIT`) |
+| Free (signed in) | $0 | 10 | none | 3 |
+| Student | $4.99/mo or $49.90/yr | 300 | 8 h | 3 |
+| Pro | $9.99/mo or $99.90/yr | 1,000 | 20 h | 3 |
 
-### Usage limits (`USAGE_LIMITS` in `api/_lib/auth.js`) — one set for everyone
-| Who | AI actions / month | Lecture recording / month | YouTube conversions / day |
-|---|---|---|---|
-| Guest (not signed in) | — | — | 3 (`GUEST_YT_LIMIT`) |
-| Signed in | 300 | 30 min | 3 |
-
-`/api/summarize` limits by request type: a YouTube **link** uses the daily YouTube allowance; **text** (uploads, flashcards, notebook summaries) is a normal monthly AI action, needs a real account, and never touches the YouTube allowance; a video **search** only hits the hourly rate limit. To reset every YouTube daily counter, bump `YT_COUNTER_RESET_TAG` in `api/_lib/auth.js`.
-
-Limit hit → API returns 429 `{ code: 'limit_reached', error: '<sentence saying when it resets>' }`. Pages can show `error` as-is, or pass it to `gnShowLimitNotice()` in `js/auth-gate.js`. There is no upgrade prompt.
+- **Numbers live in `PLANS` in `api/_lib/auth.js`; prices in `PRICES` in `api/billing.js`.** Credits and hours reset on the 1st of each month (UTC) and don't roll over. **No top-ups** (owner's decision) — nobody is ever charged except the subscription they chose.
+- **The user's plan** is `billing/{uid}` in Firestore (`plan`, `status`, `interval`, `stripeCustomerId`, `stripeSubscriptionId`, `currentPeriodEnd` in ms, `cancelAtPeriodEnd`). Written ONLY by the Stripe webhook; firestore.rules don't let the browser touch it. `getUserPlan(uid)` treats `active` / `trialing` / `past_due` as paid, anything else as Free.
+- **Credits** (`checkAndIncrementUsage(uid, res, 'ai', credits)`; the counter field is still called `aiActions`): short tasks = 1 (Define, Comprehend, tutor chat, grammar/improve/math, citations, translate, lyrics). Bigger tasks = `creditsForSize({ chars, pages })`: 1 per started 5,000 characters + 1 per started 2 pages/images, capped at 5 (`CREDIT_RULES`). Sized: `writing.js` long modes (`LARGE_MODES`), diagram, textbook, diff; `summarize.js` text (flashcards capped at 12,000 chars); the `interpret` mode; `checker.js`; `extract.js` OCR pages; `homework.js`. **Weights are a first guess — tune `CREDIT_RULES` once real Groq costs are known.** `refundAiAction(uid, res)` gives back exactly what that request was charged (`res._gnCredits`); `sendBusyIfNeeded` passes `res`.
+- **Transcription uses hours, never credits** (Free has none): `checkAudioAllowance` before starting; seconds counted server-side — upload chunks by WAV size, final Whisper transcriptions by Groq's `verbose_json` `duration`, AssemblyAI by `audio_duration`, browser-speech text clean-up by word count (150 words/min). Realtime previews are not counted. The homepage Record Lecture (browser speech only, costs us nothing) calls `record-check` before and `record-log` after. **All Whisper calls use `MODEL_WHISPER_TURBO`** (about a third of the price).
+- **`api/billing.js`** (Stripe REST via fetch, no `stripe` package, API version pinned `2024-06-20`): `{action:'checkout', plan, interval}` → Stripe Checkout URL (already paying → the manage page instead, so nobody gets two subscriptions); `{action:'portal'}` → Stripe's manage page (cancel at period end, switch Student/Pro and monthly/yearly, card, invoices). Requests with a `Stripe-Signature` header are the **webhook** (body parsing is off for this file; signature checked by hand, 5-minute tolerance); it re-reads the subscription from Stripe and writes `billing/{uid}`. Products, the 4 prices (lookup key `nc_<plan>_<interval>_<cents>`) and the manage-page settings are **created automatically** on first use in each mode (test/live). Changing an amount in `PRICES` creates a new price; existing subscribers keep theirs.
+- **Env vars:** `STRIPE_SECRET_KEY` (sk_test_ / sk_live_), `STRIPE_WEBHOOK_SECRET`. Webhook endpoint: `https://www.notecaptain.ai/api/billing` (www — Stripe doesn't follow the redirect), events `checkout.session.completed` + `customer.subscription.created/updated/deleted`. No key → checkout says "Payments are not set up yet".
+- **Pages:** `pricing.html` (cards, monthly/yearly toggle, "Your plan" usage box, Manage subscription, FAQ; a "test mode" line at the bottom — remove when live). Pricing links in the homepage nav/sidebar/footer. `gnShowLimitNotice` has **See plans** + **Not now**. `GET /api/subscription` returns `plan`, `creditsUsed/Limit`, `transcribeSecondsUsed/Limit`, `renewsAt`, `cancelAtPeriodEnd`, `paymentProblem`.
+- Limit hit → 429 `{ code: 'limit_reached', plan, error }`; the sentence names the reset date ("Your credits reset on November 1") and says notes and non-AI features still work.
+- `/api/summarize` limits by request type: a YouTube **link** uses the daily YouTube allowance (free for everyone); **text** (uploads, flashcards, notebook summaries) costs credits and needs a real account; a video **search** only hits the hourly rate limit. To reset every YouTube daily counter, bump `YT_COUNTER_RESET_TAG`.
+- **Tests:** `node _test_billing.js` (fakes Firestore, Groq and Stripe: plans, credit costs, refunds, hours, checkout, portal, webhook signature, plan switch/cancel). `_test_groq.js` puts its fake user on Pro. `_test_upload.js` part B still expects the old 30-min/one-action rules and needs updating.
+- **Not built yet (idea):** showing the credit cost before each AI task.
+- **Before real money:** Vercel Pro (Hobby forbids commercial use), Groq paid plan, Privacy/Terms/Refund pages, live Stripe keys + live webhook, and a decision on existing users (they drop from 300 actions to Free's 10 credits). The pre-Oct-2026 Stripe code is at git tag `before-stripe-removal`; the state just before this pricing work is `before-pricing-v2`.
 
 ### Create picture — diagrams drawn by OUR templates, not by the AI (Oct 2026)
 - **Rule: the AI never draws and never writes SVG.** It only returns structured data; `js/diagram-templates.js` (`GNDiagram`) draws the picture from one fixed template per kind, so every diagram has the same design. Style reference: `Claude outputs/diagram-style-reference.svg` (the photosynthesis equation). Do not let any AI-written markup reach the page.
@@ -176,7 +184,7 @@ Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashca
 ## Vercel Env Vars (values live ONLY in Vercel — never write keys in this file or in code)
 `GROQ_API_KEY`, `SUPADATA_API_KEY`, `ASSEMBLYAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `YOUTUBE_API_KEY`, `YT_COOKIE`, `GEMINI_API_KEY`
 
-The code no longer reads any payment-related env vars; any still set in Vercel are unused and can be deleted there.
+Payments: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (see "Paid plans" above). Older Stripe price-ID env vars are not read and can be deleted.
 
 ## Git / Deploy
 - Remote: `https://github.com/TomHtsk/geniusnotes-ai.git` (branch: `main`). Pushing `main` deploys to production on Vercel.
@@ -426,10 +434,10 @@ Already had sidebar: `index.html`, `passwords.html`, `meetings.html`
 
 ## API Files
 
-### Deployed (10 functions — Hobby plan limit is 12)
-`writing.js`, `summarize.js`, `interpret.js`, `lyrics.js`, `extract.js`, `transcribe.js`, `homework.js`, `checker.js`, `translate.js`, `subscription.js`
+### Deployed (11 functions — Hobby plan limit is 12)
+`writing.js`, `summarize.js`, `interpret.js`, `lyrics.js`, `extract.js`, `transcribe.js`, `homework.js`, `checker.js`, `translate.js`, `subscription.js`, `billing.js`
 
-`subscription.js` is now only the usage endpoint (this month's usage, `record-check`, `record-log`); it kept its old name so existing calls keep working.
+`subscription.js` is the usage endpoint (plan + this month's usage, `record-check`, `record-log`); it kept its old name so existing calls keep working. `billing.js` is Stripe checkout / manage page / webhook.
 
 ### Merged (skip in deploy — handled via Vercel rewrites)
 `api/ytsearch.js` → `summarize.js` | `api/musicnotes.js` → `lyrics.js` | `api/chat.js` → `interpret.js` | `api/citation.js` → `writing.js` | `api/textbook.js` → `writing.js`

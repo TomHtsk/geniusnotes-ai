@@ -115,6 +115,16 @@
     .pr-btn.primary:hover:not(:disabled) { opacity: 0.88; background: var(--primary-bg); }
     .pr-btn:disabled { cursor: default; opacity: 0.6; }
 
+    .pr-code { max-width: 440px; margin: -6px auto 24px; display: grid; gap: 6px; }
+    .pr-code label { font-size: 0.84rem; font-weight: 600; text-align: center; }
+    .pr-code-row { display: flex; gap: 8px; }
+    .pr-code-row input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: 600 0.88rem Inter, system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase; }
+    .pr-code-row input::placeholder { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+    .pr-code-row .np-btn { height: 36px; }
+    .pr-code-msg { font-size: 0.84rem; text-align: center; min-height: 1.2em; }
+    .pr-code-msg.ok { color: var(--accent); font-weight: 600; }
+    .pr-code-msg.bad { color: #c2410c; }
+    .pr-fine { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.45; }
     .pr-rules { max-width: 640px; margin: 22px auto 0; text-align: center; color: var(--muted); font-size: 0.86rem; }
     .pr-usage { max-width: 640px; margin: 36px auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
     .pr-usage h2 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
@@ -187,6 +197,15 @@
     </div>
   </div>
 
+  <form class="pr-code" id="pr-code-form" autocomplete="off">
+    <label for="pr-code-input">Have an offer code?</label>
+    <div class="pr-code-row">
+      <input id="pr-code-input" type="text" placeholder="e.g. FREESTUDENT" maxlength="40" autocapitalize="characters" spellcheck="false">
+      <button type="submit" class="np-btn" id="pr-code-btn">Apply</button>
+    </div>
+    <div class="pr-code-msg" id="pr-code-msg" role="status"></div>
+  </form>
+
   <div id="pr-notice" class="pr-notice" hidden></div>
 
   <div class="pr-grid">
@@ -218,6 +237,7 @@
         <li>Everything in Free</li>
       </ul>
       <button class="pr-btn primary" id="btn-student" type="button" onclick="choosePlan('student')">Choose Student</button>
+      <p class="pr-fine" id="student-fine" hidden></p>
     </section>
 
     <section class="pr-card" aria-labelledby="pro-name">
@@ -268,6 +288,10 @@
     <details>
       <summary>What happens if I run out?</summary>
       <p>That tool pauses until the 1st of next month, or you can upgrade. You are never charged extra automatically — the only charge is the plan you chose.</p>
+    </details>
+    <details>
+      <summary>How does the free month with a code work?</summary>
+      <p>With a launch offer code, the first 100 new members get their first 30 days of Student free. You add a card at checkout and pay $0 that day. If you don't cancel before the free month ends, your card is charged for Student ($4.99 a month, or $49.90 a year if you chose yearly) from that day. To avoid any charge, cancel before the end date under "Manage subscription" on this page; you keep Student until the free month ends. One free month per account.</p>
     </details>
     <details>
       <summary>Can I cancel or switch plans?</summary>
@@ -351,7 +375,68 @@ function setInterval_(iv) {
   document.getElementById('bill-month').setAttribute('aria-pressed', iv === 'month');
   document.getElementById('bill-year').setAttribute('aria-pressed', iv === 'year');
   document.querySelectorAll('[data-month]').forEach(el => { el.textContent = el.dataset[iv]; });
+  renderOffer();
 }
+
+// ── Offer code (launch offer: first 30 days of Student free, card required) ──
+let _code = null, _trialDays = 30;
+const STUDENT_PRICE = { month: '$4.99/month', year: '$49.90/year' };
+function _dateIn(days) {
+  return new Date(Date.now() + days * 86400000).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+}
+function codeMsg(text, ok) {
+  const m = document.getElementById('pr-code-msg');
+  m.textContent = text || '';
+  m.className = 'pr-code-msg' + (text ? (ok ? ' ok' : ' bad') : '');
+}
+// Student card wording while a code is applied. Says plainly when the first charge happens.
+function renderOffer() {
+  const on = !!_code && (!_plan || _plan === 'free');
+  const card = document.getElementById('btn-student').closest('.pr-card');
+  const billed = card.querySelector('.pr-billed');
+  const fine = document.getElementById('student-fine');
+  if (on) {
+    billed.textContent = `First ${_trialDays} days free, then ${STUDENT_PRICE[_interval]}`;
+    fine.textContent = `Card needed. You pay $0 today. If you don't cancel before ${_dateIn(_trialDays)}, your card is charged ${STUDENT_PRICE[_interval]} from that day. Cancel any time under "Manage subscription" on this page.`;
+    fine.hidden = false;
+  } else {
+    billed.textContent = billed.dataset[_interval];
+    fine.hidden = true;
+  }
+  renderButtons();
+}
+async function applyCode(e) {
+  if (e) e.preventDefault();
+  const code = document.getElementById('pr-code-input').value.trim();
+  if (!code) { codeMsg('Type your code first.', false); return; }
+  if (!_user) {
+    if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in or create a free account to use your code', () => setTimeout(applyCode, 300));
+    else window.location.href = 'signin.html';
+    return;
+  }
+  const btn = document.getElementById('pr-code-btn');
+  btn.disabled = true; codeMsg('Checking…', true);
+  try {
+    const r = await _authFetch('/api/billing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'check-code', code }) });
+    let d = {}; try { d = await r.json(); } catch (_) {}
+    if (r.ok && d.ok) {
+      _code = code.toUpperCase(); _trialDays = d.days || 30;
+      codeMsg(`Code applied: your first ${_trialDays} days of Student are free. ${d.placesLeft} of 100 places left.`, true);
+    } else {
+      _code = null;
+      codeMsg(d.error || "That code couldn't be checked. Please try again.", false);
+    }
+  } catch (_) {
+    codeMsg("We couldn't reach the server. Check your connection and try again.", false);
+  }
+  btn.disabled = false;
+  renderOffer();
+}
+document.getElementById('pr-code-form').addEventListener('submit', applyCode);
+(function () {
+  const c = new URLSearchParams(location.search).get('code');
+  if (c) document.getElementById('pr-code-input').value = c.slice(0, 40);
+})();
 
 function notice(text, warn) {
   const n = document.getElementById('pr-notice');
@@ -372,6 +457,7 @@ function renderButtons() {
   btns.student.textContent = 'Choose Student';
   btns.pro.textContent = 'Choose Pro';
   Object.values(btns).forEach(b => { b.disabled = false; });
+  if (_code && (!_plan || _plan === 'free')) btns.student.textContent = 'Start free month';
   if (!_user || !_plan) return;
   if (_plan === 'free') { btns.free.textContent = 'Current plan'; btns.free.disabled = true; return; }
   btns[_plan].textContent = 'Current plan';
@@ -390,10 +476,15 @@ async function loadUsage() {
     document.getElementById('pr-usage').hidden = false;
     let line = 'You are on the ' + (d.planName || PLAN_NAMES[_plan]) + ' plan';
     if (_plan !== 'free' && d.interval) line += ', billed ' + (d.interval === 'year' ? 'yearly' : 'monthly');
-    if (_plan !== 'free' && d.renewsAt) {
-      const when = new Date(d.renewsAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-      line += d.cancelAtPeriodEnd ? '. It ends on ' + when + ', then you move to Free.' : '. Renews on ' + when + '.';
+    const fmt = ms => new Date(ms).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    if (_plan !== 'free' && d.trialEndsAt) {
+      line = d.cancelAtPeriodEnd
+        ? `You're on a free month of ${d.planName}. It ends on ${fmt(d.trialEndsAt)}, then you move to Free. You won't be charged.`
+        : `You're on a free month of ${d.planName}. It ends on ${fmt(d.trialEndsAt)}. If you don't cancel before then, your card is charged ${STUDENT_PRICE[d.interval === 'year' ? 'year' : 'month']} from that day.`;
+    } else if (_plan !== 'free' && d.renewsAt) {
+      line += d.cancelAtPeriodEnd ? '. It ends on ' + fmt(d.renewsAt) + ', then you move to Free.' : '. Renews on ' + fmt(d.renewsAt) + '.';
     } else line += '.';
+    document.getElementById('btn-manage').textContent = d.trialEndsAt && !d.cancelAtPeriodEnd ? 'Cancel or manage subscription' : 'Manage subscription';
     document.getElementById('pr-plan-line').textContent = line;
     document.getElementById('u-credits').textContent = d.creditsUsed + ' of ' + d.creditsLimit + ' used';
     document.getElementById('u-credits-bar').style.width = Math.min(100, 100 * d.creditsUsed / Math.max(1, d.creditsLimit)) + '%';
@@ -404,13 +495,13 @@ async function loadUsage() {
     document.getElementById('u-trans-bar').style.width = hasTrans ? Math.min(100, 100 * d.transcribeSecondsUsed / d.transcribeSecondsLimit) + '%' : '0%';
     document.getElementById('btn-manage').hidden = _plan === 'free';
     if (d.paymentProblem) notice("Your last payment didn't go through. Please update your card under Manage subscription to keep your plan.", true);
-    renderButtons();
+    renderOffer();
   } catch (e) { /* the page still works without the usage box */ }
 }
 
 window.prOnAuth = function (user) {
   _user = user;
-  if (!user) { _plan = null; document.getElementById('pr-usage').hidden = true; renderButtons(); return; }
+  if (!user) { _plan = null; _code = null; codeMsg(''); document.getElementById('pr-usage').hidden = true; renderOffer(); return; }
   loadUsage();
 };
 
@@ -436,7 +527,8 @@ function choosePlan(plan) {
     return;
   }
   const btn = document.getElementById('btn-' + plan);
-  const go = () => _billing({ action: 'checkout', plan, interval: _interval }, btn);
+  const code = plan === 'student' && _code ? _code : undefined;
+  const go = () => _billing({ action: 'checkout', plan, interval: _interval, code }, btn);
   if (!_user) {
     if (window.gnRequireSignIn) window.gnRequireSignIn('Sign in or create a free account to choose a plan', go);
     else window.location.href = 'signin.html';

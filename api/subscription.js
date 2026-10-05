@@ -43,6 +43,8 @@ module.exports = async function handler(req, res) {
       interval: plan === 'free' ? null : (billing.interval || null),
       renewsAt: plan === 'free' ? null : (billing.currentPeriodEnd || null),
       cancelAtPeriodEnd: plan === 'free' ? false : !!billing.cancelAtPeriodEnd,
+      // Launch-offer free month: when it ends (the first charge, unless they cancel).
+      trialEndsAt: billing.status === 'trialing' ? (billing.trialEnd || null) : null,
       paymentProblem: billing.status === 'past_due',
       creditsUsed: usage.aiActions || 0,
       creditsLimit: PLANS[plan].ai,

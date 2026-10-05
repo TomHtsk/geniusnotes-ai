@@ -12,6 +12,8 @@ const { applyCors, verifyAuthFull, checkRateLimit, getDb, isAllowedOrigin, getUs
 //
 //   POST { action: 'checkout', plan: 'student'|'pro', interval: 'month'|'year' } -> { url }
 //        (already subscribed -> { portal: true, url } to the manage page instead)
+//        add code: 'FREESTUDENT' for the launch offer's free month (see TRIAL below)
+//   POST { action: 'check-code', code } -> { ok, days, placesLeft } or 400 with the reason
 //   POST { action: 'portal' }   -> { url } of Stripe's page to cancel / switch / change card
 //   POST from Stripe (has a Stripe-Signature header) -> webhook; keeps billing/{uid} up to date
 //
@@ -29,6 +31,22 @@ const PRICES = {
   pro_year:      { plan: 'pro',     interval: 'year',  amount: 9990 },
 };
 const PRODUCT_NAMES = { student: 'NoteCaptain Student', pro: 'NoteCaptain Pro' };
+
+// ── Launch offer: the first MAX_USERS accounts that have never had a plan get the first
+// DAYS of a plan in PLANS free. A card is required; Stripe charges on day DAYS+1 unless
+// they cancel before the free month ends (cancelling on the manage page during the free
+// month means they are never charged). Places are counted at billingConfig/trial:
+//   { started: { uid: ms }, reserved: { uid: expiresMs } }
+// A place is reserved while the person is on Stripe's checkout page (the page expires
+// after an hour) and becomes "started" when Stripe reports the trial. Set MAX_USERS to 0
+// to end the offer.
+// The free month is only given with the offer code (TRIAL_CODE in Vercel, else FREESTUDENT;
+// not case-sensitive). Without a code, checkout is a normal paid checkout.
+const TRIAL = { DAYS: 30, MAX_USERS: 100, PLANS: ['student'] };
+function _trialCode() { return String(process.env.TRIAL_CODE || 'FREESTUDENT').trim().toUpperCase(); }
+function _codeMatches(code) { return !!code && String(code).trim().toUpperCase() === _trialCode(); }
+const TRIAL_DOC = 'billingConfig/trial';
+const CHECKOUT_TTL_S = 3600;
 const SITE = 'https://www.notecaptain.ai';
 // Pinned so Stripe's replies always have the same shape, whatever the account's default.
 const STRIPE_VERSION = '2024-06-20';
@@ -161,6 +179,60 @@ async function ensureCustomer(uid, email) {
   return c.id;
 }
 
+// ── Launch-offer places ──────────────────────────────────────────────────────
+function _livePlaces(data, now) {
+  const started = Object.assign({}, data.started);
+  const reserved = {};
+  for (const [u, exp] of Object.entries(data.reserved || {})) if (exp > now && !started[u]) reserved[u] = exp;
+  return { started, reserved };
+}
+
+async function trialPlacesLeft() {
+  if (TRIAL.MAX_USERS <= 0) return 0;
+  const snap = await getDb().doc(TRIAL_DOC).get();
+  const { started, reserved } = _livePlaces(snap.exists ? snap.data() : {}, Date.now());
+  return Math.max(0, TRIAL.MAX_USERS - Object.keys(started).length - Object.keys(reserved).length);
+}
+
+// Never had a plan or a free month before (one free month per account).
+function _trialEligible(b) {
+  return !!b && !b.hadTrial && !b.stripeSubscriptionId;
+}
+
+// Holds a place for this account while it is on the checkout page. False when the places
+// are gone or the account already used one.
+async function reserveTrialPlace(uid) {
+  if (TRIAL.MAX_USERS <= 0) return false;
+  const db = getDb(), ref = db.doc(TRIAL_DOC);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    const { started, reserved } = _livePlaces(snap.exists ? snap.data() : {}, now);
+    if (started[uid]) return false;
+    delete reserved[uid];
+    if (Object.keys(started).length + Object.keys(reserved).length >= TRIAL.MAX_USERS) return false;
+    reserved[uid] = now + (CHECKOUT_TTL_S + 300) * 1000;
+    tx.set(ref, { started, reserved });
+    return true;
+  });
+}
+
+async function markTrialStarted(uid) {
+  const db = getDb(), ref = db.doc(TRIAL_DOC);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const { started, reserved } = _livePlaces(snap.exists ? snap.data() : {}, Date.now());
+    if (started[uid]) return;
+    started[uid] = Date.now();
+    delete reserved[uid];
+    tx.set(ref, { started, reserved });
+  });
+}
+
+function _dateText(ms) {
+  return new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
 // ── Webhook ──────────────────────────────────────────────────────────────────
 function verifySignature(rawBody, header, secret) {
   if (!header) return false;
@@ -222,9 +294,12 @@ async function syncSubscription(subId, hintUid) {
       stripeSubscriptionId: sub.id,
       currentPeriodEnd: periodEnd * 1000,
       cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+      trialEnd: sub.trial_end ? sub.trial_end * 1000 : null,
+      ...(sub.trial_end ? { hadTrial: true } : {}),
       updatedAt: Date.now(),
     }, { merge: true });
   });
+  if (sub.trial_end) await markTrialStarted(uid);
 }
 
 async function handleWebhook(req, res, rawBody) {
@@ -286,6 +361,17 @@ async function handler(req, res) {
   const { uid, email } = authed;
 
   try {
+    // Lets the Pricing page say "Code applied" (or why not) before the person picks a plan.
+    // Doesn't hold a place; checkout does that.
+    if (body.action === 'check-code') {
+      if (!_codeMatches(body.code)) return res.status(400).json({ error: "That code isn't valid. Check the spelling, or continue without a code." });
+      const bSnap = await getDb().doc(`billing/${uid}`).get();
+      if (!_trialEligible(bSnap.exists ? bSnap.data() : {})) return res.status(400).json({ error: 'This code is for accounts that have never had a plan or a free month before.' });
+      const left = await trialPlacesLeft();
+      if (left <= 0) return res.status(400).json({ error: `All ${TRIAL.MAX_USERS} free months have been claimed. You can still choose a plan without the code.` });
+      return res.status(200).json({ ok: true, days: TRIAL.DAYS, plans: TRIAL.PLANS, placesLeft: left });
+    }
+
     if (body.action === 'portal') {
       const snap = await getDb().doc(`billing/${uid}`).get();
       const customer = snap.exists ? snap.data().stripeCustomerId : null;
@@ -310,19 +396,42 @@ async function handler(req, res) {
         return res.status(200).json({ portal: true, url: session.url });
       }
 
+      // Offer code: check everything BEFORE sending them to Stripe, so a code that can't be
+      // used never turns into a surprise paid checkout.
+      let trial = false;
+      if (body.code) {
+        if (!_codeMatches(body.code)) return res.status(400).json({ error: "That code isn't valid. Check the spelling, or continue without a code." });
+        if (!TRIAL.PLANS.includes(body.plan)) return res.status(400).json({ error: 'This code gives a free month of Student. Choose the Student plan to use it.' });
+        const bSnap = await getDb().doc(`billing/${uid}`).get();
+        if (!_trialEligible(bSnap.exists ? bSnap.data() : {})) return res.status(400).json({ error: 'This code is for accounts that have never had a plan or a free month before.' });
+        if (!(await reserveTrialPlace(uid))) return res.status(400).json({ error: `All ${TRIAL.MAX_USERS} free months have been claimed. You can still choose a plan without the code.` });
+        trial = true;
+      }
+
       const prices = await ensurePrices();
       const base = _returnBase(req);
+      const P = PRICES[key];
+      const firstCharge = Date.now() + TRIAL.DAYS * 86400000;
+      const priceText = `$${(P.amount / 100).toFixed(2)}/${P.interval}`;
       const session = await stripe('POST', '/checkout/sessions', {
         mode: 'subscription',
         customer,
         client_reference_id: uid,
         line_items: [{ price: prices[key].id, quantity: 1 }],
-        subscription_data: { metadata: { uid } },
+        subscription_data: trial
+          ? { metadata: { uid, offer: _trialCode() }, trial_period_days: TRIAL.DAYS,
+              trial_settings: { end_behavior: { missing_payment_method: 'cancel' } } }
+          : { metadata: { uid } },
+        ...(trial ? {
+          payment_method_collection: 'always',
+          expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_TTL_S,
+          custom_text: { submit: { message: `You pay $0 today. Your free month ends on ${_dateText(firstCharge)}. If you don't cancel before then, your card is charged ${priceText} from that day. Cancel any time from "Manage subscription" on the NoteCaptain Pricing page.` } },
+        } : {}),
         metadata: { uid },
         success_url: base + '/pricing.html?checkout=success',
         cancel_url: base + '/pricing.html?checkout=cancel',
       });
-      return res.status(200).json({ url: session.url });
+      return res.status(200).json({ url: session.url, trial });
     }
 
     return res.status(400).json({ error: 'Unknown action' });
@@ -335,4 +444,4 @@ async function handler(req, res) {
 module.exports = handler;
 module.exports.config = { api: { bodyParser: false } };
 // For local tests only.
-module.exports._test = { verifySignature, _encode, PRICES, resetCache: () => { _prices = null; _portalConfig = null; } };
+module.exports._test = { verifySignature, _encode, PRICES, TRIAL, resetCache: () => { _prices = null; _portalConfig = null; } };

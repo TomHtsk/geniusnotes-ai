@@ -219,10 +219,12 @@
     }
   }
 
+  // Wikimedia image credits can contain any HTML: read its text in an inert document, where
+  // nothing in it can load or run (an off-screen <div> would still fire <img onerror>).
   function _stripHtml(html) {
-    var el = document.createElement('div');
-    el.innerHTML = html;
-    return (el.textContent || '').trim();
+    var doc = document.implementation.createHTMLDocument('');
+    doc.body.innerHTML = html;
+    return (doc.body.textContent || '').trim();
   }
 
   // Shared by the card's "Send to Notepad" and the reader's — builds the note body,

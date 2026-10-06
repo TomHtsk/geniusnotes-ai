@@ -2140,7 +2140,7 @@ async function runInterpretSel(mode){
     const r=await _authFetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
     const d=await r.json();
     _aiText=d.result||d.text||d.output||'(no result)';
-    rt.innerHTML=_aiText.replace(/\n/g,'<br>');
+    rt.innerHTML=esc(_aiText).replace(/\n/g,'<br>');
   }catch(e){rt.textContent='Error: '+e.message;}
 }
 
@@ -2343,7 +2343,7 @@ async function solveHomework(){
     const r=await _authFetch('/api/homework',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
     const d=await r.json();
     _hwText=d.result||d.text||d.output||'(no result)';
-    resultEl.innerHTML=_hwText.replace(/\n/g,'<br>');
+    resultEl.innerHTML=esc(_hwText).replace(/\n/g,'<br>');
     document.getElementById('hw-insert-btn').style.display='';
   }catch(e){resultEl.textContent='Error: '+e.message;}
   solveBtn.textContent='🔍 Solve';solveBtn.disabled=false;
@@ -2352,7 +2352,7 @@ function insertHwResult(){
   if(!_hwText)return;
   closeModal('modal-homework');
   const ed=_getActiveEditorEl();ed.focus();
-  document.execCommand('insertHTML',false,'<p>'+_hwText.replace(/\n/g,'<br>')+'</p>');
+  document.execCommand('insertHTML',false,'<p>'+esc(_hwText).replace(/\n/g,'<br>')+'</p>');
   scheduleSave();schedulePageLines();
 }
 
@@ -2388,7 +2388,7 @@ async function aiAction(mode,customPrompt){
       r=await _authFetch('/api/interpret',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,text})});
     d=await r.json();
     _aiText=d.result||d.text||d.output||'(no result)';
-    rt.innerHTML=_aiText.replace(/\n/g,'<br>');
+    rt.innerHTML=esc(_aiText).replace(/\n/g,'<br>');
   }catch(e){rt.textContent='Error: '+e.message;}
 }
 
@@ -2407,7 +2407,7 @@ function confirmPrompt(){
   aiAction('prompt',val);
 }
 function toggleConvertMenu(){const m=document.getElementById('convert-menu');m.style.display=m.style.display==='none'?'block':'none';}
-function acceptAI(){if(!_aiText)return;const ed=_getActiveEditorEl();ed.focus();document.execCommand('insertHTML',false,'<p>'+_aiText.replace(/\n/g,'<br>')+'</p>');discardAI();scheduleSave();schedulePageLines();}
+function acceptAI(){if(!_aiText)return;const ed=_getActiveEditorEl();ed.focus();document.execCommand('insertHTML',false,'<p>'+esc(_aiText).replace(/\n/g,'<br>')+'</p>');discardAI();scheduleSave();schedulePageLines();}
 function discardAI(){_aiText='';const _ar=document.getElementById('ai-result');const _art=document.getElementById('ai-result-text');if(_ar)_ar.classList.remove('show');if(_art)_art.innerHTML='';hideSelectionPopup();}
 
 // ══ PAGE BREAKS ══
@@ -2614,7 +2614,7 @@ function setImportTab(t){
 function _showImportResult(text){
   _importText=text;
   const r=document.getElementById('imp-result');
-  r.style.display='block';r.innerHTML=text.replace(/\n/g,'<br>').slice(0,3000)+(text.length>3000?'…':'');
+  r.style.display='block';r.innerHTML=esc(text.slice(0,3000)).replace(/\n/g,'<br>')+(text.length>3000?'…':'');
   document.getElementById('imp-actions').style.display='flex';
   document.getElementById('imp-close-row').style.display='none';
 }
@@ -2652,7 +2652,8 @@ async function importFile(input){
 function insertImport(target){
   if(!_importText)return;
   closeModal('modal-import');
-  const htmlContent='<p>'+_importText.replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')+'</p>';
+  // Imported YouTube / file text is plain text: escaped before it becomes page HTML.
+  const htmlContent='<p>'+esc(_importText).replace(/\n\n/g,'</p><p>').replace(/\n/g,' ')+'</p>';
   if(target==='new'&&_curNb){
     const pg={id:uid(),type:'text',title:'Imported',html:htmlContent,dataURL:null,template:'ruled'};
     _curNb.pages.push(pg);_curPageIdx=_curNb.pages.length-1;

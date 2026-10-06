@@ -145,6 +145,8 @@
     @media (max-width: 460px) { .hp-brand-name { display: none; } }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="js/safe-html.js"></script>
 </head>
 <body>
 <header class="hp-header">
@@ -208,7 +210,7 @@ gnSyncThemeBtn();
     const editor = document.getElementById('note-editor');
     const titleEl = document.getElementById('note-title-el');
     const title = (titleEl ? titleEl.textContent : null) || (_noteData ? _noteData.title : 'Shared Note') || 'Shared Note';
-    const content = (editor ? editor.innerHTML : null) || (_noteData ? _noteData.content : '') || '';
+    const content = NCSafe.clean((editor ? editor.innerHTML : null) || (_noteData ? _noteData.content : '') || '');
     const newId = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const note = { id: newId, title: title, content: content, created: Date.now(), updated: Date.now(), shareId: id };
     try {
@@ -284,7 +286,7 @@ gnSyncThemeBtn();
         <button class="tb" onclick="document.execCommand('formatBlock','p')">¶</button>
       </div>` : ''}
       <div id="note-editor" contenteditable="${_isCollab ? 'true' : 'false'}"
-           spellcheck="true" data-placeholder="Start writing…">${data.content||'<p><br></p>'}</div>
+           spellcheck="true" data-placeholder="Start writing…">${NCSafe.clean(data.content||'<p><br></p>')}</div>
     `;
     if (_isCollab) {
       const badge = document.getElementById('mode-badge');
@@ -351,7 +353,9 @@ gnSyncThemeBtn();
       el.className = 'rc';
       el.style.top = (rRect.top - eRect.top) + 'px';
       el.style.left = (rRect.left - eRect.left) + 'px';
-      el.innerHTML = `<div class="rc-caret" style="background:${color};"></div><div class="rc-label" style="background:${color};">${label}</div>`;
+      // Guests can write any label/colour into Firestore: escape the label, allow only plain colours.
+      const _c = NCSafe.color(color);
+      el.innerHTML = `<div class="rc-caret" style="background:${_c};"></div><div class="rc-label" style="background:${_c};">${NCSafe.text(label)}</div>`;
       editor.appendChild(el);
     }
 
@@ -428,7 +432,8 @@ gnSyncThemeBtn();
     if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) {
       savedRange = sel.getRangeAt(0).cloneRange();
     }
-    editor.innerHTML = content;
+    // Anyone with an "Edit together" link can change this content: clean it first.
+    editor.innerHTML = NCSafe.clean(content);
     // Restore cursor if possible
     if (savedRange) {
       try { sel.removeAllRanges(); sel.addRange(savedRange); } catch(e) {}
@@ -445,7 +450,7 @@ gnSyncThemeBtn();
   }
 
   function showError(msg) {
-    document.getElementById('main').innerHTML = `<div class="state"><div style="font-size:2.5rem;opacity:0.3;margin-bottom:14px;">🔗</div><div style="font-size:0.88rem;color:#666;">${msg}</div></div>`;
+    document.getElementById('main').innerHTML = `<div class="state"><div style="font-size:2.5rem;opacity:0.3;margin-bottom:14px;">🔗</div><div style="font-size:0.88rem;color:#666;">${NCSafe.text(msg)}</div></div>`;
   }
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, rejectTooLong, LIMITS } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, sendServerError, GENERIC_ERROR } = require('./_lib/models');
 
 async function ddgLookup(query) {
   try {
@@ -56,7 +56,7 @@ module.exports = async function handler(req, res) {
   if (!(await chargeCredits(req, res, uid, _credits, { reason: 'interpret' }))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
-  if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
+  if (!GROQ) { console.error('GROQ_API_KEY is not set'); return res.status(500).json({ error: GENERIC_ERROR }); }
 
   // chat route (rewired from /api/chat)
   if (req.body?.messages) {
@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
       console.error('Groq error (chat):', err.message);
       if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: err.message });
+      return sendServerError(res, err, 'interpret');
     }
   }
 
@@ -114,6 +114,6 @@ module.exports = async function handler(req, res) {
     console.error('Groq error (interpret):', err.message);
     if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'interpret');
   }
 };

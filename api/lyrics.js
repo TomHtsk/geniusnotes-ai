@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, chargeCredits } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, sendServerError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
     return findLyrics(res, songTitle, artist, uid);
 
   } catch (err) {
-    return res.status(500).json({ error: 'Server error: ' + (err.message || 'Unknown') });
+    return sendServerError(res, err, 'lyrics');
   }
 };
 

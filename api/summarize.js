@@ -1,5 +1,5 @@
 const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, chargeCredits, refundAiAction, refundPart, rejectTooLong, takeSupadataCall, creditsForSize, LIMITS } = require('./_lib/auth');
-const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, userError, sendServerError, GENERIC_ERROR } = require('./_lib/models');
 
 function getVideoId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -432,7 +432,7 @@ async function fetchVideoContent(videoId, url) {
     }
   } catch (_) {}
 
-  throw new Error('Could not extract content from this video. Please try a different video.');
+  throw userError('Could not extract content from this video. Please try a different video.');
 }
 
 function getNotePrompt(style, t) {
@@ -814,7 +814,7 @@ module.exports = async function handler(req, res) {
     if (!url && !text) return res.status(400).json({ error: 'Missing YouTube URL or text content' });
 
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+    if (!apiKey) { console.error('GROQ_API_KEY is not set'); return res.status(500).json({ error: GENERIC_ERROR }); }
 
     // Direct text input path (upload panel / Magic Assist)
     if (text) {
@@ -853,7 +853,7 @@ module.exports = async function handler(req, res) {
         if (chargedAiAction) await refundAiAction(uid, res); // a failed request costs the user nothing
         if (await sendBusyIfNeeded(e, res, null)) return;
         if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-        return res.status(500).json({ error: e.message });
+        return sendServerError(res, e, 'summarize');
       }
       const summary = data.choices?.[0]?.message?.content;
       if (!summary) { if (chargedAiAction) await refundAiAction(uid, res); return res.status(500).json({ error: 'No result returned' }); }
@@ -935,17 +935,15 @@ module.exports = async function handler(req, res) {
       }
 
 
-      const isQuotaErr = Object.values(errors).some(m => /limit|quota/i.test(m));
+      // Which sources failed and why is logged here only — never sent to the browser.
+      console.error('YouTube transcript failed for', videoId, JSON.stringify(errors).slice(0, 2000));
       return res.status(500).json({
-        error: isQuotaErr
-          ? 'Transcript service quota exceeded. This will reset next month, or add a new SUPADATA_API_KEY in Vercel environment variables.'
-          : 'Could not retrieve transcript for this video. YouTube is blocking server-side access. Try uploading the audio/video file directly using the Upload button.',
-        _debug: errors
+        error: "We couldn't get a transcript for this video right now. Try another video, or upload the audio/video file with the Upload button.",
       });
     }
 
     const transcript = await fetchVideoContent(videoId, url);
-    if (!transcript || transcript.length < 50) throw new Error('Could not extract enough content from this video.');
+    if (!transcript || transcript.length < 50) throw userError('Could not extract enough content from this video.');
     // Credits were reserved for the longest transcript; give back what this one doesn't need.
     const _used = Math.min(LIMITS.YT_AI_MAX_CREDITS, creditsForSize({ chars: transcript.length }));
     const _charge = (res._gnCharges || [])[0];
@@ -968,7 +966,7 @@ module.exports = async function handler(req, res) {
       e.code = data.error?.code;
       if (await sendBusyIfNeeded(e, res, null)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: e.message });
+      return sendServerError(res, e, 'summarize');
     }
 
     const summary = data.choices?.[0]?.message?.content;
@@ -976,6 +974,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ summary });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'summarize');
   }
 };

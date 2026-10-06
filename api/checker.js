@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, rejectTooLong } = require('./_lib/auth');
-const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, sendServerError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -129,7 +129,7 @@ ${t}`
       e.code = groqData.error?.code;
       if (await sendBusyIfNeeded(e, res, uid)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: e.message });
+      return sendServerError(res, e, 'checker', "We couldn't check this text just now. Please try again.");
     }
 
     let raw = groqData.choices?.[0]?.message?.content?.trim() || '';
@@ -150,7 +150,7 @@ ${t}`
       try {
         result = JSON.parse(cleaned);
       } catch {
-        return res.status(500).json({ error: 'Failed to parse AI response', raw: raw.slice(0, 500) });
+        console.error('checker: unreadable AI reply:', raw.slice(0, 500)); return res.status(500).json({ error: "We couldn't check this text just now. Please try again." });
       }
     }
 
@@ -158,6 +158,6 @@ ${t}`
   } catch (err) {
     console.error('Groq error (checker):', err.message);
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'checker', "We couldn't check this text just now. Please try again.");
   }
 };

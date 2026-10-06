@@ -1,6 +1,6 @@
 const { applyCors, verifyAuth, checkRateLimit, chargeCredits, chargeMoreCredits, refundAiAction, creditsForSize, rejectTooLong, LIMITS } = require('./_lib/auth');
 const { buildDiagramMessages, planDiagramRequest, validateItems, parseDiagramReply, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG } = require('./_lib/diagram');
-const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError, sendServerError, GENERIC_ERROR } = require('./_lib/models');
 
 const MAX_CHARS = 15000;
 
@@ -123,7 +123,7 @@ module.exports = async function handler(req, res) {
   if (!(await chargeCredits(req, res, uid, _writingCredits(req.body), { reason: 'writing:' + (req.body?.action || (req.body?.sourceType !== undefined ? 'citation' : req.body?.chapter !== undefined ? 'textbook' : (req.body?.mode || 'improve'))) }))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
-  if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
+  if (!GROQ) { console.error('GROQ_API_KEY is not set'); return res.status(500).json({ error: GENERIC_ERROR }); }
 
   // diagram route — Notepad "Create picture". The AI returns DATA only (the fixed shapes
   // in api/_lib/diagram.js); the browser draws it with js/diagram-templates.js.
@@ -196,7 +196,7 @@ module.exports = async function handler(req, res) {
       console.error('Groq error (citation):', err.message);
       if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: err.message||'Could not generate citation.' });
+      return sendServerError(res, err, 'citation', 'Could not generate citation. Please try again.');
     }
   }
 
@@ -217,7 +217,7 @@ module.exports = async function handler(req, res) {
       const prompt=`You are a study assistant. A student has textbook questions and chapter text. For each question, find 1–3 short exact phrases or sentences from the chapter that directly answer or relate to that question. The phrases MUST be verbatim substrings of the chapter text (exact match, same spelling and punctuation).\n\nQUESTIONS:\n${questions}\n\nCHAPTER TEXT:\n${chapter.slice(0,18000)}\n\nReturn ONLY valid JSON, no markdown fences:\n{\n  "matches": [\n    { "question": "full question text", "phrases": ["exact phrase from chapter"] }\n  ]\n}`;
       const r=await groqChat({model:MODEL_LARGE,messages:[{role:'user',content:prompt}],max_tokens:3000,temperature:0.1,include_reasoning:false,response_format:{type:'json_object'}},{apiKey:GROQ});
       const data=await r.json();
-      if(!r.ok){ console.error('Groq error (textbook):', data.error?.message); const e=new Error(data.error?.message||'AI error'); e.code=data.error?.code; if(await sendBusyIfNeeded(e,res,uid)) return; if(isModelUnavailableError(e)) return res.status(502).json({error:FRIENDLY_AI_ERROR}); return res.status(500).json({error:e.message}); }
+      if(!r.ok){ console.error('Groq error (textbook):', data.error?.message); const e=new Error(data.error?.message||'AI error'); e.code=data.error?.code; if(await sendBusyIfNeeded(e,res,uid)) return; if(isModelUnavailableError(e)) return res.status(502).json({error:FRIENDLY_AI_ERROR}); return sendServerError(res, e, 'textbook'); }
       let raw=(data.choices?.[0]?.message?.content?.trim()||'').replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/i,'').trim();const s=raw.indexOf('{'),e2=raw.lastIndexOf('}');if(s!==-1&&e2>s)raw=raw.slice(s,e2+1);
       let result;try{result=JSON.parse(raw);}catch{result=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}
       result.matches=(result.matches||[]).map((m,i)=>({...m,color:_TB_COLORS[i%_TB_COLORS.length]}));
@@ -226,7 +226,7 @@ module.exports = async function handler(req, res) {
       console.error('Groq error (textbook):', err.message);
       if (await sendBusyIfNeeded(err, res, uid)) return;
       if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: err.message });
+      return sendServerError(res, err, 'writing');
     }
   }
 
@@ -277,7 +277,7 @@ Output ONLY the marked original text, nothing else.`;
       const e = new Error(data.error?.message || 'AI error');
       e.code = data.error?.code;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: e.message });
+      return sendServerError(res, e, 'writing');
     }
 
     const result = data.choices?.[0]?.message?.content?.trim();
@@ -287,6 +287,6 @@ Output ONLY the marked original text, nothing else.`;
     console.error('Groq error (writing):', err.message);
     if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'writing');
   }
 };

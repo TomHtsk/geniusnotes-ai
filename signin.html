@@ -233,15 +233,18 @@ gnSyncThemeBtn();
 
   // If already signed in, show a message instead of silently redirecting
   auth.onAuthStateChanged(user => {
-    if (user) {
+    // The YouTube converter signs guests in anonymously behind the scenes; that is not a
+    // real account, so they must still see the sign-in form here.
+    if (user && !user.isAnonymous) {
       document.querySelector('.auth-wrap').innerHTML = `
         <div class="auth-card" style="text-align:center">
           <div style="font-size:2.5rem;margin-bottom:16px">👋</div>
           <h1 style="margin-bottom:8px">You're signed in</h1>
-          <p class="subtitle">Signed in as <strong>${user.email}</strong></p>
+          <p class="subtitle">Signed in as <strong id="signed-in-email"></strong></p>
           <a href="notepad.html" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--primary-bg);color:var(--primary-text);font-weight:700;font-size:0.95rem;text-decoration:none;margin-bottom:12px;">Go to Notepad →</a>
           <button onclick="firebase.auth().signOut().then(()=>location.reload())" style="width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--muted);font-size:0.875rem;cursor:pointer;">Sign out &amp; use different account</button>
         </div>`;
+      document.getElementById('signed-in-email').textContent = user.email || 'your account';
     }
   });
 

@@ -2810,7 +2810,9 @@ function scheduleCloudSave(){
 
 // ── Collab presence: who else is viewing this notebook ──
 function startPresence(nbId){
-  if(!_fbUid||!_fbDb)return;
+  // Presence is for real accounts only (firestore.rules refuses anonymous sessions).
+  const _me=firebase.auth().currentUser;
+  if(!_fbUid||!_fbDb||!_me||_me.isAnonymous)return;
   stopPresence();
   const ref=_fbDb.doc(`nb_presence/${nbId}`);
   const myColor=COLORS[Math.abs(_fbUid.charCodeAt(0))%COLORS.length];
@@ -2827,9 +2829,9 @@ function startPresence(nbId){
     if(!snap.exists)return;
     const data=snap.data();
     const now=Date.now();
-    const others=Object.entries(data).filter(([uid,v])=>uid!==_fbUid&&now-v.updatedAt<30000);
+    const others=Object.entries(data).filter(([uid,v])=>uid!==_fbUid&&v&&now-v.updatedAt<30000);
     renderPresenceDots(others);
-  });
+  },()=>{/* not allowed / offline: just show no dots */});
 }
 
 function stopPresence(){

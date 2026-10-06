@@ -2834,16 +2834,35 @@ function stopPresence(){
   if(_presenceUnsub){_presenceUnsub();_presenceUnsub=null;}
 }
 
+// Presence entries are written by OTHER people (nb_presence/{notebookId}), so nothing from
+// them is ever put into an HTML or CSS string. Colour: only the app's own COLORS or a plain
+// #rgb / #rrggbb, else a safe default — applied through the style property.
+const PRESENCE_DEFAULT_COLOR='#8b5cf6';
+function _safePresenceColor(c){
+  if(typeof c!=='string')return PRESENCE_DEFAULT_COLOR;
+  const s=c.trim();
+  if(COLORS.indexOf(s)!==-1)return s;
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s)?s:PRESENCE_DEFAULT_COLOR;
+}
+// Page index: a small whole number, else the entry is ignored.
+function _safePresencePage(i){
+  return (typeof i==='number'&&Number.isInteger(i)&&i>=0&&i<10000)?i:-1;
+}
+
 function renderPresenceDots(others){
   // Remove old dots
   document.querySelectorAll('.presence-dot').forEach(d=>d.remove());
+  const thumbs=document.querySelectorAll('#pages-list .pg-thumb');
   others.forEach(([uid,v])=>{
-    const thumb=document.querySelector(`.pg-thumb:nth-child(${v.pageIdx+1})`);
+    if(!v||typeof v!=='object')return;
+    const idx=_safePresencePage(v.pageIdx);
+    const thumb=idx>=0?thumbs[idx]:null;
     if(!thumb)return;
     const dot=document.createElement('span');
     dot.className='presence-dot';
-    dot.style.cssText=`position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:${v.color};border:2px solid var(--surface);z-index:5;`;
-    dot.title=v.name;
+    dot.style.cssText='position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;border:2px solid var(--surface);z-index:5;';
+    dot.style.backgroundColor=_safePresenceColor(v.color);
+    dot.title=String(v.name==null?'User':v.name).slice(0,60);
     thumb.style.position='relative';
     thumb.appendChild(dot);
   });

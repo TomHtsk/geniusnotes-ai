@@ -1,573 +1,126 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="robots" content="noindex, follow" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vault — NoteCaptain AI</title>
-  <link rel="icon" href="/favicon.ico" sizes="32x32" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/images/favicon.png" />
-  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
-  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    :root{--bg:#06060F;--surface:#12121E;--surface2:#1A1A2E;--border:rgba(255,255,255,0.08);--text:#F0F0FF;--muted:#8888AA;--purple:#8B5CF6;--purple2:#A78BFA;--cyan:#4FC3F7;--green:#22C55E;--red:#F87171;}
-    :root.light{--bg:#FAF9F6;--surface:#FAF6EC;--surface2:#EFE9D8;--border:rgba(160,130,80,0.18);--text:#2A1F0A;--muted:#7A6A50;}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;}
-
-    nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:60px;border-bottom:1px solid var(--border);background:rgba(6,6,15,0.94);backdrop-filter:blur(14px);position:sticky;top:0;z-index:100;}
-    :root.light nav{background:rgba(245,239,224,0.94);}
-    .nav-back{color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:600;padding:7px 13px;border-radius:9px;border:1px solid var(--border);transition:all 0.15s;}
-    .nav-back:hover{color:var(--text);border-color:var(--purple2);}
-    .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;font-size:0.9rem;font-weight:700;color:var(--text);}
-    .nav-logo .ai{color:var(--purple2);}
-    .theme-btn{background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;}
-
-    /* ── LOCK SCREEN ── */
-    #lock-screen{min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;padding:20px;}
-    .lock-card{background:var(--surface);border:1.5px solid var(--border);border-radius:24px;padding:48px 40px;max-width:380px;width:100%;text-align:center;}
-    .lock-icon{font-size:3.2rem;margin-bottom:16px;line-height:1;}
-    .lock-title{font-size:1.4rem;font-weight:900;margin-bottom:6px;}
-    .lock-sub{font-size:0.83rem;color:var(--muted);line-height:1.6;margin-bottom:28px;}
-    .pin-row{display:flex;gap:10px;justify-content:center;margin-bottom:18px;}
-    .pin-box{width:52px;height:60px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;text-align:center;font-size:1.4rem;font-weight:800;color:var(--text);font-family:inherit;outline:none;transition:border-color 0.15s;}
-    .pin-box:focus{border-color:var(--purple2);}
-    .pin-box.filled{border-color:rgba(139,92,246,0.5);background:rgba(139,92,246,0.08);}
-    .pin-err{min-height:18px;font-size:0.77rem;color:var(--red);margin-bottom:14px;}
-    .btn-unlock{width:100%;background:linear-gradient(135deg,var(--purple),#6D28D9);color:#fff;border:none;border-radius:12px;padding:14px;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity 0.15s;margin-bottom:12px;}
-    .btn-unlock:hover{opacity:0.88;}
-    .btn-setup-link{background:none;border:none;color:var(--muted);font-size:0.76rem;cursor:pointer;font-family:inherit;text-decoration:underline;}
-    .btn-setup-link:hover{color:var(--text);}
-
-    /* ── VAULT UI ── */
-    #vault-ui{display:none;}
-    .vault-wrap{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
-    .vault-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
-    .vault-hd h1{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:9px;}
-    .vault-hd p{font-size:0.77rem;color:var(--muted);margin-top:3px;}
-    .hd-actions{display:flex;gap:10px;flex-wrap:wrap;}
-    .btn-upload{background:var(--purple);color:#fff;border:none;border-radius:9px;padding:9px 18px;font-size:0.83rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;display:flex;align-items:center;gap:7px;}
-    .btn-upload:hover{opacity:0.85;}
-    .btn-lock-v{background:none;border:1px solid rgba(248,113,113,0.3);color:var(--red);border-radius:9px;padding:8px 16px;font-size:0.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
-    .btn-lock-v:hover{background:rgba(248,113,113,0.12);}
-
-    /* filter tabs */
-    .filter-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
-    .ftab{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:0.77rem;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.15s;}
-    .ftab:hover{border-color:var(--purple2);color:var(--text);}
-    .ftab.on{background:rgba(139,92,246,0.15);border-color:var(--purple2);color:var(--purple2);}
-
-    /* stats bar */
-    .stats-bar{display:flex;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
-    .stat-chip{font-size:0.74rem;color:var(--muted);font-weight:600;}
-    .stat-chip span{color:var(--text);}
-
-    /* drop zone */
-    .dropzone{border:2px dashed var(--border);border-radius:16px;padding:36px 20px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:24px;display:none;}
-    .dropzone.show{display:block;}
-    .dropzone.over{border-color:var(--purple);background:rgba(139,92,246,0.06);}
-    .dropzone svg{margin:0 auto 12px;display:block;}
-    .dropzone p{font-size:0.85rem;color:var(--muted);line-height:1.6;}
-    .dropzone strong{color:var(--text);}
-
-    /* grid */
-    .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
-    .media-item{position:relative;border-radius:14px;overflow:hidden;background:var(--surface2);border:1.5px solid var(--border);cursor:pointer;aspect-ratio:1;transition:transform 0.15s,border-color 0.15s;group:;}
-    .media-item:hover{transform:scale(1.02);border-color:rgba(139,92,246,0.4);}
-    .media-item img{width:100%;height:100%;object-fit:cover;display:block;}
-    .media-item video{width:100%;height:100%;object-fit:cover;display:block;}
-    .media-item .file-thumb{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px;}
-    .file-ext{font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;background:rgba(139,92,246,0.2);color:var(--purple2);padding:3px 8px;border-radius:6px;}
-    .file-name{font-size:0.7rem;color:var(--muted);text-align:center;word-break:break-all;line-height:1.4;}
-    .media-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background 0.2s;display:flex;align-items:flex-end;padding:10px;}
-    .media-item:hover .media-overlay{background:rgba(0,0,0,0.45);}
-    .media-overlay-inner{opacity:0;transition:opacity 0.2s;width:100%;display:flex;align-items:center;justify-content:space-between;}
-    .media-item:hover .media-overlay-inner{opacity:1;}
-    .media-name{font-size:0.67rem;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 52px);}
-    .media-actions{display:flex;gap:4px;}
-    .m-btn{background:rgba(255,255,255,0.15);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;color:#fff;font-size:0.8rem;display:flex;align-items:center;justify-content:center;transition:background 0.15s;}
-    .m-btn:hover{background:rgba(255,255,255,0.3);}
-    .vid-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);color:#fff;border-radius:6px;padding:2px 7px;font-size:0.62rem;font-weight:700;display:flex;align-items:center;gap:4px;}
-    .empty-vault{text-align:center;padding:70px 20px;color:var(--muted);grid-column:1/-1;}
-    .empty-vault .ev-icon{font-size:3rem;margin-bottom:14px;}
-    .empty-vault p{font-size:0.85rem;line-height:1.7;}
-
-    /* upload progress */
-    .upload-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:none;align-items:center;gap:12px;font-size:0.82rem;}
-    .upload-bar.show{display:flex;}
-    .ubar-fill-wrap{flex:1;height:4px;background:var(--surface2);border-radius:100px;overflow:hidden;}
-    .ubar-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan));border-radius:100px;width:0;transition:width 0.25s;}
-
-    /* ── LIGHTBOX ── */
-    #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:500;align-items:center;justify-content:center;padding:20px;}
-    #lightbox.open{display:flex;}
-    .lb-close{position:fixed;top:16px;right:20px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:1.3rem;width:40px;height:40px;border-radius:50%;cursor:pointer;z-index:501;display:flex;align-items:center;justify-content:center;transition:background 0.15s;}
-    .lb-close:hover{background:rgba(255,255,255,0.2);}
-    .lb-download{position:fixed;top:16px;right:68px;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:0.85rem;padding:8px 16px;border-radius:20px;cursor:pointer;z-index:501;font-weight:600;font-family:inherit;transition:background 0.15s;}
-    .lb-download:hover{background:rgba(255,255,255,0.2);}
-    #lb-img{max-width:90vw;max-height:88vh;border-radius:10px;display:none;}
-    #lb-video{max-width:90vw;max-height:88vh;border-radius:10px;display:none;}
-    .lb-info{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:600;}
-
-    /* PIN Setup Modal */
-    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);z-index:400;align-items:center;justify-content:center;padding:20px;}
-    .modal-bg.open{display:flex;}
-    .modal{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:32px;max-width:360px;width:100%;text-align:center;}
-    .modal h2{font-size:1.1rem;font-weight:800;margin-bottom:6px;}
-    .modal p{font-size:0.81rem;color:var(--muted);margin-bottom:20px;line-height:1.5;}
-    .modal-btns{display:flex;gap:10px;margin-top:16px;}
-    .btn-cancel{flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:10px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;}
-    .btn-confirm{flex:1;background:var(--purple);color:#fff;border:none;border-radius:9px;padding:10px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
-
-    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-    .shake{animation:shake 0.35s ease;}
-
-    @media(max-width:600px){
-      nav{padding:0 14px;}
-      .lock-card{padding:28px 18px;}
-      .vault-wrap{padding:22px 14px 60px;}
-      .media-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
-    }
-    /* Logo: white mark on dark theme, dark mark on light theme */
-    .logo-lt{display:none!important;}
-    :root.light .logo-lt{display:block!important;}
-    :root.light .logo-dk{display:none!important;}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Vault retired — NoteCaptain</title>
+<script>if (localStorage.getItem('gn-theme') !== 'dark') document.documentElement.classList.add('light');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+  :root { --bg:#0B0F14; --surface:#131A21; --border:rgba(255,255,255,0.11); --text:#E9EEF2; --muted:#9AA7B2; --accent:#5CC4D0; --on-accent:#0B0F14; --danger:#f2766b; color-scheme:dark; }
+  :root.light { --bg:#F3F5F7; --surface:#FFFFFF; --border:#DCE1E6; --text:#0B0F14; --muted:#55606B; --accent:#0F6E7A; --on-accent:#FFFFFF; --danger:#b42318; color-scheme:light; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px; background:var(--bg); color:var(--text); font-family:Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; line-height:1.55; }
+  .card { width:100%; max-width:480px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px 24px; }
+  h1 { font-size:1.25rem; margin:0 0 8px; }
+  p { margin:0 0 14px; color:var(--muted); font-size:0.92rem; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  button, a.btn { height:40px; padding:0 16px; border-radius:10px; font-weight:600; font-size:0.88rem; font-family:inherit; cursor:pointer; border:1px solid var(--border); background:none; color:var(--text); text-decoration:none; display:inline-flex; align-items:center; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+  button.danger { border-color:var(--danger); color:var(--danger); }
+  button:disabled { opacity:0.6; cursor:default; }
+  button:focus-visible, a.btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .confirm { margin-top:14px; padding:14px; border:1px solid var(--danger); border-radius:10px; }
+  .confirm p { color:var(--text); margin-bottom:10px; }
+  .status { margin-top:14px; font-size:0.88rem; }
+  [hidden] { display:none !important; }
+</style>
 </head>
 <body>
-
-<!-- "Coming soon" overlay — Vault is hidden from the live site for now.
-     Nothing below this is deleted, it's just visually/interactively covered. -->
-<div style="position:fixed;inset:0;z-index:999999;background:#06060f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:'Inter',system-ui,sans-serif;">
-  <div style="font-size:2.4rem;">🗄️</div>
-  <h1 style="color:#f0f0ff;font-size:1.4rem;font-weight:800;margin:0;">Vault</h1>
-  <p style="color:#8888aa;font-size:0.92rem;max-width:380px;margin:0;line-height:1.6;">This feature is coming soon.</p>
-  <a href="index.html" style="margin-top:8px;padding:10px 22px;background:#8B5CF6;color:#fff;border-radius:10px;font-weight:700;font-size:0.86rem;text-decoration:none;">← Back to Home</a>
-</div>
-
-<nav>
-  <a href="index.html" class="nav-back">← Home</a>
-  <a href="index.html" class="nav-logo"><img class="logo-dk" src="images/logo-mark-white.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;"><img class="logo-lt" src="images/logo-mark-dark.png" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">NoteCaptain <span class="ai">AI</span></a>
-  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-</nav>
-
-<!-- LOCK SCREEN -->
-<div id="lock-screen">
-  <div class="lock-card" id="lock-card">
-    <div class="lock-icon">🔒</div>
-    <div class="lock-title">Private Vault</div>
-    <div class="lock-sub">Your PIN-protected space for private photos, videos, and files.</div>
-    <div id="pin-section">
-      <div class="pin-row">
-        <input class="pin-box" id="pb0" type="password" maxlength="1" inputmode="numeric" oninput="pinIn(0)" onkeydown="pinKey(event,0)">
-        <input class="pin-box" id="pb1" type="password" maxlength="1" inputmode="numeric" oninput="pinIn(1)" onkeydown="pinKey(event,1)">
-        <input class="pin-box" id="pb2" type="password" maxlength="1" inputmode="numeric" oninput="pinIn(2)" onkeydown="pinKey(event,2)">
-        <input class="pin-box" id="pb3" type="password" maxlength="1" inputmode="numeric" oninput="pinIn(3,true)" onkeydown="pinKey(event,3)">
-      </div>
-      <div class="pin-err" id="pin-err"></div>
-      <button class="btn-unlock" onclick="unlockVault()">🔓 Unlock Vault</button>
-      <button class="btn-setup-link" onclick="openPinSetup()">Set up / change PIN</button>
+<main class="card">
+  <h1>The Vault has been retired</h1>
+  <p>NoteCaptain no longer stores private files. Anything you put in the Vault was only ever stored in this browser, and it is still there until you delete it.</p>
+  <p id="count">Checking this browser…</p>
+  <div class="row" id="actions" hidden>
+    <button type="button" class="primary" id="export-btn">Export my files (.zip)</button>
+    <button type="button" class="danger" id="delete-btn">Delete them from this browser</button>
+  </div>
+  <div class="confirm" id="confirm" hidden>
+    <p>This permanently removes your Vault files, their list and the PIN from this browser. Export them first if you want to keep them.</p>
+    <div class="row">
+      <button type="button" class="danger" id="confirm-yes">Yes, delete them</button>
+      <button type="button" id="confirm-no">Cancel</button>
     </div>
   </div>
-</div>
-
-<!-- VAULT UI -->
-<div id="vault-ui">
-  <div class="vault-wrap">
-    <div class="vault-hd">
-      <div>
-        <h1>🔒 Private Vault</h1>
-        <p>PIN-protected · files stored locally on your device</p>
-      </div>
-      <div class="hd-actions">
-        <button class="btn-upload" onclick="triggerUpload()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Add Files
-        </button>
-        <button class="btn-lock-v" onclick="lockVault()">🔒 Lock</button>
-      </div>
-    </div>
-
-    <!-- Hidden file input -->
-    <input type="file" id="file-input" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.mp3,.wav" style="display:none" onchange="handleFiles(this.files)">
-
-    <!-- Stats -->
-    <div class="stats-bar" id="stats-bar"></div>
-
-    <!-- Filter tabs -->
-    <div class="filter-tabs">
-      <button class="ftab on" onclick="setFilter('all',this)">All</button>
-      <button class="ftab" onclick="setFilter('image',this)">📷 Photos</button>
-      <button class="ftab" onclick="setFilter('video',this)">🎬 Videos</button>
-      <button class="ftab" onclick="setFilter('file',this)">📄 Files</button>
-    </div>
-
-    <!-- Upload progress -->
-    <div class="upload-bar" id="upload-bar">
-      <span id="upload-label" style="white-space:nowrap;font-weight:600;">Saving…</span>
-      <div class="ubar-fill-wrap"><div class="ubar-fill" id="ubar-fill"></div></div>
-    </div>
-
-    <!-- Drop zone -->
-    <div class="dropzone" id="dropzone"
-      ondragover="dzOver(event,true)" ondragleave="dzOver(event,false)" ondrop="dzDrop(event)">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-      </svg>
-      <p><strong>Drop photos, videos, or files here</strong><br>or click "Add Files" above · Stored securely on your device</p>
-    </div>
-
-    <!-- Grid -->
-    <div class="media-grid" id="media-grid"></div>
-  </div>
-</div>
-
-<!-- Lightbox -->
-<div id="lightbox">
-  <button class="lb-close" onclick="closeLB()">✕</button>
-  <button class="lb-download" id="lb-dl-btn" onclick="downloadCurrent()">⬇ Download</button>
-  <img id="lb-img" alt="">
-  <video id="lb-video" controls></video>
-  <div class="lb-info" id="lb-info"></div>
-</div>
-
-<!-- PIN Setup Modal -->
-<div class="modal-bg" id="pin-modal">
-  <div class="modal">
-    <h2>🔑 Set Vault PIN</h2>
-    <p>Choose a 4-digit PIN. This is the only way to access your vault — there's no recovery if forgotten.</p>
-    <div style="margin-bottom:12px;">
-      <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">New PIN</div>
-      <div class="pin-row" style="justify-content:center;">
-        <input class="pin-box" id="np0" type="password" maxlength="1" inputmode="numeric" oninput="npIn(0)" onkeydown="npKey(event,0)">
-        <input class="pin-box" id="np1" type="password" maxlength="1" inputmode="numeric" oninput="npIn(1)" onkeydown="npKey(event,1)">
-        <input class="pin-box" id="np2" type="password" maxlength="1" inputmode="numeric" oninput="npIn(2)" onkeydown="npKey(event,2)">
-        <input class="pin-box" id="np3" type="password" maxlength="1" inputmode="numeric" oninput="npIn(3)" onkeydown="npKey(event,3)">
-      </div>
-    </div>
-    <div>
-      <div style="font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Confirm PIN</div>
-      <div class="pin-row" style="justify-content:center;">
-        <input class="pin-box" id="cp0" type="password" maxlength="1" inputmode="numeric" oninput="cpIn(0)" onkeydown="cpKey(event,0)">
-        <input class="pin-box" id="cp1" type="password" maxlength="1" inputmode="numeric" oninput="cpIn(1)" onkeydown="cpKey(event,1)">
-        <input class="pin-box" id="cp2" type="password" maxlength="1" inputmode="numeric" oninput="cpIn(2)" onkeydown="cpKey(event,2)">
-        <input class="pin-box" id="cp3" type="password" maxlength="1" inputmode="numeric" oninput="cpIn(3,true)" onkeydown="cpKey(event,3)">
-      </div>
-    </div>
-    <div class="pin-err" id="setup-err" style="margin-top:10px;"></div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closePinSetup()">Cancel</button>
-      <button class="btn-confirm" onclick="savePin()">Save PIN</button>
-    </div>
-  </div>
-</div>
-
+  <div class="status" id="status" role="status"></div>
+  <div class="row" style="margin-top:18px;"><a class="btn" href="index.html">Back to NoteCaptain</a></div>
+</main>
 <script>
-  // ── Theme ──
-  if (localStorage.getItem('gn-theme') === 'light') { document.documentElement.classList.add('light'); document.getElementById('themeBtn').textContent = '☀️'; }
-  function toggleTheme() { const l = document.documentElement.classList.toggle('light'); localStorage.setItem('gn-theme', l?'light':'dark'); document.getElementById('themeBtn').textContent = l?'☀️':'🌙'; }
-  window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue === 'light'); document.getElementById('themeBtn').textContent = e.newValue === 'light' ? '☀️' : '🌙'; } });
+(function () {
+  'use strict';
+  var DB_NAME = 'gn-vault-db', META_KEY = 'gn-vault-meta', PIN_KEY = 'gn-dash-vault-pin';
+  function $(id) { return document.getElementById(id); }
+  function meta() { try { var a = JSON.parse(localStorage.getItem(META_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
 
-  // ── Constants ──
-  const PIN_KEY  = 'gn-dash-vault-pin';
-  const META_KEY = 'gn-vault-meta';
-  const DB_NAME  = 'gn-vault-db';
-  const DB_VER   = 1;
-
-  let db = null, allMeta = [], currentFilter = 'all', currentItem = null;
-
-  // ── IndexedDB ──
-  function openDB() {
-    return new Promise((res, rej) => {
-      const req = indexedDB.open(DB_NAME, DB_VER);
-      req.onupgradeneeded = e => { const d = e.target.result; if (!d.objectStoreNames.contains('files')) d.createObjectStore('files', { keyPath: 'id' }); };
-      req.onsuccess = e => res(e.target.result);
-      req.onerror   = e => rej(e.target.error);
+  // Opens the old Vault database WITHOUT creating it when it doesn't exist.
+  function openExisting() {
+    return new Promise(function (resolve) {
+      if (!window.indexedDB) return resolve(null);
+      var created = false;
+      var req = indexedDB.open(DB_NAME);
+      req.onupgradeneeded = function (e) { created = true; e.target.transaction.abort(); };
+      req.onsuccess = function (e) { resolve(created ? null : e.target.result); };
+      req.onerror = function () { resolve(null); };
     });
   }
-  function dbPut(record)   { return new Promise((r,j)=>{ const tx=db.transaction('files','readwrite'); const req=tx.objectStore('files').put(record); req.onsuccess=()=>r(); req.onerror=j; }); }
-  function dbGet(id)       { return new Promise((r,j)=>{ const tx=db.transaction('files','readonly');  const req=tx.objectStore('files').get(id); req.onsuccess=()=>r(req.result); req.onerror=j; }); }
-  function dbDel(id)       { return new Promise((r,j)=>{ const tx=db.transaction('files','readwrite'); const req=tx.objectStore('files').delete(id); req.onsuccess=()=>r(); req.onerror=j; }); }
-
-  // ── Meta ──
-  function getMeta()  { try { return JSON.parse(localStorage.getItem(META_KEY) || '[]'); } catch { return []; } }
-  function putMeta(a) { localStorage.setItem(META_KEY, JSON.stringify(a)); }
-  function genId()    { return Date.now() + '_' + Math.random().toString(36).slice(2,6); }
-
-  // ── Boot — no PIN required, open directly ──
-  bootVault();
-
-  // ── Lock / Unlock ──
-  function pinIn(idx, auto=false) {
-    const el = document.getElementById('pb'+idx);
-    el.classList.toggle('filled', !!el.value);
-    if (el.value && idx < 3) document.getElementById('pb'+(idx+1)).focus();
-    if (el.value && auto) unlockVault();
-  }
-  function pinKey(e, idx) { if (e.key === 'Backspace' && !document.getElementById('pb'+idx).value && idx > 0) document.getElementById('pb'+(idx-1)).focus(); }
-  function getPin(pfx) { return [0,1,2,3].map(i => document.getElementById(pfx+i).value).join(''); }
-  function clearPIN(pfx) { [0,1,2,3].forEach(i => { const el = document.getElementById(pfx+i); if(el){el.value='';el.classList.remove('filled');} }); const f = document.getElementById(pfx+'0'); if(f) f.focus(); }
-
-  function unlockVault() {
-    const entered = getPin('pb');
-    const stored  = localStorage.getItem(PIN_KEY);
-    if (!stored) { openPinSetup(); return; }
-    if (entered === stored) {
-      sessionStorage.setItem('gn-vault-open', '1');
-      bootVault();
-    } else {
-      document.getElementById('pin-err').textContent = 'Incorrect PIN. Try again.';
-      const card = document.getElementById('lock-card');
-      card.classList.add('shake');
-      setTimeout(() => card.classList.remove('shake'), 400);
-      clearPIN('pb');
-    }
-  }
-
-  async function bootVault() {
-    db = await openDB();
-    allMeta = getMeta();
-    document.getElementById('lock-screen').style.display = 'none';
-    document.getElementById('vault-ui').style.display = '';
-    renderGrid();
-  }
-
-  function lockVault() {
-    sessionStorage.removeItem('gn-vault-open');
-    document.getElementById('vault-ui').style.display = 'none';
-    document.getElementById('lock-screen').style.display = 'flex';
-    clearPIN('pb');
-    document.getElementById('pin-err').textContent = '';
-    // Revoke any blob URLs
-    document.querySelectorAll('.media-item img, .media-item video').forEach(el => { if (el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
-  }
-
-  // ── Upload ──
-  function triggerUpload() { document.getElementById('file-input').click(); }
-  function dzOver(e, on) { e.preventDefault(); document.getElementById('dropzone').classList.toggle('over', on); }
-  function dzDrop(e) { e.preventDefault(); document.getElementById('dropzone').classList.remove('over'); handleFiles(e.dataTransfer.files); }
-
-  async function handleFiles(files) {
-    if (!files || !files.length) return;
-    const bar = document.getElementById('upload-bar');
-    const fill = document.getElementById('ubar-fill');
-    const label = document.getElementById('upload-label');
-    bar.classList.add('show');
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      label.textContent = `Saving ${i+1}/${files.length}: ${file.name.slice(0,28)}…`;
-      fill.style.width = ((i / files.length) * 100) + '%';
-
-      const id = genId();
-      const cat = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
-      const ext = file.name.split('.').pop().toLowerCase();
-      let thumb = null;
-
-      if (cat === 'image') {
-        thumb = await makeThumbnail(file, 300);
-      } else if (cat === 'video') {
-        thumb = await makeVideoThumbnail(file);
-      }
-
-      // Store blob in IndexedDB
-      const buf = await file.arrayBuffer();
-      await dbPut({ id, data: buf, type: file.type });
-
-      // Store meta in localStorage
-      const meta = { id, name: file.name, type: file.type, cat, ext, size: file.size, date: new Date().toISOString(), thumb };
-      allMeta.unshift(meta);
-    }
-
-    putMeta(allMeta);
-    fill.style.width = '100%';
-    setTimeout(() => bar.classList.remove('show'), 600);
-    renderGrid();
-  }
-
-  function makeThumbnail(file, maxDim) {
-    return new Promise(res => {
-      const img = new Image(); const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const s = Math.min(maxDim / Math.max(img.width, img.height), 1);
-        const c = document.createElement('canvas'); c.width = img.width*s; c.height = img.height*s;
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        res(c.toDataURL('image/jpeg', 0.75));
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); res(null); };
-      img.src = url;
+  function allFiles(db) {
+    return new Promise(function (resolve) {
+      if (!db || !db.objectStoreNames.contains('files')) return resolve([]);
+      var req = db.transaction('files', 'readonly').objectStore('files').getAll();
+      req.onsuccess = function () { resolve(req.result || []); };
+      req.onerror = function () { resolve([]); };
     });
   }
 
-  function makeVideoThumbnail(file) {
-    return new Promise(res => {
-      const video = document.createElement('video'); const url = URL.createObjectURL(file);
-      video.onloadeddata = () => {
-        video.currentTime = 1;
-      };
-      video.onseeked = () => {
-        const c = document.createElement('canvas'); c.width = 300; c.height = Math.round(300 * video.videoHeight / video.videoWidth);
-        c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url); video.src = '';
-        res(c.toDataURL('image/jpeg', 0.7));
-      };
-      video.onerror = () => { URL.revokeObjectURL(url); res(null); };
-      video.src = url; video.muted = true; video.preload = 'metadata';
-    });
+  var files = [];
+  async function refresh() {
+    var db = await openExisting();
+    files = await allFiles(db);
+    if (db) db.close();
+    var n = files.length;
+    $('count').textContent = n ? 'Files found in this browser: ' + n + '.' : 'No Vault files were found in this browser.';
+    var anything = n || meta().length || localStorage.getItem(PIN_KEY);
+    $('actions').hidden = !anything;
+    $('export-btn').hidden = !n;
   }
 
-  // ── Render ──
-  function setFilter(f, btn) {
-    currentFilter = f;
-    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    renderGrid();
-  }
-
-  function renderGrid() {
-    const filtered = currentFilter === 'all' ? allMeta : allMeta.filter(m => m.cat === currentFilter);
-
-    // Stats
-    const photos = allMeta.filter(m=>m.cat==='image').length;
-    const videos = allMeta.filter(m=>m.cat==='video').length;
-    const files  = allMeta.filter(m=>m.cat==='file').length;
-    const totalMB = (allMeta.reduce((s,m)=>s+(m.size||0),0)/1024/1024).toFixed(1);
-    document.getElementById('stats-bar').innerHTML =
-      `<span class="stat-chip"><span>${allMeta.length}</span> items</span>
-       <span class="stat-chip"><span>${photos}</span> photos</span>
-       <span class="stat-chip"><span>${videos}</span> videos</span>
-       <span class="stat-chip"><span>${files}</span> files</span>
-       <span class="stat-chip"><span>${totalMB} MB</span> used</span>`;
-
-    const grid = document.getElementById('media-grid');
-    const dz   = document.getElementById('dropzone');
-    dz.classList.toggle('show', allMeta.length === 0);
-
-    if (!filtered.length) {
-      grid.innerHTML = `<div class="empty-vault"><div class="ev-icon">${currentFilter==='image'?'📷':currentFilter==='video'?'🎬':'📄'}</div><p>No ${currentFilter==='all'?'files':currentFilter+'s'} in your vault yet.<br>Click "Add Files" to get started.</p></div>`;
-      return;
+  $('export-btn').addEventListener('click', async function () {
+    if (!window.JSZip) { $('status').textContent = "The export tool didn't load. Check your connection and refresh the page."; return; }
+    var btn = this; btn.disabled = true; $('status').textContent = 'Preparing your .zip…';
+    try {
+      var names = {}, list = meta();
+      var zip = new JSZip();
+      files.forEach(function (rec, i) {
+        var m = list.find(function (x) { return x.id === rec.id; }) || {};
+        var name = String(m.name || ('file-' + (i + 1))).replace(/[\\/:*?"<>|]+/g, '_');
+        if (names[name]) { var dot = name.lastIndexOf('.'); name = (dot > 0 ? name.slice(0, dot) : name) + ' (' + (++names[name]) + ')' + (dot > 0 ? name.slice(dot) : ''); }
+        else names[name] = 1;
+        zip.file(name, rec.data);
+      });
+      var blob = await zip.generateAsync({ type: 'blob' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'notecaptain-vault-files.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      $('status').textContent = 'Downloaded notecaptain-vault-files.zip.';
+    } catch (e) {
+      $('status').textContent = "Couldn't make the .zip. Please try again.";
     }
-
-    grid.innerHTML = filtered.map(m => {
-      if (m.cat === 'image' && m.thumb) {
-        return `<div class="media-item" onclick="openLB('${m.id}')">
-          <img src="${m.thumb}" alt="${esc(m.name)}" loading="lazy">
-          <div class="media-overlay">
-            <div class="media-overlay-inner">
-              <div class="media-name">${esc(m.name)}</div>
-              <div class="media-actions">
-                <button class="m-btn" onclick="event.stopPropagation();dlItem('${m.id}')" title="Download">⬇</button>
-                <button class="m-btn" onclick="event.stopPropagation();delItem('${m.id}')" title="Delete">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      } else if (m.cat === 'video') {
-        return `<div class="media-item" onclick="openLB('${m.id}')">
-          ${m.thumb ? `<img src="${m.thumb}" alt="${esc(m.name)}" loading="lazy">` : `<div class="file-thumb"><span style="font-size:2rem;">🎬</span></div>`}
-          <div class="vid-badge">▶ Video</div>
-          <div class="media-overlay">
-            <div class="media-overlay-inner">
-              <div class="media-name">${esc(m.name)}</div>
-              <div class="media-actions">
-                <button class="m-btn" onclick="event.stopPropagation();dlItem('${m.id}')" title="Download">⬇</button>
-                <button class="m-btn" onclick="event.stopPropagation();delItem('${m.id}')" title="Delete">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      } else {
-        return `<div class="media-item" onclick="dlItem('${m.id}')">
-          <div class="file-thumb">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--purple2)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <div class="file-ext">${esc(m.ext||'file')}</div>
-            <div class="file-name">${esc(m.name)}</div>
-          </div>
-          <div class="media-overlay">
-            <div class="media-overlay-inner">
-              <div class="media-name">${esc(m.name)}</div>
-              <div class="media-actions">
-                <button class="m-btn" onclick="event.stopPropagation();dlItem('${m.id}')" title="Download">⬇</button>
-                <button class="m-btn" onclick="event.stopPropagation();delItem('${m.id}')" title="Delete">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }
-    }).join('');
-  }
-
-  // ── Lightbox ──
-  async function openLB(id) {
-    const meta = allMeta.find(m => m.id === id); if (!meta) return;
-    currentItem = meta;
-    const record = await dbGet(id); if (!record) return;
-    const blob = new Blob([record.data], { type: meta.type });
-    const url  = URL.createObjectURL(blob);
-    const lb = document.getElementById('lightbox');
-    const img = document.getElementById('lb-img');
-    const vid = document.getElementById('lb-video');
-    if (meta.cat === 'image') {
-      img.src = url; img.style.display = ''; vid.style.display = 'none'; vid.src = '';
-    } else if (meta.cat === 'video') {
-      vid.src = url; vid.style.display = ''; img.style.display = 'none'; img.src = '';
-    }
-    document.getElementById('lb-info').textContent = meta.name + ' · ' + fmtSize(meta.size);
-    lb.classList.add('open');
-  }
-  function closeLB() {
-    const lb = document.getElementById('lightbox');
-    lb.classList.remove('open');
-    const img = document.getElementById('lb-img');
-    const vid = document.getElementById('lb-video');
-    if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-    if (vid.src.startsWith('blob:')) URL.revokeObjectURL(vid.src);
-    img.src = ''; vid.src = ''; vid.pause();
-  }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLB(); });
-
-  async function downloadCurrent() { if (currentItem) await dlItem(currentItem.id); }
-  async function dlItem(id) {
-    const meta = allMeta.find(m => m.id === id); if (!meta) return;
-    const record = await dbGet(id); if (!record) return;
-    const blob = new Blob([record.data], { type: meta.type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = meta.name; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
-
-  async function delItem(id) {
-    if (!confirm('Remove this file from your vault?')) return;
-    await dbDel(id);
-    allMeta = allMeta.filter(m => m.id !== id);
-    putMeta(allMeta);
-    renderGrid();
-  }
-
-  // ── PIN Setup ──
-  function openPinSetup() { document.getElementById('pin-modal').classList.add('open'); clearPIN('np'); clearPIN('cp'); document.getElementById('setup-err').textContent = ''; setTimeout(()=>document.getElementById('np0').focus(),100); }
-  function closePinSetup() { document.getElementById('pin-modal').classList.remove('open'); }
-  function npIn(idx) { const el=document.getElementById('np'+idx); el.classList.toggle('filled',!!el.value); if(el.value&&idx<3) document.getElementById('np'+(idx+1)).focus(); if(el.value&&idx===3) document.getElementById('cp0').focus(); }
-  function npKey(e,idx) { if(e.key==='Backspace'&&!document.getElementById('np'+idx).value&&idx>0) document.getElementById('np'+(idx-1)).focus(); }
-  function cpIn(idx, auto=false) { const el=document.getElementById('cp'+idx); el.classList.toggle('filled',!!el.value); if(el.value&&idx<3) document.getElementById('cp'+(idx+1)).focus(); if(el.value&&auto) savePin(); }
-  function cpKey(e,idx) { if(e.key==='Backspace'&&!document.getElementById('cp'+idx).value&&idx>0) document.getElementById('cp'+(idx-1)).focus(); }
-  function savePin() {
-    const p1 = getPin('np'), p2 = getPin('cp');
-    if (p1.length < 4) { document.getElementById('setup-err').textContent = 'Enter a 4-digit PIN.'; return; }
-    if (p1 !== p2)     { document.getElementById('setup-err').textContent = 'PINs do not match.'; clearPIN('cp'); return; }
-    localStorage.setItem(PIN_KEY, p1);
-    closePinSetup();
-    sessionStorage.setItem('gn-vault-open', '1');
-    bootVault();
-  }
-
-  // ── Utils ──
-  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const fmtSize = b => b>1048576 ? (b/1048576).toFixed(1)+' MB' : b>1024 ? (b/1024).toFixed(0)+' KB' : b+' B';
+    btn.disabled = false;
+  });
+  $('delete-btn').addEventListener('click', function () { $('confirm').hidden = false; $('confirm-yes').focus(); });
+  $('confirm-no').addEventListener('click', function () { $('confirm').hidden = true; });
+  $('confirm-yes').addEventListener('click', function () {
+    try { localStorage.removeItem(META_KEY); localStorage.removeItem(PIN_KEY); sessionStorage.removeItem('gn-vault-open'); } catch (e) {}
+    var req = window.indexedDB ? indexedDB.deleteDatabase(DB_NAME) : null;
+    var done = function () { $('confirm').hidden = true; $('status').textContent = 'Deleted from this browser.'; refresh(); };
+    if (req) { req.onsuccess = done; req.onerror = done; req.onblocked = function () { $('status').textContent = 'Close any other NoteCaptain tabs, then try again.'; }; }
+    else done();
+  });
+  refresh();
+})();
 </script>
-
-<script src="js/recorder.js"></script>
 </body>
 </html>

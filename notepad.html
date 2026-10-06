@@ -3690,7 +3690,7 @@ document.addEventListener('click', function(e) {
 });
 
 // ── IndexedDB: large note content (keeps localStorage well under its quota) ──
-// Mirrors the same open/put/get pattern vault.html already uses for file blobs.
+// Same open/put/get pattern the (now retired) Vault page used for file blobs.
 const NOTES_DB_NAME = 'gn-notes-db';
 const NOTES_DB_VER = 1;
 const NOTES_IDB_THRESHOLD = 200000; // ~200KB of HTML — above this, content lives in IndexedDB instead

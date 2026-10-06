@@ -17,7 +17,8 @@
   ],
   "redirects": [
     { "source": "/passwords(.html)?", "destination": "/", "permanent": true },
-    { "source": "/vault(.html)?", "destination": "/", "permanent": true }
+    { "source": "/vault(.html)?", "destination": "/", "permanent": true },
+    { "source": "/dashboard(.html)?", "destination": "/", "permanent": true }
   ],
   "rewrites": [
     { "source": "/api/ytsearch",    "destination": "/api/summarize" },

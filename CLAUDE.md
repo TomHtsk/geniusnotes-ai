@@ -53,7 +53,7 @@ Top-ups (Student/Pro only, one-time, confirmed by the person, never automatic): 
 - `chargeCredits(req, res, uid, credits, {reason, confirm, upTo})`, `chargeMoreCredits` (a second real AI call in the same request, e.g. Create picture's retry = +1), `chargeSeconds(req, res, uid, seconds, {key, confirm, partial, minLeft, dryRun})`, `requireSeconds`, `refundCharges(res)` / `refundAiAction(uid, res)`, `refundPart`.
 - **Auto-refund:** after a charge, ANY reply with status ≥ 400 first refunds everything that request was charged (`_armAutoRefund` wraps `res.json`), so error branches don't need their own refund. Tests must `await res._gnPending`.
 - **Fail closed:** rate limit, guest/daily YouTube limits, wallet reads/charges → 503 `{ code: 'usage_unavailable' }` if Firestore can't be reached; no AI/transcription runs. (Supadata cap unreachable → Supadata skipped.)
-- **Confirm before cost:** ≥ 2 credits (`CREDIT_RULES.CONFIRM_FROM`), every upload's transcription time, and YouTube AI summaries ("up to 3") → 409 `{ code: 'confirm_cost', confirm, error }`. `js/cost-confirm.js` (`window.gnAfterFetch`, loaded on index/notepad/notebook/pricing/create-deck/history/dashboard and wired into each page's `_authFetch` + `js/recorder.js`) shows the cost and remaining balance, then resends with `X-Confirm-Cost: <confirm>`; Cancel → 499 "Nothing was charged". A new page that calls paid APIs must load `js/cost-confirm.js` and pass its replies through `gnAfterFetch`.
+- **Confirm before cost:** ≥ 2 credits (`CREDIT_RULES.CONFIRM_FROM`), every upload's transcription time, and YouTube AI summaries ("up to 3") → 409 `{ code: 'confirm_cost', confirm, error }`. `js/cost-confirm.js` (`window.gnAfterFetch`, loaded on index/notepad/notebook/pricing/create-deck/history and wired into each page's `_authFetch` + `js/recorder.js`) shows the cost and remaining balance, then resends with `X-Confirm-Cost: <confirm>`; Cancel → 499 "Nothing was charged". A new page that calls paid APIs must load `js/cost-confirm.js` and pass its replies through `gnAfterFetch`.
 - Optional `X-Idempotency-Key` header (8–64 chars) → a retried request is charged once. CORS allows both headers.
 
 **What each route charges (credits = `creditsForSize`: 1 per started 5,000 chars sent + 1 per started 2 images/pages, min 1):** `writing.js` all modes by text size (diagram ≤ 20,000 chars, textbook = chapter ≤ 18,000 + questions + 1 page if a photo, citations 1), `interpret.js` (Define/Comprehend/deep/chat by size), `summarize.js` text (flashcards ≤ 12,000 chars), `checker.js` (≤ 12,000), `translate.js` (≤ 8,000), `homework.js` (text + 1 page for a photo), `lyrics.js` 1, `extract.js` **only** OCR pages / DOCX images (text from DOCX/PPTX is free). **Hard limits** (`LIMITS`): 50,000 chars per request, 20,000 chat chars, 20 OCR pages, 3 MB per image, 4 MB single audio, 1.5 MB live preview, 50 upload chunks × 90 s, 2 attempts per chunk.
@@ -222,9 +222,9 @@ Payments: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (see "Paid plans" above).
 
 ---
 
-## dashboard.html — REMOVED (temporary)
-- Backed up at `C:\Users\nmntx\AppData\Local\Temp\dashboard.html.bak`
-- All `dashboard.html` links across pages replaced with `index.html` (Home) or `notepad.html`
+## dashboard.html — DELETED (Oct 2026)
+- The old, unlinked page was still being published; it is now deleted from the repo and `/dashboard` redirects to the homepage (`redirects` in `vercel.json`). The old code is only in git history.
+- All `dashboard.html` links across pages replaced with `index.html` (Home) or `notepad.html`; the last one (Notebooks sidebar) was removed
 - Pages updated: `index.html`, `notepad.html`, `signin.html`, `passwords.html`, `history.html`, `create-deck.html`, `my-notes.html`
 
 ## study.html — REMOVED

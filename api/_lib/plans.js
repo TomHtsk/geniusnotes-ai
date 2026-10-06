@@ -49,6 +49,19 @@ const LIMITS = {
 // of speaker-labelled audio uses one hour of the allowance. OPEN DECISION for the owner.
 const DIARIZE_SECONDS_MULTIPLIER = 1;
 
+// Owner accounts: always on a plan, without a Stripe subscription. Their allowance refills
+// on the 1st of each month (UTC). More ids can be added in Vercel as NC_OWNER_PRO_UIDS
+// (comma-separated Firebase user ids) without a code change.
+const OWNER_PLANS = {
+  '7mC5UUxdMPVwmtjwypi7qhiUzd12': 'pro', // the site owner's main account
+};
+function ownerPlan(uid) {
+  if (!uid) return null;
+  if (OWNER_PLANS[uid]) return OWNER_PLANS[uid];
+  const extra = String(process.env.NC_OWNER_PRO_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  return extra.indexOf(uid) !== -1 ? 'pro' : null;
+}
+
 function creditsForSize(size) {
   size = size || {};
   const chars = Math.max(0, Number(size.chars) || 0);
@@ -56,4 +69,4 @@ function creditsForSize(size) {
   return Math.max(1, Math.ceil(chars / CREDIT_RULES.CHARS_PER_CREDIT) + Math.ceil(pages / CREDIT_RULES.PAGES_PER_CREDIT));
 }
 
-module.exports = { PLANS, TOPUPS, TOPUP_DAYS, CREDIT_RULES, LIMITS, DIARIZE_SECONDS_MULTIPLIER, creditsForSize };
+module.exports = { PLANS, TOPUPS, TOPUP_DAYS, CREDIT_RULES, LIMITS, DIARIZE_SECONDS_MULTIPLIER, creditsForSize, ownerPlan, OWNER_PLANS };

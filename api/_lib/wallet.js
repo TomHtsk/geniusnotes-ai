@@ -23,7 +23,7 @@
 //   Top-ups      separate lots that last TOPUP_DAYS, used after the monthly allowance, and
 //                only while on a paid plan.
 
-const { PLANS, TOPUPS, TOPUP_DAYS } = require('./plans');
+const { PLANS, TOPUPS, TOPUP_DAYS, ownerPlan } = require('./plans');
 
 function _db() { return require('./auth').getDb(); }
 
@@ -58,8 +58,22 @@ function _usableLots(w, kind, now) {
 
 // Lazy refills (Free month, or the next month inside a paid year). Mutates w and returns
 // the grant ledger entries to write.
-function _refill(w, now) {
+function _refill(w, now, forcedPlan) {
   const grants = [];
+  // Owner accounts (plans.js OWNER_PLANS): their plan's allowance, refilled on the 1st.
+  if (forcedPlan && PLANS[forcedPlan]) {
+    const key = 'owner:' + forcedPlan + ':' + monthKey(now);
+    if (w.periodKey !== key) {
+      const P = PLANS[forcedPlan];
+      w.plan = forcedPlan; w.periodKey = key;
+      w.periodStart = monthStart(now); w.periodEnd = nextMonthStart(now);
+      w.nextRefillAt = null; w.paidThrough = 0;
+      w.monthlyCredits = P.ai; w.monthlySeconds = P.transcribe;
+      w.periodUsedCredits = 0; w.periodUsedSeconds = 0;
+      grants.push({ id: safeId('grant_' + key), type: 'grant', reason: 'owner-month', plan: forcedPlan, credits: P.ai, seconds: P.transcribe, at: now });
+    }
+    return grants;
+  }
   if (!_isPaid(w)) {
     const key = 'free:' + monthKey(now);
     if (w.periodKey !== key) {
@@ -163,7 +177,8 @@ async function _run(uid, fn) {
     const w = snap.exists ? Object.assign(_fresh(), snap.data()) : _fresh();
     w.topups = (w.topups || []).map(l => Object.assign({}, l));
     const ledgerRef = id => db.doc(`wallets/${uid}/ledger/${safeId(id)}`);
-    return fn({ tx, ref, w, exists: snap.exists, ledgerRef, now: Date.now() });
+    const forced = ownerPlan(uid);
+    return fn({ tx, ref, w, exists: snap.exists, ledgerRef, now: Date.now(), forced });
   });
 }
 
@@ -173,8 +188,8 @@ function _writeGrants(tx, ledgerRef, grants) {
 
 // Current balances (refilling first if a new allowance month has started).
 async function summary(uid) {
-  return _run(uid, async ({ tx, ref, w, exists, ledgerRef, now }) => {
-    const grants = _refill(w, now);
+  return _run(uid, async ({ tx, ref, w, exists, ledgerRef, now, forced }) => {
+    const grants = _refill(w, now, forced);
     if (grants.length || !exists) {
       _prune(w, now);
       w.updatedAt = now;
@@ -194,11 +209,11 @@ async function spend(uid, opts) {
   const credits = Math.max(0, Math.round(opts.credits || 0));
   let seconds = Math.max(0, Math.round(opts.seconds || 0));
   const id = 'spend_' + opts.key;
-  return _run(uid, async ({ tx, ref, w, ledgerRef, now }) => {
+  return _run(uid, async ({ tx, ref, w, ledgerRef, now, forced }) => {
     const lref = ledgerRef(id);
     const prior = await tx.get(lref);
     if (prior.exists) return { ok: true, duplicate: true, view: view(w, now) };
-    const grants = _refill(w, now);
+    const grants = _refill(w, now, forced);
     const v = view(w, now);
     if (opts.partialSeconds) seconds = Math.min(seconds, v.secondsLeft);
     if (credits > v.creditsLeft || seconds > v.secondsLeft) {
@@ -225,7 +240,7 @@ async function spend(uid, opts) {
 async function refund(uid, key, opts) {
   opts = opts || {};
   const id = 'spend_' + key;
-  return _run(uid, async ({ tx, ref, w, ledgerRef, now }) => {
+  return _run(uid, async ({ tx, ref, w, ledgerRef, now, forced }) => {
     const lref = ledgerRef(id);
     const rref = ledgerRef('refund_' + key + '_' + (opts.refundId || 'all'));
     const [entrySnap, doneSnap] = await Promise.all([tx.get(lref), tx.get(rref)]);
@@ -235,7 +250,7 @@ async function refund(uid, key, opts) {
     const canS = e.seconds - (e.refundedSeconds || 0);
     const c = Math.max(0, Math.min(canC, opts.credits === undefined ? canC : Math.round(opts.credits)));
     const s = Math.max(0, Math.min(canS, opts.seconds === undefined ? canS : Math.round(opts.seconds)));
-    const grants = _refill(w, now);
+    const grants = _refill(w, now, forced);
     const same = w.periodKey === e.periodKey;
     _give(w, 'credits', c, e.breakdown.credits, same);
     _give(w, 'seconds', s, e.breakdown.seconds, same);
@@ -256,7 +271,7 @@ async function refund(uid, key, opts) {
 async function grantPeriod(uid, g) {
   const P = PLANS[g.plan];
   if (!P || g.plan === 'free') throw new Error('grantPeriod: not a paid plan');
-  return _run(uid, async ({ tx, ref, w, ledgerRef, now }) => {
+  return _run(uid, async ({ tx, ref, w, ledgerRef, now, forced }) => {
     const lref = ledgerRef('grant_' + g.grantId);
     if ((await tx.get(lref)).exists) return { ok: true, duplicate: true };
     let credits, seconds;
@@ -292,11 +307,11 @@ async function grantPeriod(uid, g) {
 // The subscription ended: back to Free (this month's Free allowance starts now). Top-ups
 // are kept but can't be used until the account is on a paid plan again.
 async function setFree(uid, id) {
-  return _run(uid, async ({ tx, ref, w, ledgerRef, now }) => {
+  return _run(uid, async ({ tx, ref, w, ledgerRef, now, forced }) => {
     const lref = ledgerRef('free_' + id);
     if ((await tx.get(lref)).exists) return { ok: true, duplicate: true };
     w.plan = 'free'; w.periodKey = null; w.nextRefillAt = null; w.paidThrough = 0; w.subId = null;
-    const grants = _refill(w, now);
+    const grants = _refill(w, now, forced);
     _prune(w, now);
     w.updatedAt = now;
     tx.set(ref, w);
@@ -310,7 +325,7 @@ async function setFree(uid, id) {
 async function addTopup(uid, t) {
   const def = TOPUPS[t.item];
   if (!def) throw new Error('addTopup: unknown item');
-  return _run(uid, async ({ tx, ref, w, ledgerRef, now }) => {
+  return _run(uid, async ({ tx, ref, w, ledgerRef, now, forced }) => {
     const lref = ledgerRef('topup_' + t.id);
     if ((await tx.get(lref)).exists) return { ok: true, duplicate: true };
     const expiresAt = now + TOPUP_DAYS * 86400000;

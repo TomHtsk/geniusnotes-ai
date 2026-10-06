@@ -40,6 +40,8 @@ A study tool. Core flow: **search a topic → learn (Wikipedia + AI) → save to
 
 Top-ups (Student/Pro only, one-time, confirmed by the person, never automatic): **100 AI credits $4.99**, **2 transcription hours $2.99**; used after the monthly allowance; last 12 months; kept but unusable while on Free.
 
+**Owner accounts:** `OWNER_PLANS` in `api/_lib/plans.js` (the owner's main account `7mC5UUxdMPVwmtjwypi7qhiUzd12` = Pro) plus any ids in the Vercel env var `NC_OWNER_PRO_UIDS` (comma-separated). They get that plan's allowance refilled on the 1st of each month, no Stripe subscription; Pricing shows "Owner account" and hides Manage subscription / top-ups.
+
 **Where the numbers live:** `api/_lib/plans.js` — `PLANS`, `TOPUPS`, `TOPUP_DAYS`, `CREDIT_RULES`, `LIMITS`, `DIARIZE_SECONDS_MULTIPLIER`, `creditsForSize`. Subscription prices: `PRICES` in `api/billing.js`. Free month offer: `TRIAL` in `api/billing.js`.
 
 **Wallet + ledger (`api/_lib/wallet.js`) — the only source of truth for balances.**

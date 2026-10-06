@@ -559,7 +559,8 @@ async function loadUsage() {
       if (st.blocked) reset += ' Your cloud storage is full: new changes are saved only on your device until you delete old notes or pictures, or upgrade.';
     }
     document.getElementById('u-reset').textContent = reset;
-    document.getElementById('btn-manage').hidden = _plan === 'free';
+    document.getElementById('btn-manage').hidden = _plan === 'free' || !!d.owner;
+    if (d.owner) document.getElementById('pr-plan-line').textContent = 'Owner account: ' + (d.planName || PLAN_NAMES[_plan]) + ' without a subscription. Your allowance refills on the 1st of each month.';
     renderTopups(d);
     if (d.paymentProblem) notice("Your last payment didn't go through. Please update your card under Manage subscription. You can keep using what's left, but there's no refill until a payment goes through.", true);
     renderOffer();

@@ -567,6 +567,8 @@ function rejectTooLong(res, chars, max) {
 // by the Stripe webhook). 'past_due' keeps the plan while Stripe retries the card.
 const PAID_STATUSES = ['active', 'trialing', 'past_due'];
 async function getUserPlan(uid) {
+  const owner = require('./plans').ownerPlan(uid);
+  if (owner) return owner; // owner accounts: always on their plan, no subscription needed
   const snap = await getDb().doc(`billing/${uid}`).get();
   const b = snap.exists ? snap.data() : null;
   if (b && PLANS[b.plan] && b.plan !== 'free' && PAID_STATUSES.includes(b.status)) return b.plan;

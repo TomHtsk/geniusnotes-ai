@@ -4,7 +4,7 @@ const {
 } = require('./_lib/auth');
 const wallet = require('./_lib/wallet');
 const storage = require('./_lib/storage');
-const { TOPUPS, TOPUP_DAYS } = require('./_lib/plans');
+const { TOPUPS, TOPUP_DAYS, ownerPlan } = require('./_lib/plans');
 
 // Usage endpoint (the file keeps its old name so existing calls to /api/subscription keep
 // working). Balances live in the wallet (api/_lib/wallet.js); plans, top-ups and limits in
@@ -62,7 +62,8 @@ module.exports = async function handler(req, res) {
       cancelAtPeriodEnd: plan === 'free' ? false : !!billing.cancelAtPeriodEnd,
       paymentProblem: billing.status === 'past_due' || !!billing.lastPaymentFailedAt && (billing.lastPaymentFailedAt > (billing.lastPaidAt || 0)),
       trialEndsAt: billing.status === 'trialing' ? (billing.trialEnd || null) : null,
-      canBuyTopups: plan !== 'free' && v.plan !== 'free',
+      owner: !!ownerPlan(uid),               // owner account: plan without a subscription
+      canBuyTopups: plan !== 'free' && v.plan !== 'free' && !ownerPlan(uid),
       topupOffers: Object.entries(TOPUPS).map(([id, t]) => ({ id, name: t.name, kind: t.kind, amount: t.amount, price: (t.cents / 100).toFixed(2), days: TOPUP_DAYS })),
       ytPerDay: YT_PER_DAY,
       storage: store ? { usedBytes: store.usedBytes, limitBytes: store.limitBytes, blocked: store.blocked, checkedAt: store.checkedAt } : null,

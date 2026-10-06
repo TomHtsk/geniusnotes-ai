@@ -1543,7 +1543,8 @@
     </div>
 
     <div class="share-foot">
-      <button onclick="revokeShareLink()" id="share-revoke-btn" class="share-link-btn" style="display:none;">Stop sharing</button>
+      <button onclick="resetShareLink()" id="share-reset-btn" class="share-link-btn" style="display:none;" title="Make a new link; the current one stops working">Reset link</button>
+<button onclick="revokeShareLink()" id="share-revoke-btn" class="share-link-btn" style="display:none;">Stop sharing</button>
       <button onclick="generateShareLink(false)" id="share-new-btn" class="share-primary" style="display:none;">Create a new link</button>
     </div>
     <input type="hidden" id="share-collab-toggle">
@@ -7990,6 +7991,7 @@ function _shareUi(state) {
   document.getElementById('share-link-row').style.display = (ready || working) ? 'flex' : 'none';
   document.getElementById('share-mode-row').style.display = ready ? '' : 'none';
   document.getElementById('share-revoke-btn').style.display = ready ? '' : 'none';
+  document.getElementById('share-reset-btn').style.display = ready ? '' : 'none';
   document.getElementById('share-new-btn').style.display = state === 'off' ? '' : 'none';
   document.getElementById('share-copy-btn').disabled = !ready;
   if (ready) {
@@ -8079,7 +8081,9 @@ async function openShareModal() {
     _shareCollab = collab;
     document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
     _shareUi('ready');
-    _shareStatus(exists ? 'Link is active.' : 'Link created.', 'ok');
+    _shareStatus(exists
+      ? (_isOldShareId(note.shareId) ? 'Link is active. It was made before links became hard to guess: use "Reset link" for a safer one.' : 'Link is active.')
+      : 'Link created.', 'ok');
   } catch (e) {
     if (stale()) return;
     _shareUi('off');
@@ -8145,6 +8149,42 @@ async function setShareMode(collaborative) {
   } finally {
     _shareModeBusy(false);
   }
+}
+
+// Links made before share ids became random (time + Math.random) can be guessed.
+function _isOldShareId(id) { return !!id && !/^[A-Za-z0-9_-]{22}$/.test(id); }
+
+// "Reset link": a new random link replaces the current one, with the same View / Edit
+// setting. The new link is made FIRST, so if that fails the old link keeps working.
+// Then the old link is switched off (people who have it see "link is invalid").
+async function resetShareLink() {
+  if (!activeId || !_fbDb) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note || !note.shareId) return;
+  if (!confirm('Make a new link for this note?\n\nThe current link will stop working, so anyone who has it will need the new one.')) return;
+  const oldId = note.shareId, collab = _shareCollab, seq = ++_shareSeq;
+  _shareUi('working');
+  _shareStatus('Making a new link…');
+  try {
+    await _shareUpload(note, collab, true); // brand-new random id, same permission
+  } catch (e) {
+    note.shareId = oldId; saveNotes();
+    if (seq !== _shareSeq) return;
+    _shareUi('ready');
+    _shareStatus(_shareErrorMessage(e, 'make a new link'), 'err');
+    return;
+  }
+  if (_collabUnsub) { _collabUnsub(); _collabUnsub = null; if (typeof _clearRemoteCursors === 'function') _clearRemoteCursors(); }
+  let oldGone = true;
+  try { await _fbDb.collection('shared_notes').doc(oldId).delete(); } catch (e) { oldGone = false; }
+  _cloudSaveNote(note); // other devices pick up the new link
+  if (seq !== _shareSeq) return;
+  document.getElementById('share-link-input').value = _shareLinkFor(note.shareId);
+  if (collab) _startCollabSync(note.shareId);
+  _shareUi('ready');
+  _shareStatus(oldGone
+    ? 'New link ready. The old link no longer works.'
+    : 'New link ready, but the old link could not be switched off. Please try "Reset link" again.', oldGone ? 'ok' : 'err');
 }
 
 async function revokeShareLink() {

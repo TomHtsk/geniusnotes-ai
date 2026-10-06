@@ -244,7 +244,7 @@
   let _histDb = null;
 
   firebase.auth().onAuthStateChanged(function(u) {
-    if (!u) { window.location.href = 'signin.html'; return; }
+    if (!u || u.isAnonymous) { window.location.href = 'signin.html'; return; } // guests: sign in first
     currentUid = u.uid;
     _histDb = firebase.firestore();
     // Migrate old shared key to per-user key (one-time)

@@ -2719,9 +2719,11 @@ function initFirebase(){
     if(!firebase.apps.length)firebase.initializeApp(_FB_CFG);
     _fbDb=firebase.firestore();
     firebase.auth().onAuthStateChanged(user=>{
-      _fbUid=user?user.uid:null;
+      // Only a real account syncs; the YouTube converter's hidden guest session stays local.
+      const _real=!!(user&&!user.isAnonymous);
+      _fbUid=_real?user.uid:null;
       const btn=document.getElementById('nb-user-btn');
-      if(user){
+      if(_real){
         if(btn){btn.textContent=user.displayName?user.displayName.split(' ')[0]:'👤';btn.title=user.email;btn.onclick=null;}
         loadFromCloud();
       }else{

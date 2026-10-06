@@ -289,7 +289,7 @@ function toggleTheme() {
 window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue === 'light'); const b = document.querySelector('.nav-moon'); if(b) b.textContent = e.newValue==='light'?'☀️':'🌙'; } });
 
 firebase.auth().onAuthStateChanged(function(user) {
-  if (!user) { window.location.href = 'signin.html'; return; }
+  if (!user || user.isAnonymous) { window.location.href = 'signin.html'; return; } // guests: sign in first
   const first = (user.displayName || user.email).split(' ')[0].split('@')[0];
   const av = document.getElementById('user-avatar');
   if (av) av.textContent = first[0].toUpperCase();

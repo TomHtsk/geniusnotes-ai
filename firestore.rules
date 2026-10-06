@@ -7,16 +7,50 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // Cloud storage limit (Free 100 MB, Student 2 GB, Pro 10 GB). The server measures each
+    // account and sets storageQuota/{uid}.blocked when it is at or over its plan's limit
+    // (api/_lib/storage.js). A full account can still read, edit, shrink and delete — it
+    // just can't add new notes, note pieces or history items, or make a note longer.
+    function storageFull(uid) {
+      return exists(/databases/$(database)/documents/storageQuota/$(uid)) &&
+             get(/databases/$(database)/documents/storageQuota/$(uid)).data.blocked == true;
+    }
+    function notLonger(field) {
+      return request.resource.data.get(field, '').size() <= resource.data.get(field, '').size();
+    }
 
     // A signed-in user can read everything under their own account...
     match /users/{uid}/{document=**} {
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if isOwner(uid);
     }
-    // ...and write their own notes, folders, history and notebooks, but NOT the usage
-    // counters and limits, which only the server may change.
+    // ...and write their own folders, notebooks and settings, but NOT the server's counters
+    // and limits. Notes and history have their own rules below (storage limit).
     match /users/{uid}/{col}/{document=**} {
-      allow write: if signedIn() && request.auth.uid == uid
-                   && !(col in ['usage', 'ytLimit', 'rateLimit', 'uploads']);
+      allow write: if isOwner(uid)
+                   && !(col in ['usage', 'ytLimit', 'rateLimit', 'uploads', 'notepad_notes', 'history']);
+    }
+    match /users/{uid}/notepad_notes/{noteId} {
+      allow delete: if isOwner(uid);
+      allow create: if isOwner(uid) && !storageFull(uid);
+      allow update: if isOwner(uid) && (!storageFull(uid) || notLonger('content'));
+      // Pieces of a long note.
+      match /chunks/{chunkId} {
+        allow delete: if isOwner(uid);
+        allow create: if isOwner(uid) && !storageFull(uid);
+        allow update: if isOwner(uid) && (!storageFull(uid) || notLonger('text'));
+      }
+    }
+    // History items (also flashcard decks).
+    match /users/{uid}/history/{itemId} {
+      allow delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && !storageFull(uid);
+    }
+
+    // The owner can see their storage use; only the server writes it.
+    match /storageQuota/{uid} {
+      allow read: if isOwner(uid);
     }
 
     // Shared notes: anyone with the link can open one (but nobody can list them all).
@@ -24,7 +58,7 @@ service cloud.firestore {
     // "Edit together" link, anyone with the link may change the text and their cursor.
     match /shared_notes/{shareId} {
       allow get: if true;
-      allow create: if signedIn() && request.resource.data.sharedBy == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.sharedBy == request.auth.uid && !storageFull(request.auth.uid);
       allow update: if (signedIn()
                         && resource.data.sharedBy == request.auth.uid
                         && request.resource.data.sharedBy == request.auth.uid)
@@ -39,6 +73,10 @@ service cloud.firestore {
       allow read, write: if signedIn();
     }
 
-    // Everything else (site-wide counters, guest limits) is server-only.
+    // Everything else is server-only, because no rule above allows it — including the
+    // credit/transcription wallets and their ledger (wallets/{uid}/...), billing/{uid},
+    // stripeEvents, billingConfig, storageQuota writes, site-wide counters and guest limits.
+    // Keep it that way: never add a rule that lets the browser write wallets, billing or
+    // storageQuota.
   }
 }

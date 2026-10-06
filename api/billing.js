@@ -1,8 +1,10 @@
 const crypto = require('crypto');
-const { applyCors, verifyAuthFull, checkRateLimit, getDb, isAllowedOrigin, getUserPlan } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, getDb, isAllowedOrigin, getUserPlan, sendUsageUnavailable } = require('./_lib/auth');
+const wallet = require('./_lib/wallet');
+const { TOPUPS } = require('./_lib/plans');
 
-// Paid plans through Stripe (Oct 2026). Talks to Stripe's REST API with fetch — no
-// `stripe` package. Needs two Vercel env vars:
+// Paid plans through Stripe (Oct 2026, TEST MODE until the owner goes live). Talks to
+// Stripe's REST API with fetch — no `stripe` package. Needs two Vercel env vars:
 //   STRIPE_SECRET_KEY      sk_test_... while testing, sk_live_... to take real money
 //   STRIPE_WEBHOOK_SECRET  whsec_... from the webhook endpoint pointing at
 //                          https://www.notecaptain.ai/api/billing
@@ -15,12 +17,17 @@ const { applyCors, verifyAuthFull, checkRateLimit, getDb, isAllowedOrigin, getUs
 //        add code: 'FREESTUDENT' for the launch offer's free month (see TRIAL below)
 //   POST { action: 'check-code', code } -> { ok, days, placesLeft } or 400 with the reason
 //   POST { action: 'portal' }   -> { url } of Stripe's page to cancel / switch / change card
-//   POST from Stripe (has a Stripe-Signature header) -> webhook; keeps billing/{uid} up to date
+//   POST { action: 'topup', item: 'credits100'|'hours2' } -> { url } of a one-time Stripe
+//        checkout (Student/Pro only; the page shows the price and asks first). The amount
+//        and price come from TOPUPS on the server, never from the browser.
+//   POST from Stripe (has a Stripe-Signature header) -> webhook (see handleWebhook)
 //
 // billing/{uid} = { plan, status, interval, stripeCustomerId, stripeSubscriptionId,
-//                   currentPeriodEnd (ms), cancelAtPeriodEnd, updatedAt }
-// Only this file writes it; the browser can't (firestore.rules). Limits are read from it by
-// getUserPlan in api/_lib/auth.js.
+//                   currentPeriodEnd (ms), cancelAtPeriodEnd, trialEnd, hadTrial,
+//                   lastPaidAt, lastPaymentFailedAt, updatedAt }
+// The allowance itself (credits / transcription time) is in the wallet (api/_lib/wallet.js)
+// and is only granted when Stripe reports an invoice PAID. Only this file writes either;
+// the browser can't (firestore.rules).
 
 // ── Prices. Change an amount here and a new Stripe price is created automatically (the
 // amount is part of the lookup key); people already subscribed keep their old price.
@@ -131,10 +138,15 @@ async function ensurePrices() {
 
 // Settings for Stripe's "Manage subscription" page: cancel (at the end of the paid period),
 // switch between Student/Pro and monthly/yearly, change card, see invoices.
+// Upgrades are invoiced at once (always_invoice) so the prorated difference is paid now and
+// the higher allowance is granted when that invoice is paid. Downgrades and shorter billing
+// periods are scheduled for the end of the paid period (schedule_at_period_end). If Stripe
+// refuses that setting, the page is created without it: the allowance still only changes
+// when an invoice is paid, so a downgrade then keeps the higher allowance until renewal.
 async function ensurePortalConfig() {
   if (_portalConfig) return _portalConfig;
   const prices = await ensurePrices();
-  const tag = 'v1:' + Object.keys(PRICES).map(k => prices[k].id).join(',');
+  const tag = 'v2:' + Object.keys(PRICES).map(k => prices[k].id).join(',');
   const list = await stripe('GET', '/billing_portal/configurations', { active: 'true', limit: 100 });
   const existing = (list.data || []).find(c => c.metadata && c.metadata.nc === tag);
   if (existing) return (_portalConfig = existing.id);
@@ -144,7 +156,7 @@ async function ensurePortalConfig() {
     const pid = prices[k].product;
     (products[pid] = products[pid] || []).push(prices[k].id);
   }
-  const cfg = await stripe('POST', '/billing_portal/configurations', {
+  const make = (schedule) => stripe('POST', '/billing_portal/configurations', {
     business_profile: { headline: 'NoteCaptain — manage your plan' },
     default_return_url: SITE + '/pricing.html',
     features: {
@@ -154,12 +166,20 @@ async function ensurePortalConfig() {
       subscription_update: {
         enabled: 'true',
         default_allowed_updates: ['price'],
-        proration_behavior: 'create_prorations',
+        proration_behavior: 'always_invoice',
         products: Object.entries(products).map(([product, ps]) => ({ product, prices: ps })),
+        ...(schedule ? { schedule_at_period_end: { conditions: [{ type: 'decreasing_item_amount' }, { type: 'shortening_interval' }] } } : {}),
       },
     },
     metadata: { nc: tag },
   });
+  let cfg;
+  try { cfg = await make(true); }
+  catch (e) {
+    if (!/schedule_at_period_end/i.test(e.message)) throw e;
+    console.error('Stripe portal: schedule_at_period_end not accepted, downgrades will be immediate in Stripe:', e.message);
+    cfg = await make(false);
+  }
   return (_portalConfig = cfg.id);
 }
 
@@ -261,16 +281,22 @@ function _planOfPrice(price) {
   return null;
 }
 
+async function _uidFor(sub, hintUid) {
+  let uid = (sub.metadata && sub.metadata.uid) || hintUid || null;
+  if (!uid && sub.customer) {
+    const q = await getDb().collection('billing').where('stripeCustomerId', '==', sub.customer).limit(1).get();
+    if (!q.empty) uid = q.docs[0].id;
+  }
+  return uid;
+}
+
 // Reads the subscription fresh from Stripe (so the order events arrive in never matters)
-// and writes the result to billing/{uid}.
+// and writes the result to billing/{uid}. When the subscription has ended, the wallet goes
+// back to Free. The allowance itself is granted only by invoice.paid (handleInvoicePaid).
 async function syncSubscription(subId, hintUid) {
   const db = getDb();
   const sub = await stripe('GET', `/subscriptions/${subId}`);
-  let uid = (sub.metadata && sub.metadata.uid) || hintUid || null;
-  if (!uid && sub.customer) {
-    const q = await db.collection('billing').where('stripeCustomerId', '==', sub.customer).limit(1).get();
-    if (!q.empty) uid = q.docs[0].id;
-  }
+  const uid = await _uidFor(sub, hintUid);
   if (!uid) { console.error('Stripe webhook: no account found for subscription', sub.id); return; }
 
   const item = sub.items && sub.items.data && sub.items.data[0];
@@ -279,12 +305,12 @@ async function syncSubscription(subId, hintUid) {
   if (!plan) { console.error('Stripe webhook: unknown price on subscription', sub.id); return; }
 
   const ref = db.doc(`billing/${uid}`);
-  await db.runTransaction(async (tx) => {
+  const current = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const cur = snap.exists ? snap.data() : {};
     // An old, ended subscription must not overwrite a newer one that is still running.
     if (cur.stripeSubscriptionId && cur.stripeSubscriptionId !== sub.id &&
-        PAID_STATUSES.includes(cur.status) && !PAID_STATUSES.includes(sub.status)) return;
+        PAID_STATUSES.includes(cur.status) && !PAID_STATUSES.includes(sub.status)) return false;
     const periodEnd = sub.current_period_end || (item && item.current_period_end) || 0;
     tx.set(ref, {
       plan: PAID_STATUSES.includes(sub.status) ? plan : 'free',
@@ -298,8 +324,64 @@ async function syncSubscription(subId, hintUid) {
       ...(sub.trial_end ? { hadTrial: true } : {}),
       updatedAt: Date.now(),
     }, { merge: true });
+    return true;
   });
   if (sub.trial_end) await markTrialStarted(uid);
+  // Ended for good (cancelled, or Stripe gave up on payment): back to Free.
+  if (current && ['canceled', 'incomplete_expired', 'unpaid'].includes(sub.status)) await wallet.setFree(uid, sub.id);
+}
+
+// A paid invoice grants the allowance (idempotent per invoice id):
+//   subscription_create / subscription_cycle -> a new paid period: the full allowance
+//     (a $0 invoice at the start of the FREESTUDENT free month counts as paid)
+//   subscription_update -> a plan change paid now: an upgrade tops up at once; anything
+//     else (a downgrade) waits for the next renewal
+// A failed payment never reaches here, so there is no refill until a payment succeeds.
+async function handleInvoicePaid(invoiceId) {
+  const inv = await stripe('GET', `/invoices/${invoiceId}`);
+  if (inv.status !== 'paid' || !inv.subscription) return;
+  const subId = typeof inv.subscription === 'string' ? inv.subscription : inv.subscription.id;
+  const sub = await stripe('GET', `/subscriptions/${subId}`);
+  const uid = await _uidFor(sub, inv.metadata && inv.metadata.uid);
+  if (!uid) { console.error('Stripe webhook: no account found for invoice', inv.id); return; }
+  const item = sub.items && sub.items.data && sub.items.data[0];
+  const price = item && item.price;
+  const plan = _planOfPrice(price);
+  if (!plan) { console.error('Stripe webhook: unknown price on invoice', inv.id); return; }
+  const start = (sub.current_period_start || (item && item.current_period_start) || 0) * 1000;
+  const end = (sub.current_period_end || (item && item.current_period_end) || 0) * 1000;
+  const reason = inv.billing_reason;
+  if (reason === 'subscription_create' || reason === 'subscription_cycle') {
+    await wallet.grantPeriod(uid, { grantId: 'inv_' + inv.id, invoiceId: inv.id, kind: 'renewal', plan, interval: price.recurring && price.recurring.interval, periodStart: start, periodEnd: end, subId });
+  } else if (reason === 'subscription_update') {
+    await wallet.grantPeriod(uid, { grantId: 'inv_' + inv.id, invoiceId: inv.id, kind: 'upgrade', plan });
+  }
+  await getDb().doc(`billing/${uid}`).set({ lastPaidAt: Date.now() }, { merge: true });
+}
+
+async function handlePaymentFailed(invoiceId) {
+  const inv = await stripe('GET', `/invoices/${invoiceId}`);
+  if (!inv.subscription) return;
+  const sub = await stripe('GET', `/subscriptions/${typeof inv.subscription === 'string' ? inv.subscription : inv.subscription.id}`);
+  const uid = await _uidFor(sub, null);
+  if (uid) await getDb().doc(`billing/${uid}`).set({ lastPaymentFailedAt: Date.now() }, { merge: true });
+}
+
+// A one-time top-up checkout finished. Re-read from Stripe; credit only if it is paid, is one
+// of ours, and the amount matches the server's price.
+async function handleTopupSession(sessionId) {
+  const s = await stripe('GET', `/checkout/sessions/${sessionId}`);
+  const item = s.metadata && s.metadata.nc_topup;
+  const uid = s.metadata && s.metadata.uid;
+  if (s.mode !== 'payment' || !item || !uid) return;
+  const def = TOPUPS[item];
+  if (!def) { console.error('Stripe webhook: unknown top-up', item); return; }
+  if (s.payment_status !== 'paid') return; // async payment methods: wait for async_payment_succeeded
+  if (s.amount_total !== def.cents || String(s.currency).toLowerCase() !== 'usd') {
+    console.error('Stripe webhook: top-up amount mismatch', s.id, s.amount_total);
+    return;
+  }
+  await wallet.addTopup(uid, { id: s.id, item, cents: s.amount_total });
 }
 
 async function handleWebhook(req, res, rawBody) {
@@ -311,13 +393,31 @@ async function handleWebhook(req, res, rawBody) {
   let event;
   try { event = JSON.parse(rawBody.toString('utf8')); } catch (e) { return res.status(400).json({ error: 'Bad JSON' }); }
 
+  // Each Stripe event is handled once: stripeEvents/{event id} is written after it was
+  // handled. (Every step is also idempotent on its own — grants by invoice id, top-ups by
+  // checkout session id — so a crash between the two steps can't double anything.)
+  const evRef = getDb().doc(`stripeEvents/${wallet.safeId(event.id || 'unknown')}`);
+  try {
+    if ((await evRef.get()).exists) return res.status(200).json({ received: true, duplicate: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'Webhook handling failed' }); // Stripe retries later
+  }
+
   try {
     const obj = (event.data && event.data.object) || {};
-    if (event.type === 'checkout.session.completed' && obj.mode === 'subscription' && obj.subscription) {
+    const t = event.type;
+    if ((t === 'checkout.session.completed' || t === 'checkout.session.async_payment_succeeded') && obj.mode === 'payment') {
+      await handleTopupSession(obj.id);
+    } else if (t === 'checkout.session.completed' && obj.mode === 'subscription' && obj.subscription) {
       await syncSubscription(obj.subscription, obj.client_reference_id || (obj.metadata && obj.metadata.uid));
-    } else if (/^customer\.subscription\.(created|updated|deleted|paused|resumed)$/.test(event.type)) {
+    } else if (/^customer\.subscription\.(created|updated|deleted|paused|resumed)$/.test(t)) {
       await syncSubscription(obj.id, obj.metadata && obj.metadata.uid);
+    } else if (t === 'invoice.paid') {
+      await handleInvoicePaid(obj.id);
+    } else if (t === 'invoice.payment_failed') {
+      await handlePaymentFailed(obj.id);
     }
+    await evRef.set({ type: t, at: Date.now() });
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('Stripe webhook error:', err.message);
@@ -370,6 +470,32 @@ async function handler(req, res) {
       const left = await trialPlacesLeft();
       if (left <= 0) return res.status(400).json({ error: `All ${TRIAL.MAX_USERS} free months have been claimed. You can still choose a plan without the code.` });
       return res.status(200).json({ ok: true, days: TRIAL.DAYS, plans: TRIAL.PLANS, placesLeft: left });
+    }
+
+    // One-time top-up, Student/Pro only. The page has already shown the price and the person
+    // confirmed it; Stripe's checkout page shows it again before any charge.
+    if (body.action === 'topup') {
+      const def = TOPUPS[body.item];
+      if (!def) return res.status(400).json({ error: 'Please choose a top-up.' });
+      let v;
+      try { v = await wallet.summary(uid); } catch (e) { return sendUsageUnavailable(res); }
+      if ((await getUserPlan(uid)) === 'free' || v.plan === 'free') {
+        return res.status(400).json({ error: 'Top-ups are for Student and Pro members. Choose a plan first.' });
+      }
+      const customer = await ensureCustomer(uid, email);
+      const base = _returnBase(req);
+      const session = await stripe('POST', '/checkout/sessions', {
+        mode: 'payment',
+        customer,
+        client_reference_id: uid,
+        line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: def.cents, product_data: { name: 'NoteCaptain top-up: ' + def.name } } }],
+        metadata: { uid, nc_topup: body.item },
+        payment_intent_data: { metadata: { uid, nc_topup: body.item } },
+        custom_text: { submit: { message: `One-time payment of $${(def.cents / 100).toFixed(2)} for ${def.name}. Nothing renews. Top-ups are used after your monthly allowance and last 12 months.` } },
+        success_url: base + '/pricing.html?topup=success',
+        cancel_url: base + '/pricing.html?topup=cancel',
+      });
+      return res.status(200).json({ url: session.url });
     }
 
     if (body.action === 'portal') {

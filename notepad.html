@@ -1013,6 +1013,7 @@
     :root.light .logo-lt{display:block!important;}
     :root.light .logo-dk{display:none!important;}
   </style>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 <script src="js/auth-gate.js"></script>
@@ -1759,7 +1760,9 @@ async function _authFetch(url, opts) {
     const token = await user.getIdToken();
     opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
   }
-  return fetch(url, opts);
+  const _resp = await fetch(url, opts);
+  // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+  return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
 }
 
 // ── LOCKED PAGE SIZE (US Letter at 96 DPI) ── change only here, nowhere else ──
@@ -4467,6 +4470,40 @@ function onTitleChange() {
 // Note: page-content input is handled by _onPageContentInput (wired in _createPageBox).
 // The legacy #editor input handler is intentionally removed — content now flows through page boxes.
 
+// ── Cloud saves are spaced out (Firestore charges per write; the free plan stops at
+// 20,000 writes a day). The copy in this browser still saves 0.5 s after typing stops;
+// the cloud copy is written CLOUD_SAVE_DELAY_MS after that (about 2 s in total), and the
+// note's history entry at most once every HISTORY_MIN_INTERVAL_MS, or straight away when
+// its title or folder changes. Ctrl+S, switching notes, hiding the tab and closing the
+// page all write the cloud copy at once (_flushCloudSave).
+const CLOUD_SAVE_DELAY_MS = 1500;
+const HISTORY_MIN_INTERVAL_MS = 60000;
+let _cloudSaveTimer = null, _cloudSavePendingId = null;
+const _historyLast = {}; // noteId -> { at, title, folderId }
+function _scheduleCloudSave(note) {
+  if (_cloudSavePendingId && _cloudSavePendingId !== note.id) _flushCloudSave();
+  _cloudSavePendingId = note.id;
+  clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = setTimeout(_flushCloudSave, CLOUD_SAVE_DELAY_MS);
+}
+function _flushCloudSave() {
+  clearTimeout(_cloudSaveTimer); _cloudSaveTimer = null;
+  const id = _cloudSavePendingId; _cloudSavePendingId = null;
+  if (!id) return;
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  _cloudSaveNote(note);
+  // saveToHistory always records the open note, so only when this IS the open note.
+  if (id !== activeId) return;
+  const h = _historyLast[id], now = Date.now(), folderId = note.folderId || null;
+  if (!h || now - h.at >= HISTORY_MIN_INTERVAL_MS || h.title !== note.title || h.folderId !== folderId) {
+    _historyLast[id] = { at: now, title: note.title, folderId };
+    saveToHistory(folderId);
+  }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _flushCloudSave(); });
+window.addEventListener('pagehide', _flushCloudSave);
+
 function scheduleSave() {
   setSaving();
   clearTimeout(saveTimer);
@@ -4483,7 +4520,7 @@ function scheduleSave() {
     saveNotes();
     renderSidebar();
     if (!_saveErrorMsg) setSaved();
-    if (note) { _cloudSaveNote(note); saveToHistory(note.folderId || null); }
+    if (note) _scheduleCloudSave(note);
   }, 500);
   _resetIdleSaveBadge();
 }
@@ -6785,7 +6822,8 @@ document.addEventListener('keydown', e => {
     saveNotes();
     renderSidebar();
     if (!_saveErrorMsg) setSaved();
-    // Cloud-sync active note (and right pane if in split)
+    // Cloud-sync active note (and right pane if in split) — now, not after the usual delay.
+    _cloudSavePendingId = null; clearTimeout(_cloudSaveTimer);
     if (activeId) { const _n = notes.find(n => n.id === activeId); if (_n) _cloudSaveNote(_n); }
     if (_splitActive && _rightNoteId) { const _rn = notes.find(n => n.id === _rightNoteId); if (_rn) _cloudSaveNote(_rn); }
   }
@@ -7632,6 +7670,7 @@ function initCloudSync() {
         _seedWelcomeNote(user.uid);
         _startCloudListeners();
         _uploadLocalToCloud();
+        setTimeout(() => _storageCheck('open'), 4000); // warn early if cloud storage is nearly full
       } else {
         // Upload any unsaved local notes to Firestore BEFORE clearing localStorage
         if (_fbDb && _fbUid && notes.length) {
@@ -7804,6 +7843,38 @@ function _cloudChunkContent(content) {
   return chunks;
 }
 
+// ── Cloud storage limit (Free 100 MB, Student 2 GB, Pro 10 GB) ──
+// The server measures the account (api/_lib/storage.js); when it's full, Firestore's rules
+// refuse cloud writes that would make it bigger. The note is still saved in this browser —
+// say so plainly, once per page visit, with the numbers.
+let _storageWarned = false;
+function _fmtBytes(b) {
+  if (b >= 1024 * 1024 * 1024) return (Math.round(b / (1024 * 1024 * 1024) * 10) / 10) + ' GB';
+  return Math.max(0, Math.round(b / (1024 * 1024))) + ' MB';
+}
+async function _storageCheck(reason) {
+  if (!_fbUid) return null;
+  try {
+    const r = await _authFetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'storage-check' }) });
+    if (!r.ok) return null;
+    const s = await r.json();
+    const pct = s.limitBytes ? s.usedBytes / s.limitBytes : 0;
+    if (!_storageWarned && (s.blocked || pct >= 0.9 || reason === 'refused')) {
+      _storageWarned = true;
+      if (s.blocked || reason === 'refused') {
+        _showToast(`Your cloud storage is full (${_fmtBytes(s.usedBytes)} of ${_fmtBytes(s.limitBytes)}). New changes are saved on this device only. Delete old notes or pictures, or upgrade on the Pricing page, to sync again.`);
+      } else {
+        _showToast(`You've used ${_fmtBytes(s.usedBytes)} of your ${_fmtBytes(s.limitBytes)} cloud storage. Delete old notes or pictures, or upgrade on the Pricing page, before it fills up.`);
+      }
+    }
+    return s;
+  } catch (e) { return null; }
+}
+function _onCloudSaveFailed(err) {
+  _setCloudIcon('⚠️');
+  if (err && err.code === 'permission-denied') _storageCheck('refused');
+}
+
 function _cloudSaveNote(note) {
   if (!_fbDb || !_fbUid || !note) return;
   _setCloudIcon('🔄');
@@ -7818,10 +7889,10 @@ function _cloudSaveNote(note) {
       batch.set(docRef.collection('chunks').doc(String(i)), { i: i, text: chunkText });
     });
     batch.set(docRef, parentDoc, { merge: true });
-    batch.commit().then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
+    batch.commit().then(() => _setCloudIcon('☁️')).catch(_onCloudSaveFailed);
   } else {
     docRef.set(Object.assign({}, note, { chunked: false, chunkCount: 0 }), { merge: true })
-      .then(() => _setCloudIcon('☁️')).catch(() => _setCloudIcon('⚠️'));
+      .then(() => _setCloudIcon('☁️')).catch(_onCloudSaveFailed);
   }
 
   // Push to shared_notes so share.html sees changes in real-time. Firestore's 1MB limit

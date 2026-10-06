@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -704,6 +704,7 @@
     @media(max-width:400px) { .hp-brand-name { display: none; } }
     @media(prefers-reduced-motion:reduce) { * { transition: none !important; animation: none !important; } }
   </style>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 
@@ -921,7 +922,9 @@ async function _authFetch(url, opts) {
     const token = await user.getIdToken();
     opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
   }
-  return fetch(url, opts);
+  const _resp = await fetch(url, opts);
+  // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+  return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
 }
 
 // ── YouTube Transcribe ──
@@ -1272,6 +1275,26 @@ let _rmText = '', _rmRecognition = null, _rmRecording = false, _rmTimer = null, 
 function openRecordModal() {
   rmReset();
   document.getElementById('record-modal').style.display = 'flex';
+  // Show the transcription time left before they start.
+  _authFetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'record-check' }) })
+    .then(r => r.json().catch(() => ({})).then(d => (r.ok ? rmShowTimeLeft(d.secondsLeft, d.resetAt) : rmShowTimeLeft(0, d.resetAt, d.error))))
+    .catch(() => {});
+}
+// "You have 7 h 40 min of transcription left (refills November 1)."
+function rmShowTimeLeft(seconds, resetAt, error) {
+  let el = document.getElementById('rm-time-left');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'rm-time-left';
+    el.style.cssText = 'font-size:0.8rem;color:var(--muted);text-align:center;margin:10px 0 0;';
+    document.getElementById('rm-step-1').appendChild(el);
+  }
+  if (error) { el.textContent = error; return; }
+  const s = Math.max(0, Number(seconds) || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  const left = (h ? h + ' h ' : '') + m + ' min';
+  const when = resetAt ? new Date(resetAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : '';
+  el.textContent = `You have ${left} of transcription left` + (when && resetAt > Date.now() ? ` (refills ${when}).` : '.') + ' Recording time is counted when you stop.';
 }
 function closeRecordModal() {
   rmStop();
@@ -1300,10 +1323,15 @@ function rmToggleRecord() {
   btn.dataset.checking = '1';
   _authFetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'record-check' }) })
     .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
-    .catch(() => ({ ok: true, d: {} })) // can't reach the server: let them record
+    .catch(() => ({ ok: false, d: { error: "We couldn't check your transcription time. Check your connection and try again." } }))
     .then(({ ok, d }) => {
       delete btn.dataset.checking;
-      if (!ok && d.code === 'limit_reached') { if (window.gnShowLimitNotice) window.gnShowLimitNotice(d.error); return; }
+      if (!ok) {
+        if (d.code === 'limit_reached' && window.gnShowLimitNotice) window.gnShowLimitNotice(d.error);
+        else alert(d.error || "We couldn't check your transcription time. Please try again.");
+        return;
+      }
+      rmShowTimeLeft(d.secondsLeft, d.resetAt);
       rmStartRecording(SpeechRecognition);
     });
 }
@@ -1849,6 +1877,8 @@ async function umTranscribeMedia(file, signal, stillWanted) {
       audio: await umToBase64(umEncodeWav(samples, bounds[i][0], bounds[i][1])),
       mimeType: 'audio/wav', uploadId, chunkIndex: i, chunkCount: bounds.length,
       chunkSeconds: Math.round((bounds[i][1] - bounds[i][0]) / UM_SR * 10) / 10,
+      // Whole file's length, so the first part can show the time it will use and ask first.
+      totalSeconds: Math.ceil(samples.length / UM_SR),
     };
     let d;
     try {

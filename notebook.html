@@ -360,6 +360,7 @@
       #view-editor{display:block!important;}
     }
   </style>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 <script src="js/auth-gate.js"></script>
@@ -873,7 +874,9 @@ async function _authFetch(url, opts) {
     const token = await user.getIdToken();
     opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
   }
-  return fetch(url, opts);
+  const _resp = await fetch(url, opts);
+  // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+  return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
 }
 
 // ══ CONSTANTS ══

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -196,6 +196,7 @@
     @media (max-width: 460px) { .hp-brand-name { display: none; } }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 <div id="tab-bar-root">
@@ -304,7 +305,9 @@ gnSyncThemeBtn();
       const token = await user.getIdToken();
       opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
     }
-    return fetch(url, opts);
+    const _resp = await fetch(url, opts);
+    // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+    return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
   }
   window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue !== 'dark'); });
 

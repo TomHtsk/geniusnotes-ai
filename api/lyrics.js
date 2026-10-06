@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
@@ -8,7 +8,7 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
+  if (!(await chargeCredits(req, res, uid, 1, { reason: 'lyrics' }))) return;
 
   // musicnotes route (rewired from /api/musicnotes)
   if (req.body?.lyrics) {

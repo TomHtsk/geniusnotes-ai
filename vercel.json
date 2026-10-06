@@ -2,7 +2,7 @@
   "functions": {
     "api/summarize.js":    { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/extract.js":      { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
-    "api/subscription.js": { "memory": 256, "maxDuration": 10, "includeFiles": "node_modules/firebase-admin/**" },
+    "api/subscription.js": { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/billing.js":      { "memory": 256, "maxDuration": 20, "includeFiles": "node_modules/firebase-admin/**" },
     "api/checker.js":      { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/transcribe.js":   { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
@@ -12,6 +12,9 @@
     "api/writing.js":      { "memory": 256, "maxDuration": 60, "includeFiles": "node_modules/firebase-admin/**" },
     "api/interpret.js":    { "memory": 256, "maxDuration": 30, "includeFiles": "node_modules/firebase-admin/**" }
   },
+  "crons": [
+    { "path": "/api/subscription?cron=storage", "schedule": "30 4 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/ytsearch",    "destination": "/api/summarize" },
     { "source": "/api/musicnotes",  "destination": "/api/lyrics" },

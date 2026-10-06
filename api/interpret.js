@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, creditsForSize } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, rejectTooLong, LIMITS } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 async function ddgLookup(query) {
@@ -41,9 +41,19 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  // Charged by what is actually sent to the model: a short selection or chat turn is 1 credit.
   const _ib = req.body || {};
-  const _credits = (!_ib.messages && _ib.mode === 'interpret') ? creditsForSize({ chars: String(_ib.text || '').length }) : 1;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai', _credits))) return;
+  let _credits;
+  if (_ib.messages) {
+    const chatChars = (Array.isArray(_ib.messages) ? _ib.messages.slice(-20) : []).reduce((s, m) => s + String((m && m.content) || '').length, 0);
+    if (rejectTooLong(res, chatChars, LIMITS.MAX_CHAT_CHARS)) return;
+    _credits = creditsForSize({ chars: chatChars });
+  } else {
+    const chars = String(_ib.text || '').length;
+    if (rejectTooLong(res, chars)) return;
+    _credits = creditsForSize({ chars: chars + Math.min(String(_ib.noteContext || '').length, 400) });
+  }
+  if (!(await chargeCredits(req, res, uid, _credits, { reason: 'interpret' }))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });

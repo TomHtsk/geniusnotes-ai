@@ -1,6 +1,6 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, creditsForSize } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, LIMITS } = require('./_lib/auth');
 const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function ocrImage(base64, mime, apiKey) {
@@ -37,14 +37,22 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  const _ocr = (req.body || {}).ocrImages;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai', creditsForSize({ pages: Array.isArray(_ocr) ? _ocr.length : 0 })))) return;
 
+  // Credits are charged only where AI runs: each scanned page / image read by the vision
+  // model (PAGES_PER_CREDIT pages per credit). Reading text from Word and PowerPoint files
+  // uses no AI and is free. At most LIMITS.MAX_OCR_PAGES pages per request.
   try {
     const { content, ocrImages } = req.body || {};
 
     // OCR path: scanned PDF pages rendered client-side to JPEG data URLs
     if (ocrImages && Array.isArray(ocrImages) && ocrImages.length > 0) {
+      if (ocrImages.length > LIMITS.MAX_OCR_PAGES) {
+        return res.status(413).json({ code: 'too_long', error: `This file has ${ocrImages.length} scanned pages. Up to ${LIMITS.MAX_OCR_PAGES} can be read at once — please split it.` });
+      }
+      if (ocrImages.some(u => typeof u !== 'string' || !u.startsWith('data:image/') || u.length > LIMITS.MAX_IMAGE_CHARS)) {
+        return res.status(413).json({ code: 'too_long', error: 'One of the pages is too large or not an image. Please try a smaller file.' });
+      }
+      if (!(await chargeCredits(req, res, uid, creditsForSize({ pages: ocrImages.length }), { reason: 'ocr-pages' }))) return;
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error('OCR service not configured.');
       const texts = [];
@@ -106,6 +114,7 @@ module.exports = async function handler(req, res) {
     if (imageEntries.length === 0) {
       throw new Error('No readable text or images found in this DOCX file.');
     }
+    if (!(await chargeCredits(req, res, uid, creditsForSize({ pages: imageEntries.length }), { reason: 'ocr-docx-images' }))) return;
 
     const texts = [];
     for (const entry of imageEntries) {

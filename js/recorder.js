@@ -22,7 +22,8 @@
       const token = await user.getIdToken();
       opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
     }
-    return fetch(url, opts);
+    const resp = await fetch(url, opts);
+    return window.gnAfterFetch ? window.gnAfterFetch(resp, url, opts, _recAuthFetch) : resp;
   }
 
   function inject() {

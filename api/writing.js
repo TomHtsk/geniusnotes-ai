@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction, creditsForSize } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits, chargeMoreCredits, refundAiAction, creditsForSize, rejectTooLong, LIMITS } = require('./_lib/auth');
 const { buildDiagramMessages, planDiagramRequest, validateItems, parseDiagramReply, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG } = require('./_lib/diagram');
 const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
 
@@ -85,19 +85,28 @@ const _citGroq=groqFetch;
 // ── textbook merged from api/textbook.js ────────────────────────────────────
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
-// Modes that use MODEL_LARGE and are charged by size; the short modes (grammar, improve,
-// math, ...) and citations always cost 1 credit. See creditsForSize in api/_lib/auth.js.
+// Modes that use MODEL_LARGE (the rest use MODEL_SMALL).
 const LARGE_MODES = ['code', 'format', 'docformat', 'academic', 'email', 'highlight', 'cornell', 'inline', 'bullets', 'outline', 'studyguide'];
+// Credits = what is actually sent to the model (creditsForSize in api/_lib/plans.js): a
+// short text is 1 credit whatever the mode. Citations send a few short fields: 1 credit.
+// The textbook route also reads one photo of the questions when there is one.
 function _writingCredits(b) {
   b = b || {};
   const len = (s) => String(s || '').length;
   if (b.action === 'diagram') return creditsForSize({ chars: Math.min(len(b.text), 20000) });
   if (b.sourceType !== undefined) return 1;
   if (b.chapter !== undefined) return creditsForSize({ chars: Math.min(len(b.chapter), 18000) + len(b.questionsText), pages: b.questionsImage ? 1 : 0 });
-  const mode = b.mode || 'improve';
-  if (mode === 'diff') return creditsForSize({ chars: len(b.text) + len(b.tone) });
-  if (LARGE_MODES.includes(mode)) return creditsForSize({ chars: len(b.text) });
-  return 1;
+  if ((b.mode || 'improve') === 'diff') return creditsForSize({ chars: len(b.text) + len(b.tone) });
+  return creditsForSize({ chars: len(b.text) });
+}
+// Characters this request would send (for the hard size limit).
+function _writingChars(b) {
+  b = b || {};
+  const len = (s) => String(s || '').length;
+  if (b.action === 'diagram') return Math.min(len(b.text), 20000);
+  if (b.sourceType !== undefined) return 0;
+  if (b.chapter !== undefined) return Math.min(len(b.chapter), 18000) + len(b.questionsText);
+  return len(b.text) + ((b.mode === 'diff') ? len(b.tone) : 0);
 }
 
 module.exports = async function handler(req, res) {
@@ -107,7 +116,11 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai', _writingCredits(req.body)))) return;
+  if (rejectTooLong(res, _writingChars(req.body))) return;
+  if (req.body?.questionsImage && String(req.body.questionsImage).length > LIMITS.MAX_IMAGE_CHARS) {
+    return res.status(413).json({ code: 'too_long', error: 'This photo is too large. Please use a smaller photo.' });
+  }
+  if (!(await chargeCredits(req, res, uid, _writingCredits(req.body), { reason: 'writing:' + (req.body?.action || (req.body?.sourceType !== undefined ? 'citation' : req.body?.chapter !== undefined ? 'textbook' : (req.body?.mode || 'improve'))) }))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
   if (!GROQ) return res.status(500).json({ error: 'API key not configured' });
@@ -116,9 +129,9 @@ module.exports = async function handler(req, res) {
   // in api/_lib/diagram.js); the browser draws it with js/diagram-templates.js.
   //   { action:'diagram', text, multi } -> { items:[{ title, kind, data, anchor }], truncated }
   // multi:true (whole note) returns up to MAX_ITEMS pictures; otherwise one (a selection).
-  // Always ONE request to the AI and ONE AI action, however many pictures come back.
-  // Invalid items are dropped. A reply that makes no sense is retried once. If nothing
-  // valid is left, the action is given back and the "nothing drawable" message is returned.
+  // One request to the AI, charged by note size, however many pictures come back. Invalid
+  // items are dropped. A reply that makes no sense is retried once (1 more credit). If
+  // nothing valid is left, all credits are given back and "nothing drawable" is returned.
   if (req.body?.action === 'diagram') {
     const multi = req.body.multi === true;
     const plan = planDiagramRequest(req.body.text, multi);
@@ -129,6 +142,9 @@ module.exports = async function handler(req, res) {
     try {
       let items = [], understood = false;
       for (let attempt = 0; attempt < 2 && !items.length; attempt++) {
+        // The retry is a second real AI call: it costs 1 more credit, and is skipped when
+        // there isn't one left.
+        if (attempt === 1 && !(await chargeMoreCredits(req, res, uid, 1, '_retry', 'diagram-retry'))) break;
         try {
           const r = await groqChat({ model: MODEL_LARGE, messages: buildDiagramMessages(plan.text, multi), max_tokens: plan.maxTokens, temperature: attempt ? 0.2 : 0, include_reasoning: false, response_format: { type: 'json_object' } }, { apiKey: GROQ, timeoutMs: 27000 });
           const data = await r.json().catch(() => ({}));

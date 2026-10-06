@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction, creditsForSize } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, chargeCredits, refundAiAction, refundPart, rejectTooLong, takeSupadataCall, creditsForSize, LIMITS } = require('./_lib/auth');
 const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 function getVideoId(url) {
@@ -6,7 +6,13 @@ function getVideoId(url) {
   return m ? m[1] : null;
 }
 
+// Every Supadata call first takes one from the site-wide monthly cap (SUPADATA_MONTHLY_CAP,
+// see takeSupadataCall in api/_lib/auth.js); when the cap is reached it isn't called.
 async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
+  if (!(await takeSupadataCall())) throw new Error('Transcript service monthly limit reached');
+  return _supadataFetchRaw(youtubeUrl, apiKey, lang, nativeOnly);
+}
+async function _supadataFetchRaw(youtubeUrl, apiKey, lang, nativeOnly = true) {
   const params = `url=${encodeURIComponent(youtubeUrl)}${lang ? `&lang=${lang}` : ''}${nativeOnly ? '&mode=native' : ''}`;
   const res = await fetch(`https://api.supadata.ai/v1/transcript?${params}`, {
     headers: { 'x-api-key': apiKey },
@@ -384,7 +390,6 @@ async function fetchFullTranscript(videoId) {
 
   const tryAll = await Promise.all([
     supadataKey ? supadataFetch(youtubeUrl, supadataKey, 'en', true).catch(() => null) : Promise.resolve(null),
-    supadataKey ? supadataFetch(youtubeUrl, supadataKey, null, true).catch(() => null) : Promise.resolve(null),
     fetchCaptionsFromPiped(videoId).catch(() => null),
     fetchCaptionsFromInvidious(videoId).catch(() => null),
     fetchYtDirectCaptions(videoId).catch(() => null),
@@ -761,12 +766,17 @@ module.exports = async function handler(req, res) {
   if (!authed) return;
   const { uid, isAnonymous } = authed;
   // Three different kinds of request arrive here, and each is limited on its own:
-  //  - a YouTube LINK to convert  -> the daily YouTube allowance (guests and accounts)
-  //  - TEXT (uploads, flashcards) -> a normal monthly AI action; needs a real account.
-  //                                  It never touches the YouTube allowance.
+  //  - a YouTube LINK, mode 'transcribe' -> free; the daily YouTube allowance (guests too)
+  //  - a YouTube LINK, any other mode (an AI summary / notes of the video) -> needs a real
+  //      account, costs credits (reserved up to LIMITS.YT_AI_MAX_CREDITS, confirmed first,
+  //      the unused part given back once the transcript's length is known) AND uses the
+  //      daily YouTube allowance
+  //  - TEXT (uploads, flashcards) -> credits by size; needs a real account. It never
+  //      touches the YouTube allowance.
   //  - a video SEARCH             -> no AI is used; only the general hourly rate limit.
   const _b = req.body || {};
   const isSearch = !!_b.q, isText = !isSearch && !!_b.text;
+  const isYtAi = !isSearch && !isText && (_b.mode || 'summarize') !== 'transcribe';
   let chargedAiAction = false;
   if (isSearch) {
     if (!(await checkRateLimit(uid, res))) return;
@@ -775,8 +785,15 @@ module.exports = async function handler(req, res) {
     if (!(await checkRateLimit(uid, res))) return;
     // Flashcards only read about the first 12,000 characters, so they aren't charged for more.
     const _chars = String(_b.text).length;
-    if (!(await checkAndIncrementUsage(uid, res, 'ai', creditsForSize({ chars: _b.mode === 'flashcards' ? Math.min(_chars, 12000) : _chars })))) return;
+    if (_b.mode !== 'flashcards' && rejectTooLong(res, _chars)) return;
+    if (!(await chargeCredits(req, res, uid, creditsForSize({ chars: _b.mode === 'flashcards' ? Math.min(_chars, 12000) : _chars }), { reason: 'summarize:' + (_b.mode || 'summarize') }))) return;
     chargedAiAction = true;
+  } else if (isYtAi) {
+    if (isAnonymous) return res.status(401).json({ error: 'sign_in_required', message: 'Sign in free to make AI notes from a video.' });
+    if (!(await checkRateLimit(uid, res))) return;
+    if (!(await chargeCredits(req, res, uid, LIMITS.YT_AI_MAX_CREDITS, { reason: 'youtube-ai:' + (_b.mode || 'summarize'), upTo: true }))) return;
+    chargedAiAction = true;
+    if (!(await checkYoutubeDailyLimit(uid, res))) return; // a refusal refunds the credits
   } else if (isAnonymous) {
     if (!(await checkGuestYoutubeLimit(req, uid, res))) return;
   } else {
@@ -929,6 +946,10 @@ module.exports = async function handler(req, res) {
 
     const transcript = await fetchVideoContent(videoId, url);
     if (!transcript || transcript.length < 50) throw new Error('Could not extract enough content from this video.');
+    // Credits were reserved for the longest transcript; give back what this one doesn't need.
+    const _used = Math.min(LIMITS.YT_AI_MAX_CREDITS, creditsForSize({ chars: transcript.length }));
+    const _charge = (res._gnCharges || [])[0];
+    if (_charge && _used < LIMITS.YT_AI_MAX_CREDITS) await refundPart(uid, _charge.key, { credits: LIMITS.YT_AI_MAX_CREDITS - _used }, 'transcript-size');
 
     const prompt = getPrompt(mode, transcript, highlightPrompt, noteStyle);
 

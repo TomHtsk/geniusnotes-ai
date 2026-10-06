@@ -1,19 +1,25 @@
 const {
-  applyCors, verifyAuth, checkRateLimit,
+  applyCors, verifyAuth, checkRateLimit, sendUsageUnavailable,
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
-  checkAudioAllowance, addTranscribedSeconds,
+  chargeSeconds, requireSeconds, refundPart, trackSiteSeconds, LIMITS,
 } = require('./_lib/auth');
+const { DIARIZE_SECONDS_MULTIPLIER } = require('./_lib/plans');
 const { MODEL_SMALL, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat } = require('./_lib/models');
 
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
 const CHUNK_BYTES_PER_SEC = 32000;
 const CHUNK_MAX_SECONDS = 90;
 
+// Transcription uses the plan's monthly transcription time (the wallet), never AI credits.
+// Free has none. Time is always charged BEFORE Whisper / AssemblyAI runs, and an error reply
+// gives it back automatically (see chargeSeconds in api/_lib/auth.js).
+
 // ── CHUNKED UPLOAD (video/audio file split in the browser) ─────────────────
-// Body: { audio (base64 WAV), uploadId, chunkIndex, chunkCount, chunkSeconds }.
-// Transcription uses the plan's monthly hours, never AI credits. Only chunk 0 goes through
-// the rate limit and the hours check; later chunks must match the session recorded for
-// that uploadId (api/_lib/auth.js). Every chunk's real length is added to the hours used.
+// Body: { audio (base64 WAV), uploadId, chunkIndex, chunkCount, chunkSeconds, totalSeconds }.
+// Chunk 0: hourly rate limit, the whole file must fit in the time left, and the person
+// confirms the time it will use (409 confirm_cost, then the same chunk again with
+// X-Confirm-Cost). Every chunk is then charged its real length (measured from the WAV size)
+// under a key per chunk and attempt, so a retried chunk is charged once per real Whisper call.
 async function handleUploadChunk(req, res, uid) {
   const { audio, uploadId } = req.body;
   const chunkIndex = Number(req.body.chunkIndex);
@@ -37,13 +43,21 @@ async function handleUploadChunk(req, res, uid) {
 
   const claim = await claimUploadChunk(uid, uploadId, chunkIndex);
   if (claim.status === 'rejected') return res.status(409).json({ error: claim.error });
+  if (claim.status === 'error') return sendUsageUnavailable(res); // fail closed
+  let attempt = claim.attempt || 1;
   if (claim.status === 'new') {
     if (!(await checkRateLimit(uid, res))) return;
-    if (!(await checkAudioAllowance(uid, res))) return;
-    await startUploadSession(uid, uploadId, chunkCount);
-  } else if (claim.status === 'error') {
-    if (!(await checkRateLimit(uid, res))) return;
+    // The whole file must fit in the time left; the person confirms it first.
+    const declaredTotal = Number(req.body.totalSeconds);
+    const total = Math.ceil(declaredTotal > 0 ? Math.min(declaredTotal, chunkCount * CHUNK_MAX_SECONDS) : chunkCount * 80);
+    if (!(await chargeSeconds(req, res, uid, total, { confirm: total, key: `up_${uploadId}_check`, reason: 'upload-check', dryRun: true }))) return;
+    try { await startUploadSession(uid, uploadId, chunkCount); }
+    catch (e) { return sendUsageUnavailable(res); }
+    attempt = 1;
   }
+  // Charge this chunk's real length before Whisper runs.
+  const chunkSecs = Math.ceil(seconds);
+  if (!(await chargeSeconds(req, res, uid, chunkSecs, { key: `up_${uploadId}_${chunkIndex}_${attempt}`, reason: 'upload-chunk' }))) return;
 
   try {
     const form = new FormData();
@@ -65,9 +79,7 @@ async function handleUploadChunk(req, res, uid) {
       return res.status(502).json({ error: 'We couldn\'t transcribe part of this file. Please try again.' });
     }
 
-    // Count by the real length of the audio we received, never more than the browser said.
-    const declared = Number(req.body.chunkSeconds);
-    await addTranscribedSeconds(uid, declared > 0 ? Math.min(declared, seconds) : seconds);
+    await trackSiteSeconds(chunkSecs);
     return res.status(200).json({ transcript: (data.text || '').trim(), chunkIndex });
   } catch (err) {
     console.error('Groq error (transcribe/chunk):', err.message);
@@ -83,18 +95,20 @@ module.exports = async function handler(req, res) {
   if (!uid) return;
   if (req.body && req.body.uploadId !== undefined) return handleUploadChunk(req, res, uid);
   if (!(await checkRateLimit(uid, res))) return;
-  // Transcription uses the plan's monthly hours, never AI credits (Free has none).
-  if (!(await checkAudioAllowance(uid, res))) return;
 
   const { audio, mimeType, diarize, spkNames, text } = req.body || {};
   if (!audio && !text) return res.status(400).json({ error: 'Missing audio or text' });
 
   // ── TEXT-ONLY FAST PATH (skip Whisper) ───────────────────
+  // The browser already turned the speech into text (free for us); this only tidies it and
+  // labels speakers. The recording's length is counted from the words (about 150 spoken
+  // words a minute) — never from a number the browser sends — up to the time left.
   if (text && !audio) {
     if (!text.trim()) return res.status(200).json({ transcript: text });
-    // The browser already turned the speech into text, so count the recording's length
-    // from the words (about 150 spoken words a minute) — never from a number it sends.
-    await addTranscribedSeconds(uid, String(text).trim().split(/\s+/).length / 2.5);
+    if (String(text).length > LIMITS.MAX_TEXT_CHARS) return res.status(413).json({ code: 'too_long', error: 'This recording is too long to tidy up in one go. The raw transcript is kept.' });
+    const spoken = Math.ceil(String(text).trim().split(/\s+/).length / 2.5);
+    if (!(await chargeSeconds(req, res, uid, spoken, { partial: true, minLeft: 1, reason: 'recording-text' }))) return;
+    await trackSiteSeconds(spoken);
     const nameList = spkNames ? spkNames.split(',').map(n => n.trim()).filter(Boolean) : [];
     const namesNote = nameList.length > 0
       ? `Label the speakers as: ${nameList.join(', ')} (in order of first appearance).`
@@ -148,7 +162,34 @@ FORMAT:
     }
   }
 
-  const buffer = Buffer.from(audio, 'base64');
+  const buffer = Buffer.from(String(audio), 'base64');
+  const isPreview = !!req.body.realtime;
+
+  // Hard limits, then the time check / reservation BEFORE any transcription service runs.
+  //  - Live previews while recording re-send the same growing recording every 15 s: they
+  //    are small (MAX_PREVIEW_BYTES), not charged, and need some time left.
+  //  - A finished recording reserves an over-estimate of its length from its size (at most
+  //    the time left), then gives back the difference once the real length is known.
+  if (buffer.length > (isPreview ? LIMITS.MAX_PREVIEW_BYTES : LIMITS.MAX_AUDIO_BYTES)) {
+    return res.status(413).json({ code: 'too_long', error: 'This recording is too large to send in one piece. Use the Upload button for long recordings.' });
+  }
+  let reservedKey = null, reserved = 0;
+  if (isPreview) {
+    if (!(await requireSeconds(res, uid, 1))) return;
+  } else {
+    const est = Math.min(LIMITS.MAX_AUDIO_SECONDS, Math.ceil(buffer.length / LIMITS.AUDIO_EST_BYTES_PER_SEC));
+    const r0 = await chargeSeconds(req, res, uid, est, { partial: true, minLeft: Math.min(est, LIMITS.MIN_SECONDS_TO_START), reason: diarize ? 'recording-speakers' : 'recording' });
+    if (!r0) return;
+    reservedKey = res._gnCharges[res._gnCharges.length - 1].key;
+    reserved = r0.charged ? r0.charged.seconds : est;
+  }
+  // Charge the real length (never more than was reserved) and give back the rest.
+  const settle = async (realSeconds) => {
+    if (!reservedKey) return;
+    const real = Math.ceil(Math.max(0, Number(realSeconds) || 0));
+    if (real > 0 && real < reserved) await refundPart(uid, reservedKey, { seconds: reserved - real }, 'actual-length');
+    await trackSiteSeconds(Math.min(real || reserved, reserved));
+  };
 
   // ── DIARIZATION: AssemblyAI ───────────────────────────────
   if (diarize && process.env.ASSEMBLYAI_API_KEY) {
@@ -190,7 +231,7 @@ FORMAT:
           }
           return `${speakerMap[u.speaker]}: ${u.text}`;
         }).join('\n');
-        await addTranscribedSeconds(uid, result.audio_duration);
+        await settle((result.audio_duration || 0) * DIARIZE_SECONDS_MULTIPLIER);
         return res.status(200).json({ transcript });
       }
     } catch {}
@@ -202,9 +243,7 @@ FORMAT:
     const ext = (mimeType || 'audio/webm').split('/')[1]?.split(';')[0] || 'webm';
     const blob = new Blob([buffer], { type: mimeType || 'audio/webm' });
     // Turbo for everything (about a third of the price of full large-v3). Final
-    // transcriptions ask for verbose_json so Groq tells us the real audio length to count;
-    // realtime previews re-send the same growing recording, so they aren't counted.
-    const isPreview = !!req.body.realtime;
+    // transcriptions ask for verbose_json so Groq tells us the real audio length to charge.
     const form = new FormData();
     form.append('file', blob, `audio.${ext}`);
     form.append('model', MODEL_WHISPER_TURBO);
@@ -228,7 +267,7 @@ FORMAT:
     }
 
     let transcript = data.text || '';
-    if (!isPreview) await addTranscribedSeconds(uid, data.duration);
+    if (!isPreview) await settle(data.duration);
 
     if (diarize && transcript.trim()) {
       const nameList = spkNames ? spkNames.split(',').map(n => n.trim()).filter(Boolean) : [];

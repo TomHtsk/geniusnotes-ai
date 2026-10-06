@@ -125,6 +125,22 @@
     .pr-code-msg.ok { color: var(--accent); font-weight: 600; }
     .pr-code-msg.bad { color: #c2410c; }
     .pr-fine { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+    .pr-reset { font-size: 0.82rem; color: var(--muted); margin: -4px 0 12px; }
+    .pr-topups { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; }
+    .pr-topups h3 { font-size: 0.95rem; margin-bottom: 2px; }
+    .pr-topups-note { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+    .pr-topup-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 480px) { .pr-topup-row { grid-template-columns: 1fr; } }
+    .pr-topup { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); color: var(--text); font: inherit; cursor: pointer; }
+    .pr-topup:hover { border-color: var(--accent); }
+    .pr-topup strong { font-size: 0.92rem; }
+    .pr-topup span { font-size: 0.8rem; color: var(--muted); }
+    .pr-confirm-ov { position: fixed; inset: 0; z-index: 300; background: rgba(11,15,20,0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .pr-confirm-ov[hidden] { display: none; }
+    .pr-confirm-box { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+    .pr-confirm-box h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .pr-confirm-box p { font-size: 0.88rem; color: var(--muted); margin-bottom: 18px; }
+    .pr-confirm-row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
     .pr-rules { max-width: 640px; margin: 22px auto 0; text-align: center; color: var(--muted); font-size: 0.86rem; }
     .pr-usage { max-width: 640px; margin: 36px auto 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
     .pr-usage h2 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
@@ -143,6 +159,7 @@
     .pr-faq p { color: var(--muted); font-size: 0.88rem; margin-top: 8px; }
     .pr-test { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 28px; }
   </style>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 
@@ -218,7 +235,7 @@
         <li>10 AI credits a month</li>
         <li>Wikipedia search and reader</li>
         <li>3 YouTube conversions a day</li>
-        <li>Notepad and Flashcards</li>
+        <li>Notepad and Flashcards</li><li>100 MB of cloud storage</li>
         <li class="no">No lecture transcription</li>
       </ul>
       <button class="pr-btn" id="btn-free" type="button" onclick="choosePlan('free')">Get started</button>
@@ -231,10 +248,11 @@
       <div class="pr-price"><span class="pr-amount" data-month="$4.99" data-year="$4.16">$4.99</span><span class="pr-per">/month</span></div>
       <div class="pr-billed" data-month="Billed monthly" data-year="$49.90 billed once a year">Billed monthly</div>
       <ul class="pr-list">
-        <li>300 AI credits a month</li>
+        <li>300 AI credits a month</li><li>2 GB of cloud storage</li>
         <li>8 hours of transcription a month (Record Lecture and audio/video uploads)</li>
         <li>3 YouTube conversions a day</li>
         <li>Everything in Free</li>
+        <li>Optional one-time top-ups if you run out</li>
       </ul>
       <button class="pr-btn primary" id="btn-student" type="button" onclick="choosePlan('student')">Choose Student</button>
       <p class="pr-fine" id="student-fine" hidden></p>
@@ -246,48 +264,79 @@
       <div class="pr-price"><span class="pr-amount" data-month="$9.99" data-year="$8.33">$9.99</span><span class="pr-per">/month</span></div>
       <div class="pr-billed" data-month="Billed monthly" data-year="$99.90 billed once a year">Billed monthly</div>
       <ul class="pr-list">
-        <li>1,000 AI credits a month</li>
+        <li>1,000 AI credits a month</li><li>10 GB of cloud storage</li>
         <li>20 hours of transcription a month (Record Lecture and audio/video uploads)</li>
         <li>3 YouTube conversions a day</li>
         <li>Everything in Free</li>
+        <li>Optional one-time top-ups if you run out</li>
       </ul>
       <button class="pr-btn" id="btn-pro" type="button" onclick="choosePlan('pro')">Choose Pro</button>
     </section>
   </div>
 
-  <p class="pr-rules">Credits and transcription hours renew on the 1st of every month and don't roll over. AI tools use credits, and larger tasks may use more. If you run out, you can wait for the renewal or upgrade — you're never charged anything extra automatically.</p>
+  <p class="pr-rules">Paid plans refill every month on your billing date, once that payment goes through. Free refills on the 1st. Unused monthly credits and hours don't roll over. Tasks that cost 2 or more credits, and every upload, show the cost and ask before they run. You're never charged anything automatically except the plan you chose.</p>
 
   <section class="pr-usage" id="pr-usage" hidden aria-labelledby="usage-title">
     <h2 id="usage-title">Your plan</h2>
     <div class="pr-plan-line" id="pr-plan-line"></div>
     <div class="pr-meter">
-      <div class="pr-meter-top"><span>AI credits this month</span><span id="u-credits"></span></div>
+      <div class="pr-meter-top"><span>AI credits left</span><span id="u-credits"></span></div>
       <div class="pr-bar"><div id="u-credits-bar"></div></div>
     </div>
     <div class="pr-meter" id="u-trans-wrap">
-      <div class="pr-meter-top"><span>Transcription this month</span><span id="u-trans"></span></div>
+      <div class="pr-meter-top"><span>Transcription left</span><span id="u-trans"></span></div>
       <div class="pr-bar"><div id="u-trans-bar"></div></div>
     </div>
+    <div class="pr-meter" id="u-store-wrap" hidden>
+      <div class="pr-meter-top"><span>Cloud storage</span><span id="u-store"></span></div>
+      <div class="pr-bar"><div id="u-store-bar"></div></div>
+    </div>
+    <div class="pr-reset" id="u-reset"></div>
     <button class="np-btn pr-manage" id="btn-manage" type="button" onclick="openPortal()" hidden>Manage subscription</button>
+
+    <div class="pr-topups" id="pr-topups" hidden>
+      <h3>Need more before your refill?</h3>
+      <p class="pr-topups-note">One-time top-ups for Student and Pro. Used after your monthly allowance, valid for 12 months. Nothing renews.</p>
+      <div class="pr-topup-row" id="pr-topup-row"></div>
+    </div>
   </section>
+
+  <div class="pr-confirm-ov" id="pr-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="pr-confirm-title">
+    <div class="pr-confirm-box">
+      <h3 id="pr-confirm-title">Buy a top-up?</h3>
+      <p id="pr-confirm-text"></p>
+      <div class="pr-confirm-row">
+        <button type="button" class="np-btn" id="pr-confirm-no">Not now</button>
+        <button type="button" class="np-btn np-btn-primary" id="pr-confirm-yes">Continue to payment</button>
+      </div>
+    </div>
+  </div>
 
   <section class="pr-faq" aria-labelledby="faq-title">
     <h2 id="faq-title">Questions</h2>
     <details>
       <summary>What is an AI credit?</summary>
-      <p>Each AI tool uses credits. Short tasks like Define, Grammar, Translate or the tutor chat cost 1 credit. Bigger tasks, such as summaries, study guides, flashcards, Create picture or reading scanned pages, cost 1 credit for every 5,000 characters (or 2 pages), up to 5 credits. If something fails, the credits are given back.</p>
+      <p>Each AI tool uses credits, based on how much it reads: 1 credit for every 5,000 characters of text (a short task is 1 credit), and 1 credit for every 2 scanned pages or photos. One request can be up to 50,000 characters or 20 pages. Anything costing 2 or more credits shows the cost and asks first. If something fails, the credits are given back.</p>
     </details>
     <details>
       <summary>What counts as transcription?</summary>
-      <p>Record Lecture and turning uploaded audio or video into text. Transcription uses your monthly hours, never your AI credits. The YouTube converter is separate and free for everyone (3 a day).</p>
+      <p>Record Lecture and turning uploaded audio or video into text. It uses your transcription time, never your AI credits. Plain transcripts from the YouTube converter are free for everyone (3 a day); an AI summary of a video uses credits.</p>
     </details>
     <details>
-      <summary>When do credits and hours reset?</summary>
-      <p>On the 1st of every month. Unused credits and hours don't carry over.</p>
+      <summary>When do credits and hours refill?</summary>
+      <p>Paid plans refill every month on your billing date, once that month's payment goes through (yearly plans refill monthly too). Free refills on the 1st of each month. Unused monthly credits and hours don't carry over.</p>
     </details>
     <details>
       <summary>What happens if I run out?</summary>
-      <p>That tool pauses until the 1st of next month, or you can upgrade. You are never charged extra automatically — the only charge is the plan you chose.</p>
+      <p>Your notes and saved work stay available and tools that don't use AI keep working. You can wait for your refill, upgrade, or (on Student and Pro) buy a top-up: 100 AI credits for $4.99 or 2 hours of transcription for $2.99. A top-up is only bought when you choose it and confirm the price.</p>
+    </details>
+    <details>
+      <summary>What counts as cloud storage?</summary>
+      <p>Your notes (including pictures and photos inside them), folders, history, flashcard decks, notebooks and shared notes. Free includes 100 MB, Student 2 GB and Pro 10 GB. If you go over, nothing is deleted: you can still open, edit, shorten and delete notes, and new changes are saved on your device, but they only sync to the cloud once you are back under the limit or upgrade.</p>
+    </details>
+    <details>
+      <summary>What if a payment fails?</summary>
+      <p>You keep using what's left of your allowance while the card is retried, but there's no refill until a payment goes through. If it never does, your plan ends and you move to Free.</p>
     </details>
     <details>
       <summary>How does the free month with a code work?</summary>
@@ -295,7 +344,7 @@
     </details>
     <details>
       <summary>Can I cancel or switch plans?</summary>
-      <p>Yes, any time, from "Manage subscription" on this page. If you cancel, you keep your plan until the end of the period you already paid for, then move to Free.</p>
+      <p>Yes, any time, from "Manage subscription" on this page. Upgrading from Student to Pro charges the difference for the rest of this period right away and raises your allowance at once. Moving down to Student, or from yearly to monthly, starts at your next renewal. If you cancel, you keep your plan until the end of the period you already paid for, then move to Free.</p>
     </details>
   </section>
 
@@ -367,7 +416,9 @@ async function _authFetch(url, opts) {
     const token = await user.getIdToken();
     opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
   }
-  return fetch(url, opts);
+  const _resp = await fetch(url, opts);
+  // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+  return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
 }
 
 function setInterval_(iv) {
@@ -486,17 +537,64 @@ async function loadUsage() {
     } else line += '.';
     document.getElementById('btn-manage').textContent = d.trialEndsAt && !d.cancelAtPeriodEnd ? 'Cancel or manage subscription' : 'Manage subscription';
     document.getElementById('pr-plan-line').textContent = line;
-    document.getElementById('u-credits').textContent = d.creditsUsed + ' of ' + d.creditsLimit + ' used';
-    document.getElementById('u-credits-bar').style.width = Math.min(100, 100 * d.creditsUsed / Math.max(1, d.creditsLimit)) + '%';
-    const hasTrans = d.transcribeSecondsLimit > 0;
+    // Balances come from the server's wallet: monthly allowance left + usable top-ups.
+    const monthC = d.monthlyCreditsLeft, topC = d.topupCreditsLeft, allowC = Math.max(1, d.monthlyCreditsAllowance);
+    document.getElementById('u-credits').textContent = d.creditsLeft + ' left' +
+      (topC ? ` (${monthC} of ${d.monthlyCreditsAllowance} monthly + ${topC} top-up)` : ` of ${d.monthlyCreditsAllowance} this month`);
+    document.getElementById('u-credits-bar').style.width = Math.min(100, 100 * monthC / allowC) + '%';
+    const hasTrans = d.monthlySecondsAllowance > 0 || d.topupSecondsLeft > 0;
     document.getElementById('u-trans').textContent = hasTrans
-      ? _hours(d.transcribeSecondsUsed) + ' of ' + _hours(d.transcribeSecondsLimit) + ' used'
+      ? _hours(d.secondsLeft) + ' left' + (d.topupSecondsLeft ? ` (incl. ${_hours(d.topupSecondsLeft)} top-up)` : ` of ${_hours(d.monthlySecondsAllowance)} this month`)
       : 'Not included in Free';
-    document.getElementById('u-trans-bar').style.width = hasTrans ? Math.min(100, 100 * d.transcribeSecondsUsed / d.transcribeSecondsLimit) + '%' : '0%';
+    document.getElementById('u-trans-bar').style.width = d.monthlySecondsAllowance > 0 ? Math.min(100, 100 * d.monthlySecondsLeft / d.monthlySecondsAllowance) + '%' : '0%';
+    let reset = '';
+    if (d.resetAt && d.resetAt > Date.now()) reset = `Your monthly allowance refills on ${fmt(d.resetAt)}` + (_plan !== 'free' ? ', once that payment goes through.' : '.');
+    else if (d.resetAt) reset = 'Your monthly allowance refills as soon as your next payment goes through.';
+    if (d.unusableTopupCredits || d.unusableTopupSeconds) reset += ' You have top-ups saved that work again when you choose a paid plan.';
+    if (d.storage) {
+      const st = d.storage, gb = b => b >= 1073741824 ? (Math.round(b / 1073741824 * 10) / 10) + ' GB' : Math.round(b / 1048576) + ' MB';
+      document.getElementById('u-store-wrap').hidden = false;
+      document.getElementById('u-store').textContent = gb(st.usedBytes) + ' of ' + gb(st.limitBytes) + ' used';
+      document.getElementById('u-store-bar').style.width = Math.min(100, 100 * st.usedBytes / Math.max(1, st.limitBytes)) + '%';
+      if (st.blocked) reset += ' Your cloud storage is full: new changes are saved only on your device until you delete old notes or pictures, or upgrade.';
+    }
+    document.getElementById('u-reset').textContent = reset;
     document.getElementById('btn-manage').hidden = _plan === 'free';
-    if (d.paymentProblem) notice("Your last payment didn't go through. Please update your card under Manage subscription to keep your plan.", true);
+    renderTopups(d);
+    if (d.paymentProblem) notice("Your last payment didn't go through. Please update your card under Manage subscription. You can keep using what's left, but there's no refill until a payment goes through.", true);
     renderOffer();
   } catch (e) { /* the page still works without the usage box */ }
+}
+
+// ── Top-ups (Student/Pro only). The price shown comes from the server; buying always goes
+// through this confirm step and then Stripe's own payment page.
+function renderTopups(d) {
+  const box = document.getElementById('pr-topups');
+  box.hidden = !d.canBuyTopups;
+  if (!d.canBuyTopups) return;
+  const row = document.getElementById('pr-topup-row');
+  row.innerHTML = '';
+  (d.topupOffers || []).forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pr-topup';
+    const strong = document.createElement('strong'); strong.textContent = o.name;
+    const span = document.createElement('span'); span.textContent = '$' + o.price + ' one time · valid ' + Math.round(o.days / 30) + ' months';
+    b.appendChild(strong); b.appendChild(span);
+    b.addEventListener('click', () => confirmTopup(o, b));
+    row.appendChild(b);
+  });
+}
+function confirmTopup(o, btn) {
+  const ov = document.getElementById('pr-confirm');
+  document.getElementById('pr-confirm-text').textContent =
+    `${o.name} for $${o.price}, charged once to your card. It's used after your monthly allowance runs out and lasts 12 months. Nothing renews. You'll see the price again on the payment page before anything is charged.`;
+  ov.hidden = false;
+  const yes = document.getElementById('pr-confirm-yes'), no = document.getElementById('pr-confirm-no');
+  const close = () => { ov.hidden = true; yes.onclick = null; no.onclick = null; };
+  no.onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
+  yes.onclick = () => { close(); _billing({ action: 'topup', item: o.id }, btn); };
+  yes.focus();
 }
 
 window.prOnAuth = function (user) {
@@ -541,12 +639,15 @@ function openPortal() { _billing({ action: 'portal' }, document.getElementById('
 
 // Back from Stripe
 (function () {
-  const p = new URLSearchParams(location.search).get('checkout');
+  const qs = new URLSearchParams(location.search);
+  const p = qs.get('checkout'), t = qs.get('topup');
   if (p === 'success') notice("Thanks! Your plan is active. It can take a few seconds to show up here.");
   else if (p === 'cancel') notice('Checkout was cancelled. You have not been charged.');
-  if (p) history.replaceState(null, '', location.pathname);
-  // After a successful checkout the webhook may land a moment later — check again.
-  if (p === 'success') setTimeout(() => { if (_user) loadUsage(); }, 4000);
+  if (t === 'success') notice('Thanks! Your top-up has been added. It can take a few seconds to show up here.');
+  else if (t === 'cancel') notice('The top-up was cancelled. You have not been charged.');
+  if (p || t) history.replaceState(null, '', location.pathname);
+  // After a successful payment the webhook may land a moment later — check again.
+  if (p === 'success' || t === 'success') setTimeout(() => { if (_user) loadUsage(); }, 4000);
 })();
 
 // While Stripe is in test mode, say so on the page. Remove this line when going live.

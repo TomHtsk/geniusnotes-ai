@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -145,6 +145,7 @@
     :root.light .logo-dk{display:none!important;}
   </style>
 <script>if(localStorage.getItem('gn-theme')==="light")document.documentElement.classList.add("light");</script>
+<script src="js/cost-confirm.js"></script>
 </head>
 <body>
 <nav>
@@ -230,7 +231,9 @@
       const token = await user.getIdToken();
       opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
     }
-    return fetch(url, opts);
+    const _resp = await fetch(url, opts);
+    // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
+    return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
   }
   firebase.initializeApp({
     apiKey:"AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",

@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize } = require('./_lib/auth');
 const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 // groqChat (api/_lib/models.js) retries a rate-limited request on the other model.
@@ -18,11 +18,11 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
-
   const { text, targetLang, sourceLang } = req.body || {};
   if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });
   if (!targetLang) return res.status(400).json({ error: 'No target language specified' });
+  // Only the first 8,000 characters are translated, so that is all that is charged.
+  if (!(await chargeCredits(req, res, uid, creditsForSize({ chars: Math.min(String(text).length, 8000) }), { reason: 'translate' }))) return;
 
   const from = sourceLang && sourceLang !== 'Auto-detect' ? `from ${sourceLang} ` : '';
   const prompt = `Translate the following text ${from}into ${targetLang}. Return ONLY the translated text — no explanations.\n\n${text.slice(0, 8000)}`;

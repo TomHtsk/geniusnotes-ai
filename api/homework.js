@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, creditsForSize } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, rejectTooLong, LIMITS } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
@@ -8,7 +8,10 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
-  if (!(await checkAndIncrementUsage(uid, res, 'ai', creditsForSize({ chars: String((req.body || {}).text || '').length, pages: (req.body || {}).image ? 1 : 0 })))) return;
+  const _hb = req.body || {};
+  if (rejectTooLong(res, String(_hb.text || '').length)) return;
+  if (_hb.image && String(_hb.image).length > LIMITS.MAX_IMAGE_CHARS) return res.status(413).json({ code: 'too_long', error: 'This photo is too large. Please use a smaller photo.' });
+  if (!(await chargeCredits(req, res, uid, creditsForSize({ chars: String(_hb.text || '').length, pages: _hb.image ? 1 : 0 }), { reason: 'homework' }))) return;
 
   const { image, mimeType, subject, text } = req.body || {};
   if (!image && !text) return res.status(400).json({ error: 'Missing image or text' });

@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb, sendUsageUnavailable } = require('./_lib/auth');
 
 function _monthKey() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM, UTC
@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
         }
         return res.status(200).json({ ok: true });
       } catch (e) {
-        return res.status(200).json({ ok: true }); // fail open
+        sendUsageUnavailable(res, 'record-check', e); return;
       }
     }
 

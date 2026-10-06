@@ -206,6 +206,14 @@ async function verifyAuthFull(req, res, opts) {
   return { uid: decoded.uid, email: decoded.email || null, isAnonymous: decoded._isAnonymous };
 }
 
+// When Firestore can't be reached the usage checks below REFUSE the request (503) instead of
+// letting it through — otherwise a database outage would mean unlimited free AI calls.
+const USAGE_UNAVAILABLE = "We can't check your allowance right now, so nothing was run and nothing was charged. Please try again in a minute.";
+function sendUsageUnavailable(res, where, e) {
+  console.error('Usage check failed (' + where + '):', e && e.message);
+  if (res && !res.headersSent) res.status(503).json({ code: 'usage_unavailable', error: USAGE_UNAVAILABLE });
+}
+
 const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
@@ -237,9 +245,8 @@ async function checkRateLimit(uid, res) {
     }
     return true;
   } catch (e) {
-    // If Firestore itself is unreachable, fail open rather than blocking every request —
-    // auth already gates access; rate limiting is a secondary protection.
-    return true;
+    sendUsageUnavailable(res, 'rate limit', e);
+    return false;
   }
 }
 
@@ -303,8 +310,8 @@ async function checkGuestYoutubeLimit(req, uid, res) {
     }
     return true;
   } catch (e) {
-    // Fail open on infra errors, same reasoning as checkRateLimit.
-    return true;
+    sendUsageUnavailable(res, 'guest YouTube limit', e);
+    return false;
   }
 }
 
@@ -324,8 +331,7 @@ function _monthKey(d) {
 // returns false when the monthly limit is already reached; otherwise increments the
 // counter and returns true. The response's `error` is a sentence the page can show
 // as-is (it says when the limit resets); `code: 'limit_reached'` is for pages that want
-// to show it in the shared notice instead. Fail-open on Firestore errors, same
-// reasoning as checkRateLimit.
+// to show it in the shared notice instead. Refuses (503) if Firestore can't be reached.
 async function checkAndIncrementUsage(uid, res, kind) {
   try {
     const limit = USAGE_LIMITS.ai;
@@ -352,7 +358,8 @@ async function checkAndIncrementUsage(uid, res, kind) {
     }
     return true;
   } catch (e) {
-    return true;
+    sendUsageUnavailable(res, 'monthly AI actions', e);
+    return false;
   }
 }
 
@@ -374,8 +381,8 @@ async function refundAiAction(uid) {
 
 // Per-day YouTube-conversion counter for SIGNED-IN users at
 // users/{uid}/ytLimit/{YYYY-MM-DD}. Anonymous guests keep using
-// checkGuestYoutubeLimit above, unchanged. Same response shape and fail-open behavior
-// as checkAndIncrementUsage.
+// checkGuestYoutubeLimit above, unchanged. Same response shape as checkAndIncrementUsage;
+// refuses (503) if Firestore can't be reached.
 async function checkYoutubeDailyLimit(uid, res) {
   try {
     const limit = USAGE_LIMITS.yt;
@@ -402,7 +409,8 @@ async function checkYoutubeDailyLimit(uid, res) {
     }
     return true;
   } catch (e) {
-    return true;
+    sendUsageUnavailable(res, 'YouTube daily limit', e);
+    return false;
   }
 }
 
@@ -424,7 +432,7 @@ function isValidUploadId(id) {
 //                           rate-limit + usage checks, then call startUploadSession
 //   { status: 'ok' }        matches a live session; this attempt is now recorded
 //   { status: 'rejected', error }  not allowed (unknown/expired upload, bad or reused index)
-//   { status: 'error' }     Firestore unreachable — caller falls back to the normal checks
+//   { status: 'error' }     Firestore unreachable — caller refuses the part (503)
 async function claimUploadChunk(uid, uploadId, chunkIndex) {
   try {
     _ensureAdmin();
@@ -468,7 +476,7 @@ async function startUploadSession(uid, uploadId, chunkCount) {
 }
 
 // Same rule as Record Lecture's record-check (api/subscription.js): refuse to START when
-// this month's audio minutes are already used up. Sends the 429 itself. Fail-open.
+// this month's audio minutes are already used up. Sends the 429 itself; 503 if Firestore can't be reached.
 async function checkAudioAllowance(uid, res) {
   try {
     const limit = USAGE_LIMITS.record;
@@ -484,7 +492,8 @@ async function checkAudioAllowance(uid, res) {
     }
     return true;
   } catch (e) {
-    return true;
+    sendUsageUnavailable(res, 'audio minutes', e);
+    return false;
   }
 }
 
@@ -511,6 +520,7 @@ async function addTranscribedSeconds(uid, seconds) {
 }
 
 module.exports = {
+  sendUsageUnavailable,
   UPLOAD_MAX_CHUNKS,
   isValidUploadId,
   claimUploadChunk,

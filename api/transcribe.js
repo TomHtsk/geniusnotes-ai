@@ -1,7 +1,7 @@
 const {
   applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage,
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
-  checkAudioAllowance, addTranscribedSeconds,
+  checkAudioAllowance, addTranscribedSeconds, sendUsageUnavailable,
 } = require('./_lib/auth');
 const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE } = require('./_lib/models');
 const { refundAiAction } = require('./_lib/auth');
@@ -43,7 +43,8 @@ async function handleUploadChunk(req, res, uid) {
     if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
     await startUploadSession(uid, uploadId, chunkCount);
   } else if (claim.status === 'error') {
-    if (!(await checkRateLimit(uid, res))) return;
+    // Can't tell whether this part belongs to a paid-for upload: refuse rather than guess.
+    return sendUsageUnavailable(res, 'upload session');
   }
 
   try {

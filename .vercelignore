@@ -8,3 +8,20 @@ merge_out.log
 pg_break_test.js
 verify_gn.js
 *-player-script.js
+# --- Security fix 5 ---
+# Merged API endpoints: their routes are rewrites in vercel.json to summarize.js,
+# lyrics.js, interpret.js and writing.js. The old files have no sign-in check and allow
+# any website (Access-Control-Allow-Origin: *), so they must never be deployed again.
+api/chat.js
+api/citation.js
+api/textbook.js
+api/musicnotes.js
+api/ytsearch.js
+# Local tests, notes for Claude, outputs and logs: not part of the site.
+_test_*.js
+Claude outputs/
+CLAUDE.md
+memory/
+.claude/
+node_modules/
+*.log

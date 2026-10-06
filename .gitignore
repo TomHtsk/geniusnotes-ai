@@ -1,5 +1,16 @@
 ﻿node_modules/
+
+# Secrets: never commit these. Keys belong in Vercel → Settings → Environment Variables.
 .env
+.env.*
+!.env.example
+.vercel/
+*.pem
+*.key
+*.p12
+*service-account*.json
+*serviceAccount*.json
+*credentials*.json
 
 # Local scratch / debug files (not part of the site)
 *-player-script.js

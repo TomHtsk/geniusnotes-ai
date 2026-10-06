@@ -360,6 +360,8 @@
       #view-editor{display:block!important;}
     }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="js/safe-html.js"></script>
 </head>
 <body>
 <script src="js/auth-gate.js"></script>
@@ -1562,7 +1564,7 @@ function buildPageCard(pg,i){
   const isText=pg.type==='text';
   const d=document.createElement('div');d.className='pg-card';
   d.innerHTML=`<div class="pg-cover">
-    ${isText?`<div class="pg-text-prev">${(pg.html||'').replace(/<[^>]*>/g,' ').slice(0,220)}</div>`
+    ${isText?`<div class="pg-text-prev">${NCSafe.text(NCSafe.textOf(pg.html||'').replace(/\s+/g,' ').slice(0,220))}</div>`
             :`<canvas id="pgc-${i}" width="140" height="186" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`}
     <div class="pg-type">${isText?'📝 Text':'✏️ Draw note'}</div>
     <div class="pg-num">note ${i+1}</div>
@@ -1679,7 +1681,7 @@ function loadPage(idx){
     document.getElementById('draw-toolbar').style.display='none';
     document.getElementById('text-editor-wrap').style.display='';
     document.getElementById('draw-wrap').style.display='none';
-    document.getElementById('text-editor').innerHTML=pg.html||'<p></p>';
+    document.getElementById('text-editor').innerHTML=NCSafe.clean(pg.html||'<p></p>');
     _pgMargins=pg.margins?{...pg.margins}:{top:72,bottom:72,left:72,right:72};
     _setPgCssVars();
     ['top','bottom','left','right'].forEach(k=>{const el=document.getElementById('mg-'+k);if(el)el.value=_pgMargins[k];});
@@ -1719,7 +1721,7 @@ function renderPanelList(){
     const d=document.createElement('div');
     d.className='pg-thumb'+(i===_curPageIdx?' active':'');
     const isText=pg.type==='text';
-    const safeHtml=isText?((pg.html||'').replace(/<script[\s\S]*?<\/script>/gi,'')):'';
+    const safeHtml=isText?NCSafe.clean(pg.html||''):''; // thumbnails: same cleaner as the editor
     d.innerHTML=`<div class="pg-thumb-img">
       ${!isText?`<canvas id="ptc-${i}" width="100" height="133" style="position:absolute;inset:0;width:100%;height:100%"></canvas>`:''}
       ${isText?`<div class="pg-thumb-scale-wrap"><div class="pg-thumb-scale" style="padding:${_pgMargins.top}px ${_pgMargins.right}px ${_pgMargins.bottom}px ${_pgMargins.left}px;">${safeHtml}</div></div>`:''}
@@ -1849,7 +1851,7 @@ function openCrossNbSplit(id1,id2){
   document.getElementById('left-pane-hd').classList.add('visible');
   document.getElementById('left-pane-title').textContent=nb1.name;
   const pg2=nb2.pages[_splitNb2PageIdx]||{};
-  document.getElementById('text-editor-right').innerHTML=pg2.html||'<p></p>';
+  document.getElementById('text-editor-right').innerHTML=NCSafe.clean(pg2.html||'<p></p>');
   document.getElementById('right-page-title').value=pg2.title||'';
   document.getElementById('right-page-label').textContent=nb2.name+(nb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');
 }
@@ -1884,11 +1886,11 @@ function swapSplitEditors(){
     const tmp=_curNb;_curNb=_splitNb2;_splitNb2=tmp;
     const tmpIdx=_curPageIdx;_curPageIdx=_splitNb2PageIdx;_splitNb2PageIdx=tmpIdx;
     document.getElementById('ed-nb-name').textContent=_curNb.name;
-    document.getElementById('text-editor').innerHTML=_curNb.pages[_curPageIdx]?.html||'<p></p>';
+    document.getElementById('text-editor').innerHTML=NCSafe.clean(_curNb.pages[_curPageIdx]?.html||'<p></p>');
     document.getElementById('page-title-inp').value=_curNb.pages[_curPageIdx]?.title||'';
     document.getElementById('left-pane-title').textContent=_curNb.name;
     const pg2=_splitNb2.pages[_splitNb2PageIdx]||{};
-    document.getElementById('text-editor-right').innerHTML=pg2.html||'<p></p>';
+    document.getElementById('text-editor-right').innerHTML=NCSafe.clean(pg2.html||'<p></p>');
     document.getElementById('right-page-title').value=pg2.title||'';
     document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');
     renderPanelList();saveData();schedulePageLines();return;
@@ -1902,8 +1904,8 @@ function swapSplitEditors(){
   const lp=_curNb.pages[_curPageIdx];if(lp)lp.html=rightHtml;
   const rp=_curNb.pages[_splitPageIdx];if(rp)rp.html=leftHtml;
   const tmp=_curPageIdx;_curPageIdx=_splitPageIdx;_splitPageIdx=tmp;
-  document.getElementById('text-editor').innerHTML=_curNb.pages[_curPageIdx]?.html||'<p></p>';
-  document.getElementById('text-editor-right').innerHTML=_curNb.pages[_splitPageIdx]?.html||'<p></p>';
+  document.getElementById('text-editor').innerHTML=NCSafe.clean(_curNb.pages[_curPageIdx]?.html||'<p></p>');
+  document.getElementById('text-editor-right').innerHTML=NCSafe.clean(_curNb.pages[_splitPageIdx]?.html||'<p></p>');
   document.getElementById('page-title-inp').value=_curNb.pages[_curPageIdx]?.title||'';
   document.getElementById('right-page-title').value=_curNb.pages[_splitPageIdx]?.title||'';
   document.getElementById('left-pane-title').textContent=_curNb.pages[_curPageIdx]?.title||'Page '+(_curPageIdx+1);
@@ -1936,7 +1938,7 @@ function loadRightPage(idx){
   if(!_curNb||!_curNb.pages[idx])return;
   _splitPageIdx=idx;
   const pg=_curNb.pages[idx];
-  document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';
+  document.getElementById('text-editor-right').innerHTML=NCSafe.clean(pg.html||'<p></p>');
   document.getElementById('right-page-title').value=pg.title||'';
   document.getElementById('right-page-label').textContent='Page '+(idx+1)+' of '+_curNb.pages.length;
 }
@@ -1963,12 +1965,12 @@ function saveRightTitle(v){
 }
 function prevRightPage(){
   saveRightPage();
-  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.max(0,_splitNb2PageIdx-1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
+  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.max(0,_splitNb2PageIdx-1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=NCSafe.clean(pg.html||'<p></p>');document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
   else{loadRightPage(Math.max(0,_splitPageIdx-1));}
 }
 function nextRightPage(){
   saveRightPage();
-  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.min(_splitNb2.pages.length-1,_splitNb2PageIdx+1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=pg.html||'<p></p>';document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
+  if(_crossNbSplit){if(_splitNb2){_splitNb2PageIdx=Math.min(_splitNb2.pages.length-1,_splitNb2PageIdx+1);const pg=_splitNb2.pages[_splitNb2PageIdx]||{};document.getElementById('text-editor-right').innerHTML=NCSafe.clean(pg.html||'<p></p>');document.getElementById('right-page-title').value=pg.title||'';document.getElementById('right-page-label').textContent=_splitNb2.name+(_splitNb2.pages.length>1?' — Page '+(_splitNb2PageIdx+1):'');}}
   else{loadRightPage(Math.min(_curNb.pages.length-1,_splitPageIdx+1));}
 }
 

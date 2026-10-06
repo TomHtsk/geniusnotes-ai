@@ -205,12 +205,23 @@ gnSyncThemeBtn();
   let _lastTyped = 0;
   let _noteData = null;
 
+  // A note shared from the Notepad is stored as a JSON list of page HTML strings
+  // ('["<p>…</p>", …]'); edits made on this page are stored as one HTML string. Show both
+  // as one HTML block (it is cleaned with NCSafe.clean before it goes on the page).
+  function noteHtml(content) {
+    const s = String(content || '');
+    if (s.trim().charAt(0) === '[') {
+      try { const pages = JSON.parse(s); if (Array.isArray(pages)) return pages.filter(p => typeof p === 'string').join(''); } catch (e) {}
+    }
+    return s;
+  }
+
   window.importToNotepad = function() {
     // Always read from the live editor — it's kept up-to-date by the real-time listener
     const editor = document.getElementById('note-editor');
     const titleEl = document.getElementById('note-title-el');
     const title = (titleEl ? titleEl.textContent : null) || (_noteData ? _noteData.title : 'Shared Note') || 'Shared Note';
-    const content = NCSafe.clean((editor ? editor.innerHTML : null) || (_noteData ? _noteData.content : '') || '');
+    const content = NCSafe.clean((editor ? editor.innerHTML : null) || (_noteData ? noteHtml(_noteData.content) : '') || '');
     const newId = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
     const note = { id: newId, title: title, content: content, created: Date.now(), updated: Date.now(), shareId: id };
     try {
@@ -287,7 +298,7 @@ gnSyncThemeBtn();
         <button class="tb" onclick="document.execCommand('formatBlock','p')">¶</button>
       </div>` : ''}
       <div id="note-editor" contenteditable="${_isCollab ? 'true' : 'false'}"
-           spellcheck="true" data-placeholder="Start writing…">${NCSafe.clean(data.content||'<p><br></p>')}</div>
+           spellcheck="true" data-placeholder="Start writing…">${NCSafe.clean(noteHtml(data.content)||'<p><br></p>')}</div>
     `;
     if (_isCollab) {
       const badge = document.getElementById('mode-badge');
@@ -442,7 +453,7 @@ gnSyncThemeBtn();
       savedRange = sel.getRangeAt(0).cloneRange();
     }
     // Anyone with an "Edit together" link can change this content: clean it first.
-    editor.innerHTML = NCSafe.clean(content);
+    editor.innerHTML = NCSafe.clean(noteHtml(content));
     // Restore cursor if possible
     if (savedRange) {
       try { sel.removeAllRanges(); sel.addRange(savedRange); } catch(e) {}

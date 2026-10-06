@@ -185,9 +185,9 @@ The code no longer reads any payment-related env vars; any still set in Vercel a
 
 ---
 
-## dashboard.html — REMOVED (temporary)
-- Backed up at `C:\Users\nmntx\AppData\Local\Temp\dashboard.html.bak`
-- All `dashboard.html` links across pages replaced with `index.html` (Home) or `notepad.html`
+## dashboard.html — DELETED (Oct 2026)
+- The old, unlinked page was still being published; it is now deleted from the repo and `/dashboard` redirects to the homepage (`redirects` in `vercel.json`). The old code is only in git history.
+- All `dashboard.html` links across pages replaced with `index.html` (Home) or `notepad.html`; the last one (Notebooks sidebar) was removed
 - Pages updated: `index.html`, `notepad.html`, `signin.html`, `passwords.html`, `history.html`, `create-deck.html`, `my-notes.html`
 
 ## study.html — REMOVED

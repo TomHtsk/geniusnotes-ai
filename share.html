@@ -353,9 +353,17 @@ gnSyncThemeBtn();
       el.className = 'rc';
       el.style.top = (rRect.top - eRect.top) + 'px';
       el.style.left = (rRect.left - eRect.left) + 'px';
-      // Guests can write any label/colour into Firestore: escape the label, allow only plain colours.
+      // Guests can write any label/colour into Firestore: the colour must pass the allow-list
+      // and is set through the style property; the label is plain text. No HTML/CSS strings.
       const _c = NCSafe.color(color);
-      el.innerHTML = `<div class="rc-caret" style="background:${_c};"></div><div class="rc-label" style="background:${_c};">${NCSafe.text(label)}</div>`;
+      const caret = document.createElement('div');
+      caret.className = 'rc-caret';
+      caret.style.backgroundColor = _c;
+      const lbl = document.createElement('div');
+      lbl.className = 'rc-label';
+      lbl.style.backgroundColor = _c;
+      lbl.textContent = String(label == null ? '' : label).slice(0, 60);
+      el.append(caret, lbl);
       editor.appendChild(el);
     }
 

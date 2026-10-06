@@ -7968,6 +7968,16 @@ function _cloudDeleteFolder(id) {
 let _shareCollab = false, _shareSeq = 0;
 
 function _shareLinkFor(id) { return location.origin + '/share.html?id=' + id; }
+// A new share link id: 16 random bytes from the browser's secure random generator, written
+// as base64url (22 characters, A–Z a–z 0–9 - _), so links can't be guessed. Links made
+// before this change (time + Math.random) keep working: only NEW links use this format.
+function _newShareId() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let s = '';
+  bytes.forEach(b => { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 function _shareStatus(msg, kind) {
   const el = document.getElementById('share-status');
   el.textContent = msg || '';
@@ -8019,7 +8029,7 @@ function _shareUpload(note, collaborative, fresh) {
   const bytes = new Blob([note.content || '', note.title || '']).size;
   if (bytes > SHARE_MAX_BYTES) { const e = new Error('Note is too large to share'); e.code = 'gn/too-large'; return Promise.reject(e); }
   if (!note.shareId || fresh) {
-    note.shareId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    note.shareId = _newShareId();
     saveNotes();
   }
   return _fbDb.collection('shared_notes').doc(note.shareId).set({

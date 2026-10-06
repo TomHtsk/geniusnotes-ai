@@ -3,6 +3,20 @@ const JSZip = require('jszip');
 const { applyCors, verifyAuth, checkRateLimit, chargeCredits, creditsForSize, LIMITS } = require('./_lib/auth');
 const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, userError, sendServerError } = require('./_lib/models');
 
+// One page to read: a data:image/...;base64 URL (homepage) or { data, type } (Notebooks).
+// Returns { mime, b64 }, or null if it is not an image or is too large.
+function _ocrPage(p) {
+  let mime, b64;
+  if (typeof p === 'string') {
+    const m = p.match(/^data:(image\/[a-z0-9.+-]+);base64,/i);
+    if (!m) return null;
+    mime = m[1]; b64 = p.slice(m[0].length);
+  } else if (p && typeof p.data === 'string' && /^image\/[a-z0-9.+-]+$/i.test(String(p.type || ''))) {
+    mime = p.type; b64 = p.data;
+  } else return null;
+  return b64 && b64.length <= LIMITS.MAX_IMAGE_CHARS ? { mime, b64 } : null;
+}
+
 async function ocrImage(base64, mime, apiKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -49,17 +63,15 @@ module.exports = async function handler(req, res) {
       if (ocrImages.length > LIMITS.MAX_OCR_PAGES) {
         return res.status(413).json({ code: 'too_long', error: `This file has ${ocrImages.length} scanned pages. Up to ${LIMITS.MAX_OCR_PAGES} can be read at once — please split it.` });
       }
-      if (ocrImages.some(u => typeof u !== 'string' || !u.startsWith('data:image/') || u.length > LIMITS.MAX_IMAGE_CHARS)) {
-        return res.status(413).json({ code: 'too_long', error: 'One of the pages is too large or not an image. Please try a smaller file.' });
+      const ocrPages = ocrImages.map(_ocrPage);
+      if (ocrPages.some(p => !p)) {
+        return res.status(413).json({ code: 'too_long', error: 'One of the pages is too large or is not a picture. Please try a smaller file, or a PDF, Word or PowerPoint file.' });
       }
       if (!(await chargeCredits(req, res, uid, creditsForSize({ pages: ocrImages.length }), { reason: 'ocr-pages' }))) return;
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error('GROQ_API_KEY is not set');
       const texts = [];
-      for (const dataUrl of ocrImages) {
-        const comma = dataUrl.indexOf(',');
-        const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
-        const b64 = dataUrl.slice(comma + 1);
+      for (const { b64, mime } of ocrPages) {
         const text = await ocrImage(b64, mime, apiKey);
         if (text) texts.push(text);
       }

@@ -117,7 +117,7 @@ module.exports = async function handler(req, res) {
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
   if (rejectTooLong(res, _writingChars(req.body))) return;
-  if (req.body?.questionsImage && String(req.body.questionsImage).length > LIMITS.MAX_IMAGE_CHARS) {
+  if (req.body?.questionsImage && (typeof req.body.questionsImage !== 'string' || req.body.questionsImage.length > LIMITS.MAX_IMAGE_CHARS)) {
     return res.status(413).json({ code: 'too_long', error: 'This photo is too large. Please use a smaller photo.' });
   }
   if (!(await chargeCredits(req, res, uid, _writingCredits(req.body), { reason: 'writing:' + (req.body?.action || (req.body?.sourceType !== undefined ? 'citation' : req.body?.chapter !== undefined ? 'textbook' : (req.body?.mode || 'improve'))) }))) return;

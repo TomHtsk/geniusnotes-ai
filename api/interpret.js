@@ -43,9 +43,15 @@ module.exports = async function handler(req, res) {
   if (!(await checkRateLimit(uid, res))) return;
   // Charged by what is actually sent to the model: a short selection or chat turn is 1 credit.
   const _ib = req.body || {};
-  let _credits;
+  let _credits, chatMessages = null;
   if (_ib.messages) {
-    const chatChars = (Array.isArray(_ib.messages) ? _ib.messages.slice(-20) : []).reduce((s, m) => s + String((m && m.content) || '').length, 0);
+    // Only the last 20 messages, and only plain user/assistant text (a browser can't slip in
+    // its own 'system' rules).
+    if (!Array.isArray(_ib.messages)) return res.status(400).json({ error: 'Missing messages' });
+    chatMessages = _ib.messages.slice(-20)
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content }));
+    const chatChars = chatMessages.reduce((s, m) => s + m.content.length, 0);
     if (rejectTooLong(res, chatChars, LIMITS.MAX_CHAT_CHARS)) return;
     _credits = creditsForSize({ chars: chatChars });
   } else {
@@ -61,9 +67,9 @@ module.exports = async function handler(req, res) {
   // chat route (rewired from /api/chat)
   if (req.body?.messages) {
     try {
-      const { messages } = req.body;
-      if (!Array.isArray(messages)||!messages.length) return res.status(400).json({ error: 'Missing messages' });
-      const r = await _chatGroq({model:MODEL_SMALL,messages:[{role:'system',content:_CHAT_SYSTEM},...messages.slice(-20)],max_tokens:1000,temperature:0.65,include_reasoning:false}, GROQ);
+      const messages = chatMessages;
+      if (!messages.length) return res.status(400).json({ error: 'Missing messages' });
+      const r = await _chatGroq({model:MODEL_SMALL,messages:[{role:'system',content:_CHAT_SYSTEM},...messages],max_tokens:1000,temperature:0.65,include_reasoning:false}, GROQ);
       const data = await r.json();
       const reply = data.choices?.[0]?.message?.content;
       if (!reply) return res.status(500).json({ error: 'No reply returned' });

@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
   if (!(await checkRateLimit(uid, res))) return;
   const _hb = req.body || {};
   if (rejectTooLong(res, String(_hb.text || '').length)) return;
-  if (_hb.image && String(_hb.image).length > LIMITS.MAX_IMAGE_CHARS) return res.status(413).json({ code: 'too_long', error: 'This photo is too large. Please use a smaller photo.' });
+  if (_hb.image && (typeof _hb.image !== 'string' || _hb.image.length > LIMITS.MAX_IMAGE_CHARS)) return res.status(413).json({ code: 'too_long', error: 'This photo is too large. Please use a smaller photo.' });
   if (!(await chargeCredits(req, res, uid, creditsForSize({ chars: String(_hb.text || '').length, pages: _hb.image ? 1 : 0 }), { reason: 'homework' }))) return;
 
   const { image, mimeType, subject, text } = req.body || {};

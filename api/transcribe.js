@@ -96,7 +96,8 @@ module.exports = async function handler(req, res) {
   if (req.body && req.body.uploadId !== undefined) return handleUploadChunk(req, res, uid);
   if (!(await checkRateLimit(uid, res))) return;
 
-  const { audio, mimeType, diarize, spkNames, text } = req.body || {};
+  const { audio, mimeType, diarize, text } = req.body || {};
+  const spkNames = req.body?.spkNames ? String(req.body.spkNames).slice(0, 500) : '';
   if (!audio && !text) return res.status(400).json({ error: 'Missing audio or text' });
 
   // ── TEXT-ONLY FAST PATH (skip Whisper) ───────────────────
@@ -250,7 +251,7 @@ FORMAT:
     form.append('response_format', isPreview ? 'json' : 'verbose_json');
     form.append('language', 'en');
     // Seed prompt helps Whisper with classroom/lecture vocabulary
-    if (req.body.prompt) form.append('prompt', req.body.prompt);
+    if (req.body.prompt) form.append('prompt', String(req.body.prompt).slice(0, 500));
 
     const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',

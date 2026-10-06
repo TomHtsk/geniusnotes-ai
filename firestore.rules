@@ -60,10 +60,13 @@ service cloud.firestore {
     // cleaned by js/safe-html.js before anyone's browser shows it).
     function guestEditOk() {
       let d = request.resource.data;
-      return d.diff(resource.data).affectedKeys().hasOnly(['content', 'title', 'lastEditedAt', 'cursors', 'guestCount'])
+      let changed = d.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['content', 'title', 'lastEditedAt', 'cursors', 'guestCount'])
         && (!('content' in d) || (d.content is string && d.content.size() <= 900000))
         && (!('title' in d) || (d.title is string && d.title.size() <= 200))
-        && (!('cursors' in d) || (d.cursors is map && d.cursors.size() <= 50))
+        // Checked only when cursors change, so old cursors left by closed tabs can never
+        // block typing; at worst new cursors stop showing until the owner re-shares.
+        && (!changed.hasAny(['cursors']) || (d.cursors is map && d.cursors.size() <= 50))
         && (!('guestCount' in d) || (d.guestCount is int && d.guestCount >= 0 && d.guestCount <= 1000))
         && (!('lastEditedAt' in d) || d.lastEditedAt is number);
     }

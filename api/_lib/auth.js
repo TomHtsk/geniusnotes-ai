@@ -547,8 +547,34 @@ async function addTranscribedSeconds(uid, seconds) {
   } catch (e) { /* counting must never fail the upload */ }
 }
 
+// Site-wide monthly cap on Supadata transcript calls (its plan is a fixed number per month
+// for the whole site, and every visitor's YouTube conversion can end up there). Takes one
+// call from siteUsage/{YYYY-MM}.supadataCalls; returns false when the cap is reached OR the
+// counter can't be reached (then Supadata is simply skipped). Set SUPADATA_MONTHLY_CAP in
+// Vercel to match the Supadata plan (default 90, just under the free plan's 100).
+async function takeSupadataCall() {
+  const cap = Number(process.env.SUPADATA_MONTHLY_CAP) || 90;
+  try {
+    _ensureAdmin();
+    const db = getDb();
+    const month = _monthKey();
+    const ref = db.doc(`siteUsage/${month}`);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const n = snap.exists ? (snap.data().supadataCalls || 0) : 0;
+      if (n >= cap) return false;
+      tx.set(ref, { month, supadataCalls: n + 1 }, { merge: true });
+      return true;
+    });
+  } catch (e) {
+    console.error('Supadata counter unavailable:', e && e.message);
+    return false;
+  }
+}
+
 module.exports = {
   sendUsageUnavailable,
+  takeSupadataCall,
   INPUT_LIMITS,
   rejectTooLong,
   rejectBadImage,

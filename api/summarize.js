@@ -1,4 +1,4 @@
-const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
+const { applyCors, verifyAuthFull, checkGuestYoutubeLimit, checkYoutubeDailyLimit, checkRateLimit, checkAndIncrementUsage, refundAiAction, takeSupadataCall } = require('./_lib/auth');
 const { MODEL_LARGE, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, userError, sendServerError, GENERIC_ERROR } = require('./_lib/models');
 
 function getVideoId(url) {
@@ -6,7 +6,13 @@ function getVideoId(url) {
   return m ? m[1] : null;
 }
 
+// Every Supadata call first takes one from the site-wide monthly cap (SUPADATA_MONTHLY_CAP,
+// see takeSupadataCall in api/_lib/auth.js); when the cap is reached it isn't called.
 async function supadataFetch(youtubeUrl, apiKey, lang, nativeOnly = true) {
+  if (!(await takeSupadataCall())) throw new Error('Supadata monthly cap reached');
+  return _supadataFetchRaw(youtubeUrl, apiKey, lang, nativeOnly);
+}
+async function _supadataFetchRaw(youtubeUrl, apiKey, lang, nativeOnly = true) {
   const params = `url=${encodeURIComponent(youtubeUrl)}${lang ? `&lang=${lang}` : ''}${nativeOnly ? '&mode=native' : ''}`;
   const res = await fetch(`https://api.supadata.ai/v1/transcript?${params}`, {
     headers: { 'x-api-key': apiKey },
@@ -384,7 +390,6 @@ async function fetchFullTranscript(videoId) {
 
   const tryAll = await Promise.all([
     supadataKey ? supadataFetch(youtubeUrl, supadataKey, 'en', true).catch(() => null) : Promise.resolve(null),
-    supadataKey ? supadataFetch(youtubeUrl, supadataKey, null, true).catch(() => null) : Promise.resolve(null),
     fetchCaptionsFromPiped(videoId).catch(() => null),
     fetchCaptionsFromInvidious(videoId).catch(() => null),
     fetchYtDirectCaptions(videoId).catch(() => null),

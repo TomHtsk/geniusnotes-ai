@@ -43,9 +43,18 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.sharedBy == request.auth.uid;
     }
 
-    // "Who is here" markers for shared notebooks.
+    // "Who is here" markers for notebooks: { <uid>: { name, color, pageIdx, updatedAt } }.
+    // Real (non-anonymous) accounts only, and each person may only add or change their OWN
+    // entry (the key equal to their uid). Nobody can delete the whole document or anyone
+    // else's entry. (Colours/names are made safe where they are shown — notebook.html.)
+    function realUser() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
     match /nb_presence/{nbId} {
-      allow read, write: if signedIn();
+      allow read: if realUser();
+      allow create: if realUser() && request.resource.data.keys().hasOnly([request.auth.uid]);
+      allow update: if realUser()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([request.auth.uid]);
     }
 
     // Everything else (site-wide counters, guest limits) is server-only.

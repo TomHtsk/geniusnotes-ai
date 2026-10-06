@@ -311,7 +311,7 @@
       for (const f of folders) {
         const hasnotes = history.some(i => i.type === 'notepad' && i.folderId === f.id);
         if (!hasnotes) continue;
-        html += `<button class="recall-chip" onclick="fcNbOpen('${f.id}','${f.name.replace(/'/g,"\\'")}')">📁 ${f.name}</button>`;
+        html += `<button class="recall-chip" data-fid="${escA(f.id)}" data-fname="${escA(f.name)}" onclick="fcNbOpen(this.dataset.fid, this.dataset.fname)">📁 ${esc(f.name)}</button>`;
       }
       const unfiled = history.filter(i => i.type === 'notepad' && !i.folderId);
       if (unfiled.length) html += `<button class="recall-chip" onclick="fcNbOpen('unfiled','Unfiled')">📄 Unfiled</button>`;
@@ -321,7 +321,7 @@
     } else {
       const folderName = _fcNbFolder === 'unfiled' ? 'Unfiled' : _fcNbFolder.name;
       foldersEl.innerHTML = `<button class="recall-chip" onclick="fcNbBack()" style="opacity:0.7">← Back</button>
-        <span class="recall-chip recall-chip-active">📁 ${folderName}</span>`;
+        <span class="recall-chip recall-chip-active">📁 ${esc(folderName)}</span>`;
       let notes = _fcNbFolder === 'unfiled'
         ? history.filter(i => i.type === 'notepad' && !i.folderId)
         : history.filter(i => i.type === 'notepad' && i.folderId === _fcNbFolder.id);
@@ -332,7 +332,7 @@
         if (seen.has(key)) continue; seen.add(key); deduped.push(n);
       }
       notesEl.innerHTML = deduped.length
-        ? deduped.map(n => `<button class="recall-chip${_fcNbSelected === n.id ? ' selected' : ''}" data-hid="${n.id}" onclick="fcNbSelect('${n.id}')" title="${(n.title||'Untitled').replace(/"/g,'&quot;')}">📝 ${(n.title||'').slice(0,26)||'Untitled'}</button>`).join('')
+        ? deduped.map(n => `<button class="recall-chip${_fcNbSelected === n.id ? ' selected' : ''}" data-hid="${escA(n.id)}" onclick="fcNbSelect(this.dataset.hid)" title="${escA(n.title||'Untitled')}">📝 ${esc((n.title||'').slice(0,26)||'Untitled')}</button>`).join('')
         : '<span style="font-size:0.82rem;color:var(--muted)">No notes in this folder.</span>';
     }
   }
@@ -370,9 +370,7 @@
       const fullNote = (histItem.noteId ? allNotes.find(n => n.id === histItem.noteId) : null)
                     || (histItem.title ? allNotes.find(n => n.title === histItem.title) : null);
       if (fullNote && fullNote.content) {
-        const div = document.createElement('div');
-        div.innerHTML = fullNote.content;
-        plain = (div.innerText || div.textContent || '').trim();
+        plain = htmlToText(fullNote.content);
       }
     } catch {}
     if (!plain && histItem.content) plain = histItem.content.trim();
@@ -426,7 +424,7 @@
     };
     const src = source && type !== 'notepad' ? ` · ${source}` : '';
     const folder = (type === 'notepad' && folderName) ? ` · ${folderName}` : '';
-    return (labels[type] || type) + src + folder;
+    return esc((labels[type] || type) + src + folder); // source / folder names are user data
   }
 
   function renderContent(item) {
@@ -442,6 +440,10 @@
   }
 
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  // For values inside attributes (also escapes quotes).
+  function escA(s) { return esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  // Plain text of a note's HTML, read in an inert document so nothing in it can load or run.
+  function htmlToText(html) { const d = document.implementation.createHTMLDocument(''); d.body.innerHTML = String(html || ''); return (d.body.textContent || '').trim(); }
 
   function isYouTubeUrl(s) {
     return /^https?:\/\/(www\.)?youtube\.com\/watch|youtu\.be\//.test(s);
@@ -770,7 +772,7 @@
       for (const f of folders) {
         const notesInFolder = history.filter(i => i.folderId === f.id);
         if (!notesInFolder.length) continue;
-        html += `<button class="recall-chip" onclick="setRecallLevel1('folder','${f.id}','${f.name.replace(/'/g,"\\'")}')">📁 ${f.name}</button>`;
+        html += `<button class="recall-chip" data-fid="${escA(f.id)}" data-fname="${escA(f.name)}" onclick="setRecallLevel1('folder', this.dataset.fid, this.dataset.fname)">📁 ${esc(f.name)}</button>`;
       }
       const unfiledNotes = history.filter(i => i.type === 'notepad' && !i.folderId);
       if (unfiledNotes.length) {
@@ -799,7 +801,7 @@
         seen.add(key);
         const active = _recallNote === item.id ? ' recall-chip-active' : '';
         const label = (item.title || 'Untitled').slice(0, 22);
-        html += `<button class="recall-chip${active}" onclick="setRecallNote('${item.id}')">📝 ${label}</button>`;
+        html += `<button class="recall-chip${active}" data-hid="${escA(item.id)}" onclick="setRecallNote(this.dataset.hid)">📝 ${esc(label)}</button>`;
       }
     }
     container.innerHTML = html;

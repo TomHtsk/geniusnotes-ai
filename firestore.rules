@@ -21,16 +21,25 @@ service cloud.firestore {
 
     // Shared notes: anyone with the link can open one (but nobody can list them all).
     // Only the signed-in owner can create, replace or delete a link. On an
-    // "Edit together" link, anyone with the link may change the text and their cursor.
+    // "Edit together" link, anyone with the link may change the text and their cursor —
+    // only those fields, and only in the expected shape and size (the content itself is
+    // cleaned by js/safe-html.js before anyone's browser shows it).
+    function guestEditOk() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys().hasOnly(['content', 'title', 'lastEditedAt', 'cursors', 'guestCount'])
+        && (!('content' in d) || (d.content is string && d.content.size() <= 900000))
+        && (!('title' in d) || (d.title is string && d.title.size() <= 200))
+        && (!('cursors' in d) || (d.cursors is map && d.cursors.size() <= 50))
+        && (!('guestCount' in d) || (d.guestCount is int && d.guestCount >= 0 && d.guestCount <= 1000))
+        && (!('lastEditedAt' in d) || d.lastEditedAt is number);
+    }
     match /shared_notes/{shareId} {
       allow get: if true;
       allow create: if signedIn() && request.resource.data.sharedBy == request.auth.uid;
       allow update: if (signedIn()
                         && resource.data.sharedBy == request.auth.uid
                         && request.resource.data.sharedBy == request.auth.uid)
-                    || (resource.data.collaborative == true
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['content', 'title', 'lastEditedAt', 'cursors', 'guestCount']));
+                    || (resource.data.collaborative == true && guestEditOk());
       allow delete: if signedIn() && resource.data.sharedBy == request.auth.uid;
     }
 

@@ -1037,7 +1037,7 @@ async function goYtTranscribe() {
     const resp = await _authFetch('/api/summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ url, mode:'transcribe' }) });
     const d = await resp.json();
     if (resp.status === 429 && d.error === 'guest_limit_reached') {
-      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#E9EEF2;">${d.message || "You've used your 3 free conversions today. Sign in free for more."}</span><br><br><button onclick="closeYtModal();window.gnRequireSignIn&&window.gnRequireSignIn('Sign in free to keep converting')" style="margin-top:8px;margin-right:8px;padding:7px 16px;border-radius:8px;background:var(--accent);border:none;color:var(--on-accent);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;">Sign in</button><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
+      document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#E9EEF2;">${umEscape(d.message || "You've used your 3 free conversions today. Sign in free for more.")}</span><br><br><button onclick="closeYtModal();window.gnRequireSignIn&&window.gnRequireSignIn('Sign in free to keep converting')" style="margin-top:8px;margin-right:8px;padding:7px 16px;border-radius:8px;background:var(--accent);border:none;color:var(--on-accent);cursor:pointer;font-family:inherit;font-size:0.82rem;font-weight:700;">Sign in</button><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
       return;
     }
     if (resp.status === 401 && d.error === 'sign_in_required') {
@@ -1074,7 +1074,7 @@ async function goYtTranscribe() {
 
     _finishYtTranscript((d.summary || d.transcript || '').trim());
   } catch(err) {
-    document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f87171;">${err.message}</span><br><br><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
+    document.getElementById('yt-step-proc').innerHTML = `<div class="um-proc"><span style="color:#f87171;">${umEscape(err.message)}</span><br><br><button onclick="closeYtModal()" style="margin-top:8px;padding:7px 16px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-family:inherit;font-size:0.82rem;">Close</button></div>`;
   }
 }
 function closeYtModal() { document.getElementById('yt-modal').style.display = 'none'; }

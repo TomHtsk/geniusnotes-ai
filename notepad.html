@@ -1013,6 +1013,8 @@
     :root.light .logo-lt{display:block!important;}
     :root.light .logo-dk{display:none!important;}
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="js/safe-html.js"></script>
 </head>
 <body>
 <script src="js/auth-gate.js"></script>
@@ -2034,7 +2036,8 @@ function _stripImgSelectionSingle(html) {
   if (!html) return html;
   var needsClean = html.includes('img-handle') || html.includes('pg-sep') || html.includes(' rc"') || html.includes('"rc ') || html.includes('id="rc-');
   if (!needsClean) return html;
-  var tmp = document.createElement('div');
+  // Parsed in an inert document: nothing in the note's HTML can load or run here.
+  var tmp = document.implementation.createHTMLDocument('').createElement('div');
   tmp.innerHTML = html;
   tmp.querySelectorAll('.img-handle').forEach(function(h) { h.remove(); });
   tmp.querySelectorAll('.img-draw-btn').forEach(function(b) { b.remove(); });
@@ -2278,7 +2281,8 @@ function _flattenPagesContent(content) {
 var _OVERSIZED_BLOCK_CHARS = 3000;
 function _healOversizedBlocks(html) {
   if (!html || html.indexOf('<') === -1) return html;
-  var tmp = document.createElement('div');
+  // Parsed in an inert document: nothing in the note's HTML can load or run here.
+  var tmp = document.implementation.createHTMLDocument('').createElement('div');
   tmp.innerHTML = html;
   var changed = false;
   // Unwrap wrapper <div>s holding multiple block children (pasted/imported HTML
@@ -2350,7 +2354,9 @@ function _buildPagesContainer(pagesArr, isDemo) {
 
   var html = (pagesArr && pagesArr.length) ? pagesArr.join('') : '';
   var pair = _createPageBox(true);
-  pair.content.innerHTML = html;
+  // A note can hold content from outside (shared "Edit together" links, AI replies, imports),
+  // so it is always cleaned before it goes on the page (js/safe-html.js).
+  pair.content.innerHTML = NCSafe.clean(html);
   if (isDemo) pair.box.classList.add('demo-page');
   container.appendChild(pair.box);
   _activePageContent = pair.content;
@@ -2471,7 +2477,7 @@ function _addPageAfter(afterBox) {
   // Propagate current header content to the new page
   var _curNote = notes.find(function(n){ return n.id === activeId; });
   var _newHc = pair.box.querySelector('.page-header-content');
-  if (_newHc && _curNote && _curNote.headerHtml) _newHc.innerHTML = _curNote.headerHtml;
+  if (_newHc && _curNote && _curNote.headerHtml) _newHc.innerHTML = NCSafe.clean(_curNote.headerHtml);
   return pair;
 }
 
@@ -3585,7 +3591,8 @@ function _removeHeader() {
   setTimeout(_resizeAllHeaderZones, 0);
 }
 function _populateAllHeaders(html) {
-  document.querySelectorAll('#pages-container .page-header-content').forEach(function(el) { el.innerHTML = html || ''; });
+  var _safeHdr = NCSafe.clean(html || '');
+  document.querySelectorAll('#pages-container .page-header-content').forEach(function(el) { el.innerHTML = _safeHdr; });
   setTimeout(_resizeAllHeaderZones, 0);
 }
 function _resizeAllHeaderZones() {
@@ -3621,7 +3628,8 @@ function _syncHeaderContentRight(srcEl) {
   if (note) { note.headerHtml = html; note.updated = Date.now(); scheduleSave(); }
 }
 function _populateRightHeaders(html) {
-  document.querySelectorAll('#pages-container-right .page-header-content').forEach(function(el) { el.innerHTML = html || ''; });
+  var _safeHdr = NCSafe.clean(html || '');
+  document.querySelectorAll('#pages-container-right .page-header-content').forEach(function(el) { el.innerHTML = _safeHdr; });
   setTimeout(_resizeAllHeaderZones, 0);
 }
 
@@ -5014,7 +5022,8 @@ function _cpAddAI(content, isHtml, isLoading) {
   var msgs = document.getElementById('cp-messages');
   var wrapper = document.createElement('div'); wrapper.className = 'cp-ai-msg';
   var contentDiv = document.createElement('div'); contentDiv.className = 'cp-ai-content';
-  if (isLoading || isHtml) contentDiv.innerHTML = content; else contentDiv.textContent = content;
+  // isHtml = an AI reply turned into HTML: cleaned. Loading text is fixed markup.
+  if (isHtml) contentDiv.innerHTML = NCSafe.clean(content); else if (isLoading) contentDiv.innerHTML = content; else contentDiv.textContent = content;
   wrapper.appendChild(contentDiv);
   if (!isLoading) {
     var actRow = document.createElement('div'); actRow.className = 'cp-ai-actions';
@@ -5415,7 +5424,7 @@ async function _runDocFormat() {
         _dfCornellData = JSON.parse(jsonStr);
         document.getElementById('df-preview').innerHTML = _renderCornellHTML(_dfCornellData);
       } catch(pe) {
-        document.getElementById('df-preview').innerHTML = '<div style="color:#ff5555;padding:12px;">Could not parse Cornell Notes. Try again — the AI output was malformed.<br><small style="opacity:0.6;">' + (pe.message||'') + '</small></div>';
+        document.getElementById('df-preview').innerHTML = '<div style="color:#ff5555;padding:12px;">Could not parse Cornell Notes. Try again — the AI output was malformed.<br><small style="opacity:0.6;">' + NCSafe.text(pe.message||'') + '</small></div>';
       }
     } else {
       document.getElementById('df-preview').textContent = _dfResult;
@@ -5424,7 +5433,7 @@ async function _runDocFormat() {
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch(e) {
     statusEl.textContent = '⚠ ' + e.message;
-    document.getElementById('df-preview').innerHTML = '<span style="color:#ff5555;">Error: ' + e.message + '</span>';
+    document.getElementById('df-preview').innerHTML = '<span style="color:#ff5555;">Error: ' + NCSafe.text(e.message) + '</span>';
   }
 }
 
@@ -6026,7 +6035,7 @@ function _replaceSelection(btn) {
 }
 
 function _replaceSelectionHtml(btn) {
-  const html = btn.getAttribute('data-html');
+  const html = NCSafe.clean(btn.getAttribute('data-html') || '');
   if (!html || !_selRange) return;
   const sel = window.getSelection();
   sel.removeAllRanges();
@@ -6043,14 +6052,14 @@ function _rerunHighlight() {
   _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt }) })
   .then(r => _safeJson(r))
   .then(d => {
-    if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
-    const raw = d.result || '';
-    const applyBtn = `<button onclick="_replaceSelectionHtml(this)" data-html="${raw.replace(/"/g,'&quot;')}" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:rgba(245,184,66,0.15);border:1px solid rgba(245,184,66,0.4);color:#fcd34d;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Apply to note</button>`;
+    if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(d.error)}</div>`; return; }
+    const raw = NCSafe.clean(d.result || ''); // AI HTML: cleaned before it is shown or applied
+    const applyBtn = `<button onclick="_replaceSelectionHtml(this)" data-html="${NCSafe.text(raw)}" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:rgba(245,184,66,0.15);border:1px solid rgba(245,184,66,0.4);color:#fcd34d;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Apply to note</button>`;
     const promptRow = `<div style="display:flex;gap:6px;margin-top:10px;"><input id="hl-reprompt" value="${prompt.replace(/"/g,'&quot;')}" placeholder="Custom: dates, names, key terms…" style="flex:1;padding:5px 10px;border-radius:7px;border:1px solid rgba(245,184,66,0.35);background:rgba(245,184,66,0.07);color:#fcd34d;font-size:0.74rem;font-family:inherit;outline:none;"><button onclick="_rerunHighlight()" style="padding:5px 12px;border-radius:7px;border:none;background:rgba(245,184,66,0.18);color:#fcd34d;font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">Go →</button></div>`;
     document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="line-height:1.7;">${raw}${applyBtn}${promptRow}</div>`;
     if (_selRange) { const rect = _selRange.getBoundingClientRect(); _positionNear(card, rect); }
   })
-  .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${e.message}</div>`; });
+  .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(e.message)}</div>`; });
 }
 
 function runInterpret(mode) {
@@ -6082,14 +6091,14 @@ function runInterpret(mode) {
     _authFetch('/api/writing', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: _selText, mode: 'highlight', tone: prompt || '' }) })
     .then(r => _safeJson(r))
     .then(d => {
-      if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
-      const raw = d.result || '';
-      const applyBtn = `<button onclick="_replaceSelectionHtml(this)" data-html="${raw.replace(/"/g,'&quot;')}" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:rgba(245,184,66,0.15);border:1px solid rgba(245,184,66,0.4);color:#fcd34d;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Apply to note</button>`;
+      if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(d.error)}</div>`; return; }
+      const raw = NCSafe.clean(d.result || ''); // AI HTML: cleaned before it is shown or applied
+      const applyBtn = `<button onclick="_replaceSelectionHtml(this)" data-html="${NCSafe.text(raw)}" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:rgba(245,184,66,0.15);border:1px solid rgba(245,184,66,0.4);color:#fcd34d;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">↩ Apply to note</button>`;
       const promptRow = `<div style="display:flex;gap:6px;margin-top:10px;"><input id="hl-reprompt" placeholder="Custom: dates, names, key terms…" style="flex:1;padding:5px 10px;border-radius:7px;border:1px solid rgba(245,184,66,0.35);background:rgba(245,184,66,0.07);color:#fcd34d;font-size:0.74rem;font-family:inherit;outline:none;"><button onclick="_rerunHighlight()" style="padding:5px 12px;border-radius:7px;border:none;background:rgba(245,184,66,0.18);color:#fcd34d;font-size:0.74rem;font-weight:700;cursor:pointer;font-family:inherit;">Go →</button></div>`;
       document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="line-height:1.7;">${raw}${applyBtn}${promptRow}</div>`;
       if (_selRange) { const rect = _selRange.getBoundingClientRect(); _positionNear(card, rect); }
     })
-    .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${e.message}</div>`; });
+    .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(e.message)}</div>`; });
   }
 
   if (isHighlight) { _runHlFetch(''); return; }
@@ -6101,7 +6110,7 @@ function runInterpret(mode) {
   fetchPromise
   .then(r => _safeJson(r))
   .then(d => {
-    if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${d.error}</div>`; return; }
+    if (d.error) { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(d.error)}</div>`; return; }
     const raw = d.result || '';
     const html = raw
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -6113,7 +6122,7 @@ function runInterpret(mode) {
     document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body"><p>${html}</p>${replaceBtn}</div>`;
     if (_selRange) { const rect = _selRange.getBoundingClientRect(); _positionNear(card, rect); }
   })
-  .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${e.message}</div>`; });
+  .catch(e => { document.getElementById('ic-body-wrap').innerHTML = `<div class="ic-body" style="color:#ff5f57;">⚠ ${NCSafe.text(e.message)}</div>`; });
 }
 
 // ── AI INLINE PROMPT (/command) ──
@@ -7562,7 +7571,7 @@ async function _runHomeworkSolver(text) {
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch(e) {
     statusEl.textContent = '⚠ ' + e.message;
-    document.getElementById('hw-result').innerHTML = '<span style="color:#ff5555;">Error: ' + e.message + '</span>';
+    document.getElementById('hw-result').innerHTML = '<span style="color:#ff5555;">Error: ' + NCSafe.text(e.message) + '</span>';
   }
 }
 
@@ -8196,7 +8205,9 @@ function _renderRemoteCursor(uid, offset, color, label) {
   el.className = 'rc';
   el.style.top = (rRect.top - eRect.top) + 'px';
   el.style.left = (rRect.left - eRect.left) + 'px';
-  el.innerHTML = `<div class="rc-caret" style="background:${color};"></div><div class="rc-label" style="background:${color};">${label}</div>`;
+  // Guests can write any label/colour into Firestore: escape the label, allow only plain colours.
+  const _c = NCSafe.color(color);
+  el.innerHTML = `<div class="rc-caret" style="background:${_c};"></div><div class="rc-label" style="background:${_c};">${NCSafe.text(label)}</div>`;
   editor.appendChild(el);
 }
 
@@ -8228,7 +8239,11 @@ function _startCollabSync(shareId) {
     if (!note || note.shareId !== shareId) return;
 
     // Sync remote content
-    const remoteContent = d.content || '';
+    // Anyone with an "Edit together" link can change this content: clean it BEFORE it is
+    // shown, saved into this note, or synced to the owner's account.
+    // (When the shared copy is exactly this note's own last save, there is nothing to apply.)
+    const rawRemote = d.content || '';
+    const remoteContent = rawRemote === note.content ? note.content : NCSafe.cleanNote(rawRemote);
     if (remoteContent !== note.content && Date.now() - _collabLastTyped > 2000) {
       note.content = remoteContent;
       saveNotes();
@@ -8547,7 +8562,7 @@ function _buildPagesContainerRight(pagesArr) {
   container.innerHTML = '';
   var html = (pagesArr && pagesArr.length) ? pagesArr.join('') : '';
   var pair = _createRightPageBox(true);
-  pair.content.innerHTML = html;
+  pair.content.innerHTML = NCSafe.clean(html); // see _buildPagesContainer
   container.appendChild(pair.box);
 }
 
@@ -9174,7 +9189,7 @@ function detachRightPanel() {
   if (!note) return;
   _detachedNoteId = _rightNoteId;
   document.getElementById('detach-title').textContent = note.title || 'Untitled';
-  document.getElementById('detach-body').innerHTML = _stripImgSelection(_flattenPagesContent(_serializePagesRight()));
+  document.getElementById('detach-body').innerHTML = NCSafe.clean(_stripImgSelection(_flattenPagesContent(_serializePagesRight())));
   document.getElementById('detach-panel').classList.add('on');
   // Collapse the right pane
   exitSplitMode();

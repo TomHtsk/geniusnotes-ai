@@ -586,7 +586,7 @@ gnSyncThemeBtn();
       appId:"1:1041746856723:web:fae9072e0292c3946068e6"
     });
     firebase.auth().onAuthStateChanged(u => {
-      if (u) {
+      if (u && !u.isAnonymous) { // a hidden guest session (YouTube converter) stays local
         currentUid = u.uid;
         const db = firebase.firestore();
         GNSync.init(u.uid, db, {

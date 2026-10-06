@@ -229,7 +229,8 @@ gnSyncThemeBtn();
   let _label = 'User';
 
   firebase.auth().onAuthStateChanged(user => {
-    if (user) {
+    // A hidden guest session (YouTube converter) is a guest here too: numbered "User #N".
+    if (user && !user.isAnonymous) {
       const raw = user.displayName || user.email || '';
       _label = raw.replace(/@.*/, '') || 'User';
     } else {

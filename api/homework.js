@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, rejectTooLong, rejectBadImage } = require('./_lib/auth');
-const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, sendServerError } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
   applyCors(res, req);
@@ -70,7 +70,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       e.code = data.error?.code;
       if (await sendBusyIfNeeded(e, res, uid)) return;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: e.message });
+      return sendServerError(res, e, 'homework', "We couldn't solve this just now. Please try again.");
     }
 
     let raw = data.choices?.[0]?.message?.content?.trim() || '';
@@ -97,13 +97,13 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       tryParse(fixBackslashes(raw.replace(/,\s*([}\]])/g, '$1')));
 
     if (!result) {
-      return res.status(500).json({ error: 'Failed to parse solution', raw: raw.slice(0, 500) });
+      console.error('homework: unreadable AI reply:', raw.slice(0, 500)); return res.status(500).json({ error: "We couldn't solve this just now. Please try again." });
     }
 
     return res.status(200).json(result);
   } catch (err) {
     console.error('Groq error (homework):', err.message);
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'homework', "We couldn't solve this just now. Please try again.");
   }
 };

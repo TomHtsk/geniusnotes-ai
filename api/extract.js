@@ -15,7 +15,7 @@ function _ocrPage(p) {
   } else return null;
   return b64 && b64.length <= INPUT_LIMITS.IMAGE_CHARS ? { mime, b64 } : null;
 }
-const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
+const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, userError, sendServerError } = require('./_lib/models');
 
 async function ocrImage(base64, mime, apiKey) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     // OCR path: scanned PDF pages rendered client-side to JPEG data URLs (checked above)
     if (ocrPages) {
       const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error('OCR service not configured.');
+      if (!apiKey) throw new Error('GROQ_API_KEY is not set');
       const texts = [];
       for (const { b64, mime } of ocrPages) {
         const text = await ocrImage(b64, mime, apiKey);
@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
           const nb = parseInt(b.match(/\d+/)?.[0] || 0);
           return na - nb;
         });
-      if (slideFiles.length === 0) throw new Error('No slides found in this PPTX file.');
+      if (slideFiles.length === 0) throw userError('No slides found in this PowerPoint file.');
       const slideTexts = [];
       for (let i = 0; i < slideFiles.length; i++) {
         const xml = await zip.files[slideFiles[i]].async('string');
@@ -104,7 +104,7 @@ module.exports = async function handler(req, res) {
         const slideText = matches.join(' ').replace(/\s+/g, ' ').trim();
         if (slideText) slideTexts.push(`[Slide ${i + 1}]\n${slideText}`);
       }
-      if (slideTexts.length === 0) throw new Error('No text found in slides.');
+      if (slideTexts.length === 0) throw userError('No text found in these slides.');
       return res.status(200).json({ text: slideTexts.join('\n\n'), slides: slideTexts.length });
     }
 
@@ -116,7 +116,7 @@ module.exports = async function handler(req, res) {
 
     // 2. Fallback: OCR images embedded in DOCX (cap at 4 to avoid timeout)
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error('OCR service not configured.');
+    if (!apiKey) throw new Error('GROQ_API_KEY is not set');
 
     const zip = await JSZip.loadAsync(buffer);
     const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' };
@@ -126,7 +126,7 @@ module.exports = async function handler(req, res) {
     ).slice(0, 4);
 
     if (imageEntries.length === 0) {
-      throw new Error('No readable text or images found in this DOCX file.');
+      throw userError('No readable text or pictures found in this Word file.');
     }
 
     const texts = [];
@@ -138,12 +138,12 @@ module.exports = async function handler(req, res) {
       if (text) texts.push(text);
     }
 
-    if (texts.length === 0) throw new Error('Could not extract text from images in this file.');
+    if (texts.length === 0) throw userError('Could not read any text from the pictures in this file.');
     return res.status(200).json({ text: texts.join('\n\n'), method: 'ocr', pages: texts.length });
 
   } catch (err) {
     console.error('Groq error (extract):', err.message);
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'extract', "We couldn't read this file. It may be damaged or in a format we can't open. Please try another file.");
   }
 };

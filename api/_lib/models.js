@@ -85,8 +85,21 @@ async function sendBusyIfNeeded(err, res, uid) {
   return true;
 }
 
+// ── Errors shown to the browser ──────────────────────────────────────────────
+// Internal error text (Groq/Firestore messages, stack details, which service failed, env
+// var names) must never reach the browser. userError(msg) marks a message we wrote for the
+// user; sendServerError logs the real error server-side and sends only such a message,
+// or `fallback`, or GENERIC_ERROR.
+const GENERIC_ERROR = 'Something went wrong on our side. Please try again in a moment.';
+function userError(message) { const e = new Error(message); e.expose = true; return e; }
+function sendServerError(res, err, where, fallback) {
+  console.error(`Server error (${where}):`, err && (err.stack || err.message || err));
+  return res.status(500).json({ error: (err && err.expose) ? err.message : (fallback || GENERIC_ERROR) });
+}
+
 module.exports = {
   MODEL_LARGE, MODEL_SMALL, MODEL_VISION, MODEL_WHISPER, MODEL_WHISPER_TURBO,
   FRIENDLY_AI_ERROR, isModelUnavailableError,
+  GENERIC_ERROR, userError, sendServerError,
   BUSY_AI_ERROR, BUSY_AI_CODE, groqChat, isBusyError, sendBusyIfNeeded,
 };

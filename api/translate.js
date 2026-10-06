@@ -1,5 +1,5 @@
 const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
-const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
+const { MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, sendServerError } = require('./_lib/models');
 
 // groqChat (api/_lib/models.js) retries a rate-limited request on the other model.
 async function groqFetch(body, apiKey) {
@@ -44,6 +44,6 @@ module.exports = async function handler(req, res) {
     console.error('Groq error (translate):', err.message);
     if (await sendBusyIfNeeded(err, res, uid)) return;
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'translate', "We couldn't translate this just now. Please try again.");
   }
 };

@@ -3,7 +3,7 @@ const {
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
   checkAudioAllowance, addTranscribedSeconds, sendUsageUnavailable, INPUT_LIMITS,
 } = require('./_lib/auth');
-const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE } = require('./_lib/models');
+const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE, sendServerError } = require('./_lib/models');
 const { refundAiAction } = require('./_lib/auth');
 
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
@@ -230,7 +230,7 @@ FORMAT:
       const e = new Error(data.error?.message || 'Transcription failed');
       e.code = data.error?.code;
       if (isModelUnavailableError(e)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-      return res.status(500).json({ error: e.message });
+      return sendServerError(res, e, 'transcribe', "We couldn't transcribe this recording. Please try again.");
     }
 
     let transcript = data.text || '';
@@ -265,6 +265,6 @@ FORMAT:
   } catch (err) {
     console.error('Groq error (transcribe):', err.message);
     if (isModelUnavailableError(err)) return res.status(502).json({ error: FRIENDLY_AI_ERROR });
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err, 'transcribe', "We couldn't transcribe this recording. Please try again.");
   }
 };

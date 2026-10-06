@@ -15,6 +15,10 @@
   "crons": [
     { "path": "/api/subscription?cron=storage", "schedule": "30 4 * * *" }
   ],
+  "redirects": [
+    { "source": "/passwords(.html)?", "destination": "/", "permanent": true },
+    { "source": "/vault(.html)?", "destination": "/", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/ytsearch",    "destination": "/api/summarize" },
     { "source": "/api/musicnotes",  "destination": "/api/lyrics" },

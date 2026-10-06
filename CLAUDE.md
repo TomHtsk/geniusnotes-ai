@@ -103,7 +103,7 @@ Top-ups (Student/Pro only, one-time, confirmed by the person, never automatic): 
 - No sign-in needed: Wikipedia search/reader, YouTube converter (guests are signed in anonymously behind the scenes), and — while `LOCKS_ENABLED = false` in `js/auth-gate.js` — opening and using the Notepad and Flashcards (a guest's notes stay in that browser).
 - Sign-in required: Upload, Record Lecture, and all AI tools (the server rejects requests without a real account).
 - `my-notes.html` was removed (redirects to `notepad.html`); the Notepad sidebar is where notes and folders are browsed.
-- **Retired (Oct 2026, security fix 2):** `passwords.html` and `vault.html` are now plain "retired" pages with Export (passwords .txt / vault files .zip) and "Delete from this browser" buttons and no input fields. They kept passwords, a PIN and private files unencrypted in this browser; NoteCaptain no longer holds secrets. The old code is only in git history (before commit "Security fix 2"). No links to them anywhere.
+- **Removed (Oct 2026):** `passwords.html` (Password Manager) and `vault.html` (Vault) are deleted; `/passwords` and `/vault` redirect to the homepage (`redirects` in `vercel.json`). They kept passwords, a PIN and private files unencrypted in the browser. The old code is only in git history.
 
 ### Key files added recently
 - `js/search.js` — single smart search bar (detects YouTube link vs. topic), recent-search chips

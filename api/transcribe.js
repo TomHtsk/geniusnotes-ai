@@ -1,7 +1,7 @@
 const {
   applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage,
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
-  checkAudioAllowance, addTranscribedSeconds, sendUsageUnavailable,
+  checkAudioAllowance, addTranscribedSeconds, sendUsageUnavailable, INPUT_LIMITS,
 } = require('./_lib/auth');
 const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE } = require('./_lib/models');
 const { refundAiAction } = require('./_lib/auth');
@@ -85,9 +85,18 @@ module.exports = async function handler(req, res) {
   if (!uid) return;
   if (req.body && req.body.uploadId !== undefined) return handleUploadChunk(req, res, uid);
   if (!(await checkRateLimit(uid, res))) return;
+  // Size limits before charging (long recordings use the Upload button, which sends parts).
+  const _tb = req.body || {};
+  if (_tb.audio && (typeof _tb.audio !== 'string' || _tb.audio.length * 0.75 > INPUT_LIMITS.AUDIO_BYTES)) {
+    return res.status(413).json({ code: 'too_long', error: 'This recording is too large to send in one piece. Use the Upload button for long recordings.' });
+  }
+  if (_tb.text && String(_tb.text).length > INPUT_LIMITS.TEXT_CHARS) {
+    return res.status(413).json({ code: 'too_long', error: 'This recording is too long to tidy up in one go. The raw transcript is kept.' });
+  }
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
-  const { audio, mimeType, diarize, spkNames, text } = req.body || {};
+  const { audio, mimeType, diarize, text } = _tb;
+  const spkNames = _tb.spkNames ? String(_tb.spkNames).slice(0, 500) : '';
   if (!audio && !text) return res.status(400).json({ error: 'Missing audio or text' });
 
   // ── TEXT-ONLY FAST PATH (skip Whisper) ───────────────────
@@ -208,7 +217,7 @@ FORMAT:
     form.append('response_format', 'json');
     form.append('language', 'en');
     // Seed prompt helps Whisper with classroom/lecture vocabulary
-    if (req.body.prompt) form.append('prompt', req.body.prompt);
+    if (req.body.prompt) form.append('prompt', String(req.body.prompt).slice(0, 500));
 
     const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',

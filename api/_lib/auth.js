@@ -214,6 +214,34 @@ function sendUsageUnavailable(res, where, e) {
   if (res && !res.headersSent) res.status(503).json({ code: 'usage_unavailable', error: USAGE_UNAVAILABLE });
 }
 
+// Hard size limits on what one request may send to the AI. Checked BEFORE the monthly
+// action is charged, so a request that is too big costs the user nothing. (Vercel also
+// refuses any request body over 4.5 MB.) Change the numbers here.
+const INPUT_LIMITS = {
+  TEXT_CHARS: 50000,              // text sent to the AI in one go
+  CHAT_CHARS: 20000,              // tutor chat: the last CHAT_MESSAGES messages together
+  CHAT_MESSAGES: 20,
+  OCR_PAGES: 20,                  // scanned pages / images read in one request
+  IMAGE_CHARS: 3 * 1024 * 1024,   // one image, as base64 text
+  AUDIO_BYTES: 4 * 1024 * 1024,   // one recording sent in one piece
+};
+
+// Sends 413 { code: 'too_long' } and returns true when `chars` is over `max`.
+function rejectTooLong(res, chars, max) {
+  max = max || INPUT_LIMITS.TEXT_CHARS;
+  if (!(chars > max)) return false;
+  res.status(413).json({ code: 'too_long', error: `This is too long to process in one go (${chars.toLocaleString('en-US')} characters; the limit is ${max.toLocaleString('en-US')}). Try a shorter part.` });
+  return true;
+}
+
+// Optional image (base64 or data: URL). Sends 413 and returns true if it is not text or too big.
+function rejectBadImage(res, img) {
+  if (img === undefined || img === null || img === '') return false;
+  if (typeof img === 'string' && img.length <= INPUT_LIMITS.IMAGE_CHARS) return false;
+  res.status(413).json({ code: 'too_long', error: 'This picture is too large. Please use a smaller picture.' });
+  return true;
+}
+
 const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
@@ -521,6 +549,9 @@ async function addTranscribedSeconds(uid, seconds) {
 
 module.exports = {
   sendUsageUnavailable,
+  INPUT_LIMITS,
+  rejectTooLong,
+  rejectBadImage,
   UPLOAD_MAX_CHUNKS,
   isValidUploadId,
   claimUploadChunk,

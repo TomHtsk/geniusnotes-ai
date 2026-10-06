@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, rejectTooLong, rejectBadImage } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 module.exports = async function handler(req, res) {
@@ -8,6 +8,8 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (rejectTooLong(res, String(req.body?.text || '').length)) return;
+  if (rejectBadImage(res, req.body?.image)) return;
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const { image, mimeType, subject, text } = req.body || {};

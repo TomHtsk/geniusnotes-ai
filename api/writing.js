@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, refundAiAction, rejectTooLong, rejectBadImage } = require('./_lib/auth');
 const { buildDiagramMessages, planDiagramRequest, validateItems, parseDiagramReply, MAX_ITEMS, NOTHING_DRAWABLE, DIAGRAM_FAILED, NOTE_TOO_LONG } = require('./_lib/diagram');
 const { MODEL_LARGE, MODEL_SMALL, MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded, isBusyError } = require('./_lib/models');
 
@@ -85,6 +85,18 @@ const _citGroq=groqFetch;
 // ── textbook merged from api/textbook.js ────────────────────────────────────
 const _TB_COLORS=['#FFE566','#6EE7B7','#7DD3FC','#F9A8D4','#FCA5A1','#C4B5FD','#FCD34D','#86EFAC'];
 
+// How much text this request sends to the AI, for the size limit (rejectTooLong). Parts
+// that are already trimmed before use (diagram notes, textbook chapters) count only up to
+// the trimmed length.
+function _writingChars(b) {
+  b = b || {};
+  const len = (s) => String(s || '').length;
+  if (b.action === 'diagram') return Math.min(len(b.text), 20000);
+  if (b.sourceType !== undefined) return JSON.stringify(b).length; // citation details
+  if (b.chapter !== undefined) return Math.min(len(b.chapter), 18000) + len(b.questionsText);
+  return len(b.text) + ((b.mode === 'diff') ? len(b.tone) : 0);
+}
+
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -92,6 +104,8 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  if (rejectTooLong(res, _writingChars(req.body))) return;
+  if (rejectBadImage(res, req.body?.questionsImage)) return;
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const GROQ = process.env.GROQ_API_KEY;

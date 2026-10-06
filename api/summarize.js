@@ -791,7 +791,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { url, text, mode = 'summarize', highlightPrompt, noteStyle, count = 8 } = req.body || {};
+    const { url, text, mode = 'summarize', noteStyle, count = 8 } = req.body || {};
+    const highlightPrompt = req.body?.highlightPrompt ? String(req.body.highlightPrompt).slice(0, 2000) : '';
     if (!url && !text) return res.status(400).json({ error: 'Missing YouTube URL or text content' });
 
     const apiKey = process.env.GROQ_API_KEY;

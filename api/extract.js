@@ -1,6 +1,20 @@
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, INPUT_LIMITS } = require('./_lib/auth');
+
+// One page to read: a data:image/...;base64 URL (homepage) or { data, type } (Notebooks).
+// Returns { mime, b64 }, or null if it is not an image or is too large.
+function _ocrPage(p) {
+  let mime, b64;
+  if (typeof p === 'string') {
+    const m = p.match(/^data:(image\/[a-z0-9.+-]+);base64,/i);
+    if (!m) return null;
+    mime = m[1]; b64 = p.slice(m[0].length);
+  } else if (p && typeof p.data === 'string' && /^image\/[a-z0-9.+-]+$/i.test(String(p.type || ''))) {
+    mime = p.type; b64 = p.data;
+  } else return null;
+  return b64 && b64.length <= INPUT_LIMITS.IMAGE_CHARS ? { mime, b64 } : null;
+}
 const { MODEL_VISION, FRIENDLY_AI_ERROR, isModelUnavailableError } = require('./_lib/models');
 
 async function ocrImage(base64, mime, apiKey) {
@@ -37,20 +51,29 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  // Size limits for scanned pages / pictures, before charging.
+  let ocrPages = null;
+  const ocrIn = (req.body || {}).ocrImages;
+  if (Array.isArray(ocrIn) && ocrIn.length > 0) {
+    if (ocrIn.length > INPUT_LIMITS.OCR_PAGES) {
+      return res.status(413).json({ code: 'too_long', error: `This file has ${ocrIn.length} scanned pages. Up to ${INPUT_LIMITS.OCR_PAGES} can be read at once - please split it.` });
+    }
+    ocrPages = ocrIn.map(_ocrPage);
+    if (ocrPages.some(p => !p)) {
+      return res.status(413).json({ code: 'too_long', error: 'One of the pages is too large or is not a picture. Please try a smaller file, or a PDF, Word or PowerPoint file.' });
+    }
+  }
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   try {
-    const { content, ocrImages } = req.body || {};
+    const { content } = req.body || {};
 
-    // OCR path: scanned PDF pages rendered client-side to JPEG data URLs
-    if (ocrImages && Array.isArray(ocrImages) && ocrImages.length > 0) {
+    // OCR path: scanned PDF pages rendered client-side to JPEG data URLs (checked above)
+    if (ocrPages) {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error('OCR service not configured.');
       const texts = [];
-      for (const dataUrl of ocrImages) {
-        const comma = dataUrl.indexOf(',');
-        const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
-        const b64 = dataUrl.slice(comma + 1);
+      for (const { b64, mime } of ocrPages) {
         const text = await ocrImage(b64, mime, apiKey);
         if (text) texts.push(text);
       }

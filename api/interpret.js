@@ -1,4 +1,4 @@
-const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage } = require('./_lib/auth');
+const { applyCors, verifyAuth, checkRateLimit, checkAndIncrementUsage, rejectTooLong, INPUT_LIMITS } = require('./_lib/auth');
 const { MODEL_LARGE, MODEL_SMALL, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendBusyIfNeeded } = require('./_lib/models');
 
 async function ddgLookup(query) {
@@ -41,6 +41,16 @@ module.exports = async function handler(req, res) {
   const uid = await verifyAuth(req, res);
   if (!uid) return;
   if (!(await checkRateLimit(uid, res))) return;
+  // Size limits before charging. Chat: only the last INPUT_LIMITS.CHAT_MESSAGES messages are
+  // used, and only plain user/assistant text (a browser can't slip in its own 'system' rules).
+  let chatMessages = null;
+  if (req.body?.messages) {
+    if (!Array.isArray(req.body.messages)) return res.status(400).json({ error: 'Missing messages' });
+    chatMessages = req.body.messages.slice(-INPUT_LIMITS.CHAT_MESSAGES)
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content }));
+    if (rejectTooLong(res, chatMessages.reduce((s, m) => s + m.content.length, 0), INPUT_LIMITS.CHAT_CHARS)) return;
+  } else if (rejectTooLong(res, String(req.body?.text || '').length)) return;
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
   const GROQ = process.env.GROQ_API_KEY;
@@ -49,9 +59,9 @@ module.exports = async function handler(req, res) {
   // chat route (rewired from /api/chat)
   if (req.body?.messages) {
     try {
-      const { messages } = req.body;
-      if (!Array.isArray(messages)||!messages.length) return res.status(400).json({ error: 'Missing messages' });
-      const r = await _chatGroq({model:MODEL_SMALL,messages:[{role:'system',content:_CHAT_SYSTEM},...messages.slice(-20)],max_tokens:1000,temperature:0.65,include_reasoning:false}, GROQ);
+      const messages = chatMessages;
+      if (!messages.length) return res.status(400).json({ error: 'Missing messages' });
+      const r = await _chatGroq({model:MODEL_SMALL,messages:[{role:'system',content:_CHAT_SYSTEM},...messages],max_tokens:1000,temperature:0.65,include_reasoning:false}, GROQ);
       const data = await r.json();
       const reply = data.choices?.[0]?.message?.content;
       if (!reply) return res.status(500).json({ error: 'No reply returned' });

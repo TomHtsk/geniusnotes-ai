@@ -1,10 +1,19 @@
 const {
   applyCors, verifyAuth, checkRateLimit, sendUsageUnavailable,
   UPLOAD_MAX_CHUNKS, isValidUploadId, claimUploadChunk, startUploadSession,
-  chargeSeconds, requireSeconds, refundPart, trackSiteSeconds, LIMITS,
+  chargeSeconds, requireSeconds, refundPart, trackSiteSeconds, LIMITS, refundCharges,
 } = require('./_lib/auth');
 const { DIARIZE_SECONDS_MULTIPLIER } = require('./_lib/plans');
-const { MODEL_SMALL, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendServerError } = require('./_lib/models');
+const { MODEL_SMALL, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, sendServerError, BUSY_AI_CODE } = require('./_lib/models');
+
+// Record Lecture tidy-up: js/recorder.js sends a long transcript in pieces of about
+// 7,000 characters (~8 minutes of speech). Each piece is charged its own spoken time.
+const TIDY_PIECE_MAX = 8000;     // larger text is returned untouched (not charged)
+const TIDY_CONTEXT_MAX = 1200;   // end of the previous edited piece, for consistent speaker labels
+// Words in a transcript, ignoring "Speaker 1:" / "Name:" labels at the start of a line.
+function _tidyWords(s) {
+  return (String(s || '').replace(/^[^:\n]{1,40}:[ \t]*/gm, '').match(/[A-Za-z0-9']+/g) || []).length;
+}
 
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
 const CHUNK_BYTES_PER_SEC = 32000;
@@ -104,9 +113,18 @@ module.exports = async function handler(req, res) {
   // The browser already turned the speech into text (free for us); this only tidies it and
   // labels speakers. The recording's length is counted from the words (about 150 spoken
   // words a minute) — never from a number the browser sends — up to the time left.
+  // ONE piece of a lecture per request (see TIDY_PIECE_MAX). Reply: { transcript, tidied }.
+  // tidied:false means the piece comes back exactly as sent (AI busy, failed, cut its answer
+  // short, or dropped words) and its time is given back; busy:true lets the recorder retry.
   if (text && !audio) {
-    if (!text.trim()) return res.status(200).json({ transcript: text });
-    if (String(text).length > LIMITS.MAX_TEXT_CHARS) return res.status(413).json({ code: 'too_long', error: 'This recording is too long to tidy up in one go. The raw transcript is kept.' });
+    if (!String(text).trim()) return res.status(200).json({ transcript: text, tidied: false });
+    // Bigger than one piece (an older cached page may still send it whole): untouched, not charged.
+    if (String(text).length > TIDY_PIECE_MAX) return res.status(200).json({ transcript: String(text), tidied: false });
+    const context = typeof req.body.context === 'string' ? req.body.context.slice(-TIDY_CONTEXT_MAX) : '';
+    const keepRaw = async (busy) => {
+      await refundCharges(res, 'tidy-failed');
+      return res.status(200).json(busy ? { transcript: text, tidied: false, busy: true } : { transcript: text, tidied: false });
+    };
     const spoken = Math.ceil(String(text).trim().split(/\s+/).length / 2.5);
     if (!(await chargeSeconds(req, res, uid, spoken, { partial: true, minLeft: 1, reason: 'recording-text' }))) return;
     await trackSiteSeconds(spoken);
@@ -118,7 +136,9 @@ module.exports = async function handler(req, res) {
       const dr = await groqChat({
           model: MODEL_SMALL,
           temperature: 0.15,
-          max_tokens: 3000,
+          // Room for the whole edited piece plus the model's hidden reasoning, while
+          // prompt + piece + max_tokens stays under Groq's free 8,000 tokens a minute.
+          max_tokens: Math.min(4500, Math.ceil(text.length / 3) + 1500),
           include_reasoning: false,
           messages: [
             {
@@ -150,16 +170,28 @@ FORMAT:
 - Only one speaker detected → still label as "Speaker 1:"
 - Output ONLY the labeled lines — zero commentary, no headers, no blank intro`
             },
-            { role: 'user', content: `Edit and label this transcript:\n\n${text}` }
+            { role: 'user', content: context
+              ? `The transcript so far ended like this (already edited - do NOT repeat it; use it only to keep the same speaker labels):\n"""${context}"""\n\nEdit and label this next part of the transcript:\n\n${text}`
+              : `Edit and label this transcript:\n\n${text}` }
           ]
       });
       const dd = await dr.json();
-      if (!dr.ok) console.error('Groq error (transcribe/label):', dd.error?.message);
-      const labeled = dd.choices?.[0]?.message?.content?.trim();
-      return res.status(200).json({ transcript: labeled || text });
+      if (!dr.ok) {
+        console.error('Groq error (transcribe/label):', dd.error?.message);
+        return keepRaw(dd.error?.code === BUSY_AI_CODE);
+      }
+      const choice = dd.choices?.[0] || {};
+      const labeled = (choice.message?.content || '').trim();
+      // Never return a shortened transcript: an answer cut off at max_tokens, or one that
+      // lost more than 15% of the words, is thrown away and the piece is kept as spoken.
+      if (!labeled || choice.finish_reason === 'length' || _tidyWords(labeled) < 0.85 * _tidyWords(text)) {
+        console.error('transcribe/label: unusable answer', choice.finish_reason, _tidyWords(labeled), '/', _tidyWords(text));
+        return keepRaw(false);
+      }
+      return res.status(200).json({ transcript: labeled, tidied: true });
     } catch (err) {
       console.error('Groq error (transcribe/label):', err.message);
-      return res.status(200).json({ transcript: text });
+      return keepRaw(false);
     }
   }
 

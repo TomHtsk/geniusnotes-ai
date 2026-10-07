@@ -26,6 +26,72 @@
     return window.gnAfterFetch ? window.gnAfterFetch(resp, url, opts, _recAuthFetch) : resp;
   }
 
+  // ── Polishing a long lecture in pieces (server side: api/transcribe.js) ──
+  // The transcript is cut at sentence ends into pieces of about TIDY_PIECE characters
+  // (~8 minutes of speech) and tidied one at a time; each request also sends the end of the
+  // previous edited piece so speaker labels stay the same. A piece the server couldn't tidy
+  // stays exactly as spoken, so no words are ever lost. When the free AI allowance is busy
+  // the piece is retried a few times; when the hourly/monthly limit is reached the rest
+  // simply stays as spoken.
+  const TIDY_PIECE = 7000;
+  const TIDY_RETRY_WAIT_MS = 25000, TIDY_ATTEMPTS = 4;
+  let _tidyRun = 0;
+
+  function splitForTidy(text) {
+    const pieces = [];
+    let rest = String(text).trim();
+    while (rest.length > TIDY_PIECE) {
+      const win = rest.slice(0, TIDY_PIECE);
+      let cut = -1;
+      const re = /[.!?]["')\]]?\s+/g;
+      let m;
+      while ((m = re.exec(win))) cut = m.index + m[0].length;  // end of the last full sentence
+      if (cut < TIDY_PIECE * 0.5) { const sp = win.lastIndexOf(' '); cut = sp > TIDY_PIECE * 0.5 ? sp + 1 : TIDY_PIECE; }
+      pieces.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) pieces.push(rest);
+    return pieces;
+  }
+
+  // onProgress(textSoFar, done, part, parts); cancelled() -> true to stop early.
+  async function tidyTranscript(text, onProgress, cancelled) {
+    const pieces = splitForTidy(text);
+    const out = pieces.slice(), tidied = pieces.map(() => false);
+    const joined = () => out.reduce((acc, p, i) => i === 0 ? p : acc + ((tidied[i - 1] || tidied[i]) ? '\n' : ' ') + p, '');
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let context = '', stop = false;
+    for (let i = 0; i < pieces.length && !stop; i++) {
+      if (cancelled()) return;
+      onProgress(joined(), false, i + 1, pieces.length);
+      for (let attempt = 1; attempt <= TIDY_ATTEMPTS; attempt++) {
+        let r = null, d = null;
+        try {
+          r = await _recAuthFetch('/api/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: pieces[i], context, diarize: _diarize, spkNames: _spkNames })
+          });
+          d = await r.json().catch(() => null);
+        } catch { r = null; }
+        if (cancelled()) return;
+        if (r && r.ok && d && d.tidied && d.transcript && d.transcript.trim()) {
+          out[i] = d.transcript.trim(); tidied[i] = true;
+          context = out[i].slice(-1200);
+          break;
+        }
+        // Signed out, or hourly / monthly limit reached: waiting won't help.
+        if (r && (r.status === 401 || r.status === 429)) { stop = true; break; }
+        // Answered but not usable (AI cut it short, etc.): keep this piece as spoken.
+        if (r && r.ok && d && !d.busy) break;
+        // AI busy, network error, or allowance check unavailable: wait and try again.
+        if (attempt < TIDY_ATTEMPTS) { await wait(TIDY_RETRY_WAIT_MS); if (cancelled()) return; }
+      }
+    }
+    onProgress(joined(), true, pieces.length, pieces.length);
+  }
+  window.frTidyTranscript = tidyTranscript; // used by tests
+
   function inject() {
     if (document.getElementById('fr-widget')) return;
     const el = document.createElement('div');
@@ -232,6 +298,7 @@
   }
 
   async function frStartFromReady() {
+    _tidyRun++; // a new recording stops polishing the previous one (its text is already saved)
     _diarize = !!($('fr-spk-check') && $('fr-spk-check').checked);
     _spkNames = [1,2,3,4].map(i => $('fr-spk-'+i) ? $('fr-spk-'+i).value.trim() : '').filter(Boolean).join(',');
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
@@ -375,7 +442,7 @@
       const final = _sessionText ? _sessionText + '\n\n' + newPart : newPart;
       localStorage.setItem('gn-notepad-pending', final);
       const prev = $('fr-preview');
-      if (prev) prev.value = final;
+      if (prev) { prev.value = final; prev.readOnly = !!polishing; } // edits made mid-polish would be overwritten
       const ps = $('fr-polish-status');
       if (ps) ps.style.display = polishing ? '' : 'none';
       showState('fr-done');
@@ -386,14 +453,13 @@
       showDone(capturedText, needsPolish);
       if (mrChunks.length > 0) _lastBlob = new Blob(mrChunks, { type: (mr && mr.mimeType) || mime || 'audio/webm' });
       if (needsPolish) {
-        _recAuthFetch('/api/transcribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: capturedText, diarize: _diarize, spkNames: _spkNames })
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => { showDone(d && d.transcript && d.transcript.trim() ? d.transcript : capturedText, false); })
-          .catch(() => { showDone(capturedText, false); });
+        const run = ++_tidyRun;
+        tidyTranscript(capturedText, (soFar, done, part, parts) => {
+          if (run !== _tidyRun) return;
+          showDone(soFar, !done);
+          const ps = $('fr-polish-status');
+          if (ps && !done) ps.textContent = '✨ Polishing grammar & labeling speakers…' + (parts > 1 ? ' part ' + part + ' of ' + parts : '');
+        }, () => run !== _tidyRun);
       }
       return;
     }
@@ -519,6 +585,7 @@
   }
 
   function frDismiss() {
+    _tidyRun++;
     hideAll();
     localStorage.removeItem('gn-notepad-pending');
     _sessionText = '';

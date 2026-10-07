@@ -32,7 +32,7 @@
   <meta name="description" content="NoteCaptain.ai is a free AI study tool. Turn any topic on Wikipedia, YouTube videos, recorded lectures and uploads into notes, and make flashcards in seconds." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Mynerve&family=Caveat:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
   <style>
     /* NoteCaptain "logbook" palette — the same variables and values as notepad.html.
        --accent-rgb is the accent as bare numbers, for rgba(var(--accent-rgb), 0.x) tints. */
@@ -608,10 +608,9 @@
       animation: hpGlow 12s ease-in-out infinite; }
     :root.light .home-hero-inner::before { background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb),0.20) 0%, rgba(var(--accent-rgb),0.10) 26%, rgba(var(--accent-rgb),0) 62%); }
     @keyframes hpGlow { 0%,100% { opacity: 0.88; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.05); } }
-    /* Chalkboard-style physics and math formulas written across the hero background (decorative). */
+    /* Decorative hero background layer (starry dots). */
     .hp-eq-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; user-select: none; }
-    /* Subtle starry background behind the formulas: a sparse, tiled field of tiny dots.
-       It is the layer's first painted thing, so the formulas (and everything else) sit on top. */
+    /* Subtle starry background: a sparse, tiled field of tiny dots. */
     .hp-eq-layer::before { content: ''; position: absolute; inset: 0; opacity: 0.55;
       background-image:
         radial-gradient(1.2px 1.2px at 7% 14%, rgba(255,255,255,0.85) 50%, transparent 51%),
@@ -626,16 +625,6 @@
         radial-gradient(1.2px 1.2px at 46% 54%, rgba(255,255,255,0.45) 50%, transparent 51%);
       background-size: 380px 320px; background-repeat: repeat; }
     :root.light .hp-eq-layer::before { opacity: 0.3; filter: invert(1); }
-    .hp-eq { --o: 0.24; position: absolute; font-family: 'Mynerve', 'Caveat', 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive; font-weight: 500; color: #fff; opacity: var(--o); white-space: nowrap; line-height: 1.1; letter-spacing: 0.01em; text-shadow: 0 0 7px rgba(255,255,255,0.28); }
-    .hp-eq sup, .hp-eq sub { font-size: 0.6em; line-height: 0; }
-    .hp-eq .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.8em; line-height: 1.08; margin: 0 0.14em; }
-    .hp-eq .fr > span:first-child { border-bottom: 0.07em solid currentColor; padding: 0 0.18em 0.03em; }
-    .hp-eq .fr > span:last-child { padding: 0.03em 0.18em 0; }
-    .hp-eq .rt { border-top: 0.07em solid currentColor; padding: 0 0.1em; margin-left: -0.05em; }
-    /* Light mode: pure black, twice as strong as the dark-mode white (each formula's --o keeps its own depth). */
-    :root.light .hp-eq { color: #000; text-shadow: none; opacity: calc(var(--o) * 2); }
-    @media(max-width:860px) { .hp-eq.eq-wide { display: none; } .hp-eq { zoom: 0.74; } }
-    @media(max-width:520px) { .hp-eq.eq-mid { display: none; } }
     .hp-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     .hp-watermark { position: absolute; right: -40px; bottom: -70px; width: 420px; height: 420px; object-fit: contain; opacity: 0.2; pointer-events: none; z-index: 0; }
     .hp-watermark.logo-lt { opacity: 0.14; }
@@ -792,28 +781,6 @@ _syncThemeBtn();
   <div class="home-hero">
     <img class="hp-watermark logo-dk" src="images/logo-mark-white.png" alt=""><img class="hp-watermark logo-lt" src="images/logo-mark-dark.png" alt="">
     <div class="hp-eq-layer" aria-hidden="true">
-      <span class="hp-eq " style="top:4%;left:2%;font-size:2.3rem;transform:rotate(-3deg);--o:.34">E<sub>k</sub> = <span class="fr"><span>1</span><span>2</span></span> mv<sup>2</sup></span>
-      <span class="hp-eq eq-wide" style="top:5%;left:24%;font-size:1.45rem;transform:rotate(2deg);--o:.2"><span class="fr"><span>sin α</span><span>sin β</span></span> = <span class="fr"><span>n<sub>2</sub></span><span>n<sub>1</sub></span></span></span>
-      <span class="hp-eq eq-mid" style="top:3%;left:43%;font-size:2.5rem;transform:rotate(-2deg);--o:.34">PV = nRT</span>
-      <span class="hp-eq eq-wide" style="top:5%;left:64%;font-size:1.8rem;transform:rotate(3deg);--o:.24">∮ D · dS = Q</span>
-      <span class="hp-eq " style="top:4%;right:2%;font-size:1.7rem;transform:rotate(-4deg);--o:.28">Φ = NBS</span>
-      <span class="hp-eq eq-wide" style="top:18%;left:3%;font-size:1.6rem;transform:rotate(3deg);--o:.2">S = 4πr<sup>2</sup></span>
-      <span class="hp-eq eq-wide" style="top:17%;left:20%;font-size:1.55rem;transform:rotate(-3deg);--o:.22">T = 2π √<span class="rt"><span class="fr"><span>l</span><span>g</span></span></span></span>
-      <span class="hp-eq eq-wide" style="top:18%;left:57%;font-size:1.6rem;transform:rotate(2deg);--o:.2">λ = <span class="fr"><span>h</span><span>p</span></span></span>
-      <span class="hp-eq eq-wide" style="top:16%;right:9%;font-size:1.9rem;transform:rotate(-2deg);--o:.28">v = <span class="fr"><span>c</span><span>λ</span></span></span>
-      <span class="hp-eq eq-wide" style="top:33%;left:3%;font-size:2.5rem;transform:rotate(-4deg);--o:.32">F = ma</span>
-      <span class="hp-eq eq-wide" style="top:47%;left:5%;font-size:2rem;transform:rotate(3deg);--o:.26">ω = 2πf</span>
-      <span class="hp-eq eq-wide" style="top:59%;left:2%;font-size:1.7rem;transform:rotate(-2deg);--o:.2">p = mv</span>
-      <span class="hp-eq " style="top:63%;left:29%;font-size:3rem;transform:rotate(-3deg);--o:.36">E = mc<sup>2</sup></span>
-      <span class="hp-eq eq-mid" style="top:62%;left:50%;font-size:1.9rem;transform:rotate(2deg);--o:.26">F<sub>g</sub> = G <span class="fr"><span>m<sub>1</sub>m<sub>2</sub></span><span>r<sup>2</sup></span></span></span>
-      <span class="hp-eq eq-wide" style="top:70%;left:3%;font-size:1.6rem;transform:rotate(2deg);--o:.22">∇ · E = <span class="fr"><span>ρ</span><span>ε<sub>0</sub></span></span></span>
-      <span class="hp-eq eq-mid" style="top:82%;left:3%;font-size:1.75rem;transform:rotate(-2deg);--o:.26">x = <span class="fr"><span>−b ± √<span class="rt">b<sup>2</sup> − 4ac</span></span><span>2a</span></span></span>
-      <span class="hp-eq eq-wide" style="top:83%;left:38%;font-size:1.6rem;transform:rotate(2deg);--o:.2">∫ sin(ωt + φ) dt</span>
-      <span class="hp-eq eq-wide" style="top:82%;left:57%;font-size:1.9rem;transform:rotate(-3deg);--o:.28">M = F d cos α</span>
-      <span class="hp-eq eq-wide" style="top:89%;left:24%;font-size:1.5rem;transform:rotate(1deg);--o:.18">iħ <span class="fr"><span>∂ψ</span><span>∂t</span></span> = Ĥψ</span>
-      <span class="hp-eq eq-wide" style="top:92%;left:47%;font-size:1.55rem;transform:rotate(-2deg);--o:.2">a<sup>2</sup> + b<sup>2</sup> = c<sup>2</sup></span>
-      <span class="hp-eq eq-wide" style="top:30%;right:4%;font-size:1.8rem;transform:rotate(3deg);--o:.24">P = UI</span>
-      <span class="hp-eq eq-wide" style="top:73%;left:19%;font-size:1.5rem;transform:rotate(-4deg);--o:.18">Q = cmΔT</span>
     </div>
     <div class="home-hero-inner">
       <h1 class="hp-visually-hidden">NoteCaptain — your AI study co-captain. Search any topic or paste a YouTube link, then turn it into notes you can study.</h1>

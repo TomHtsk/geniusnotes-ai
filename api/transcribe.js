@@ -6,6 +6,15 @@ const {
 const { MODEL_SMALL, MODEL_WHISPER, MODEL_WHISPER_TURBO, FRIENDLY_AI_ERROR, isModelUnavailableError, groqChat, BUSY_AI_CODE, sendServerError } = require('./_lib/models');
 const { refundAiAction } = require('./_lib/auth');
 
+// Record Lecture tidy-up: js/recorder.js sends a long transcript in pieces of about
+// 7,000 characters (~8 minutes of speech). One piece = one AI action.
+const TIDY_PIECE_MAX = 8000;     // larger text is returned untouched (not charged)
+const TIDY_CONTEXT_MAX = 1200;   // end of the previous edited piece, for consistent speaker labels
+// Words in a transcript, ignoring "Speaker 1:" / "Name:" labels at the start of a line.
+function _tidyWords(s) {
+  return (String(s || '').replace(/^[^:\n]{1,40}:[ \t]*/gm, '').match(/[A-Za-z0-9']+/g) || []).length;
+}
+
 // Chunks from the homepage Upload window are 16 kHz mono 16-bit WAV, at most ~80 seconds.
 const CHUNK_BYTES_PER_SEC = 32000;
 const CHUNK_MAX_SECONDS = 90;
@@ -90,8 +99,10 @@ module.exports = async function handler(req, res) {
   if (_tb.audio && (typeof _tb.audio !== 'string' || _tb.audio.length * 0.75 > INPUT_LIMITS.AUDIO_BYTES)) {
     return res.status(413).json({ code: 'too_long', error: 'This recording is too large to send in one piece. Use the Upload button for long recordings.' });
   }
-  if (_tb.text && String(_tb.text).length > INPUT_LIMITS.TEXT_CHARS) {
-    return res.status(413).json({ code: 'too_long', error: 'This recording is too long to tidy up in one go. The raw transcript is kept.' });
+  // Tidy-up text bigger than one piece is sent back untouched and not charged (the
+  // recorder sends long lectures in pieces; an older cached page may still send it whole).
+  if (_tb.text && !_tb.audio && String(_tb.text).length > TIDY_PIECE_MAX) {
+    return res.status(200).json({ transcript: String(_tb.text), tidied: false });
   }
   if (!(await checkAndIncrementUsage(uid, res, 'ai'))) return;
 
@@ -100,8 +111,17 @@ module.exports = async function handler(req, res) {
   if (!audio && !text) return res.status(400).json({ error: 'Missing audio or text' });
 
   // ── TEXT-ONLY FAST PATH (skip Whisper) ───────────────────
+  // Tidies ONE piece of a Record Lecture transcript (punctuation + speaker labels).
+  // Reply: { transcript, tidied }. tidied:false means the piece comes back exactly as sent
+  // (AI busy, failed, cut its answer short, or dropped words) and the action is given back;
+  // busy:true tells the recorder it may wait and try that piece again.
   if (text && !audio) {
-    if (!text.trim()) return res.status(200).json({ transcript: text });
+    if (!text.trim()) return res.status(200).json({ transcript: text, tidied: false });
+    const context = typeof _tb.context === 'string' ? _tb.context.slice(-TIDY_CONTEXT_MAX) : '';
+    const keepRaw = async (busy) => {
+      await refundAiAction(uid);
+      return res.status(200).json(busy ? { transcript: text, tidied: false, busy: true } : { transcript: text, tidied: false });
+    };
     const nameList = spkNames ? spkNames.split(',').map(n => n.trim()).filter(Boolean) : [];
     const namesNote = nameList.length > 0
       ? `Label the speakers as: ${nameList.join(', ')} (in order of first appearance).`
@@ -110,7 +130,9 @@ module.exports = async function handler(req, res) {
       const dr = await groqChat({
           model: MODEL_SMALL,
           temperature: 0.15,
-          max_tokens: 3000,
+          // Room for the whole edited piece plus the model's hidden reasoning, while
+          // prompt + piece + max_tokens stays under Groq's free 8,000 tokens a minute.
+          max_tokens: Math.min(4500, Math.ceil(text.length / 3) + 1500),
           include_reasoning: false,
           messages: [
             {
@@ -142,18 +164,28 @@ FORMAT:
 - Only one speaker detected → still label as "Speaker 1:"
 - Output ONLY the labeled lines — zero commentary, no headers, no blank intro`
             },
-            { role: 'user', content: `Edit and label this transcript:\n\n${text}` }
+            { role: 'user', content: context
+              ? `The transcript so far ended like this (already edited - do NOT repeat it; use it only to keep the same speaker labels):\n"""${context}"""\n\nEdit and label this next part of the transcript:\n\n${text}`
+              : `Edit and label this transcript:\n\n${text}` }
           ]
       });
       const dd = await dr.json();
-      if (!dr.ok) console.error('Groq error (transcribe/label):', dd.error?.message);
-      // Every model rate-limited: the text goes back unedited, so don't charge for it.
-      if (dd.error?.code === BUSY_AI_CODE) await refundAiAction(uid);
-      const labeled = dd.choices?.[0]?.message?.content?.trim();
-      return res.status(200).json({ transcript: labeled || text });
+      if (!dr.ok) {
+        console.error('Groq error (transcribe/label):', dd.error?.message);
+        return keepRaw(dd.error?.code === BUSY_AI_CODE);
+      }
+      const choice = dd.choices?.[0] || {};
+      const labeled = (choice.message?.content || '').trim();
+      // Never return a shortened transcript: an answer cut off at max_tokens, or one that
+      // lost more than 15% of the words, is thrown away and the piece is kept as spoken.
+      if (!labeled || choice.finish_reason === 'length' || _tidyWords(labeled) < 0.85 * _tidyWords(text)) {
+        console.error('transcribe/label: unusable answer', choice.finish_reason, _tidyWords(labeled), '/', _tidyWords(text));
+        return keepRaw(false);
+      }
+      return res.status(200).json({ transcript: labeled, tidied: true });
     } catch (err) {
       console.error('Groq error (transcribe/label):', err.message);
-      return res.status(200).json({ transcript: text });
+      return keepRaw(false);
     }
   }
 

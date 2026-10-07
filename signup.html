@@ -74,9 +74,9 @@
     :root.light .logo-lt{display:block!important;}
     :root.light .logo-dk{display:none!important;}
   </style>
-<script>if(localStorage.getItem('gn-theme') !== 'dark')document.documentElement.classList.add("light");</script>
+<script>document.documentElement.classList.remove('light');</script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet"/>
-  <script>if(localStorage.getItem('gn-theme')!=='dark')document.documentElement.classList.add('light');</script>
+  <script>document.documentElement.classList.remove('light');</script>
   <style id="logbook-look">
     /* ═══ LOGBOOK LOOK — the same palette, fonts, header and buttons as notepad.html / index.html ═══ */
     :root {
@@ -167,7 +167,7 @@
     </nav>
     <div class="hp-spacer"></div>
     <a href="signin.html" class="np-btn">Sign in</a>
-    <button class="np-btn" id="gn-theme-btn" onclick="gnToggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+    <button style="display:none" class="np-btn" id="gn-theme-btn" onclick="gnToggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
   </div>
   <svg class="np-wave" aria-hidden="true" focusable="false">
     <defs><pattern id="nc-wave" width="56" height="9" patternUnits="userSpaceOnUse"><path d="M0 5.5 Q 14 0.5 28 5.5 T 56 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></pattern></defs>
@@ -178,7 +178,7 @@
 // Theme button: same behaviour as the homepage and the Notepad (light unless "dark" was chosen).
 function gnSyncThemeBtn(){var b=document.getElementById('gn-theme-btn');if(b)b.textContent=document.documentElement.classList.contains('light')?'Dark':'Light';}
 function gnToggleTheme(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');gnSyncThemeBtn();}
-window.addEventListener('storage',function(e){if(e.key==='gn-theme'){document.documentElement.classList.toggle('light',e.newValue!=='dark');gnSyncThemeBtn();}});
+window.addEventListener('storage',function(e){if(e.key==='gn-theme'){document.documentElement.classList.remove('light');gnSyncThemeBtn();}});
 gnSyncThemeBtn();
 </script>
 
@@ -242,7 +242,7 @@ gnSyncThemeBtn();
   // Only a real account goes back home. The YouTube converter's hidden anonymous guest
 // session must still be able to create an account here.
 auth.onAuthStateChanged(user => { if (user && !user.isAnonymous) window.location.href = 'index.html'; });
-  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue !== 'dark'); });
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.remove('light'); });
 
   const nameEl    = document.getElementById('name');
   const emailEl   = document.getElementById('email');

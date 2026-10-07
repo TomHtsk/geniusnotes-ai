@@ -22,8 +22,7 @@
   </script>
   <script>
     // Light by default; only an explicit "dark" choice switches it (same rule as notepad.html).
-    if (localStorage.getItem('gn-theme') !== 'dark') document.documentElement.classList.add('light');
-  </script>
+    document.documentElement.classList.remove('light');</script>
   <style>
     .in-iframe .hp-header, .in-iframe footer { display:none !important; }
     .in-iframe .home-main { height:100vh; }
@@ -730,7 +729,7 @@
       <a href="flashcards.html" data-requires-auth data-auth-reason="Sign in free to use Flashcards">Flashcards</a>
     </nav>
     <div class="hp-spacer"></div>
-    <button class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+    <button style="display:none" class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
     <a href="signin.html" class="np-btn" id="nav-signin" style="display:none">Sign in</a>
     <a href="signup.html" class="np-btn np-btn-primary" id="nav-tryfree" style="display:none">Get started</a>
     <a href="notepad.html" class="np-btn" id="nav-dashboard" style="display:none">My Notepad</a>
@@ -769,7 +768,7 @@ function toggleTheme() {
   localStorage.setItem('gn-theme', isLight ? 'light' : 'dark');
   _syncThemeBtn();
 }
-window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.toggle('light', e.newValue !== 'dark'); _syncThemeBtn(); } });
+window.addEventListener('storage', e => { if (e.key === 'gn-theme') { document.documentElement.classList.remove('light'); _syncThemeBtn(); } });
 _syncThemeBtn();
 </script>
 

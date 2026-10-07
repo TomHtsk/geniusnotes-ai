@@ -5,6 +5,7 @@
   <meta name="robots" content="noindex, follow" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>Notebooks — NoteCaptain AI</title>
+<script>document.documentElement.classList.add('dark');</script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous" referrerpolicy="no-referrer"/>
@@ -375,7 +376,7 @@
   <div class="nav-right">
     <span id="sync-indicator" title="Cloud sync status" style="font-size:.72rem;font-weight:700;color:var(--muted);padding:4px 8px;border-radius:20px;background:var(--surface2);display:none;gap:4px;align-items:center;">☁</span>
     <button class="nav-icon-btn" id="nb-user-btn" onclick="window.location='signup.html'" style="font-size:.8rem;font-weight:700" title="Sign in to sync">Sign In</button>
-    <button class="nav-icon-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
+    <button style="display:none" class="nav-icon-btn" id="theme-btn" onclick="toggleTheme()">☀️</button>
     <button class="btn-new-folder" onclick="showCreateFolderModal()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       New Folder
@@ -399,7 +400,7 @@
     <a href="notebook.html" class="sb-item active">📓 Notebooks</a>
     <a href="flashcards.html" class="sb-item" data-requires-auth data-auth-reason="Sign in free to use Flashcards">🃏 Flashcards</a>
   </div>
-  <div class="sb-footer"><button class="sb-theme" onclick="toggleTheme()">🌙 Toggle Theme</button></div>
+  <div class="sb-footer"><button style="display:none" class="sb-theme" onclick="toggleTheme()">🌙 Toggle Theme</button></div>
 
 </div>
 
@@ -2907,7 +2908,7 @@ window.addEventListener('resize',()=>{if(document.getElementById('view-editor').
 
 // ══ INIT ══
 document.addEventListener('DOMContentLoaded',()=>{
-  if(localStorage.getItem('gn-theme')==='dark'){document.documentElement.classList.add('dark');document.getElementById('theme-btn').textContent='🌙';}
+  {document.documentElement.classList.add('dark');document.getElementById('theme-btn').textContent='🌙';}
   loadData();migrateNotepad();_seedDemoNotebook();
   initFirebase();
   // auto-expand all folders that have children

@@ -1,8 +1,7 @@
 // share.html: shared-note viewer / live editor (moved out of the page so share.html can use a
 // strict Content-Security-Policy with no inline scripts or onclick handlers).
 (function(){
-  if(localStorage.getItem('gn-theme') !== 'dark') document.documentElement.classList.add('light');
-  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue !== 'dark'); });
+  document.documentElement.classList.remove('light');window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.remove('light'); });
 
   firebase.initializeApp({
     apiKey:'AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI',

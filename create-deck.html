@@ -107,7 +107,7 @@
     :root.light .logo-lt{display:block!important;}
     :root.light .logo-dk{display:none!important;}
   </style>
-<script>if(localStorage.getItem('gn-theme') !== 'dark')document.documentElement.classList.add("light");</script>
+<script>document.documentElement.classList.remove('light');</script>
 <style>
   #tab-bar-root{position:fixed;top:0;left:0;right:0;z-index:10001;height:5px;}
   #tab-bar{display:none;flex-direction:row;align-items:center;gap:2px;padding:0 8px;height:34px;background:var(--surface2);border-bottom:1px solid rgba(var(--accent-rgb),0.3);overflow-x:auto;}
@@ -118,7 +118,7 @@
   /* when the tab bar is showing, the header sits just below it instead of underneath it */
   #tab-bar-root.open ~ .hp-header{margin-top:34px;top:34px;}
 </style>
-  <script>if(localStorage.getItem('gn-theme')!=='dark')document.documentElement.classList.add('light');</script>
+  <script>document.documentElement.classList.remove('light');</script>
   <style id="logbook-look">
     /* ═══ LOGBOOK LOOK — the same palette, fonts, header and buttons as notepad.html / index.html ═══ */
     :root {
@@ -219,7 +219,7 @@
     </nav>
     <div class="hp-spacer"></div>
     <a href="flashcards.html" class="np-btn">My flashcards</a>
-    <button class="np-btn" id="gn-theme-btn" onclick="gnToggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+    <button style="display:none" class="np-btn" id="gn-theme-btn" onclick="gnToggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
   </div>
   <svg class="np-wave" aria-hidden="true" focusable="false">
     <defs><pattern id="nc-wave" width="56" height="9" patternUnits="userSpaceOnUse"><path d="M0 5.5 Q 14 0.5 28 5.5 T 56 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></pattern></defs>
@@ -230,7 +230,7 @@
 // Theme button: same behaviour as the homepage and the Notepad (light unless "dark" was chosen).
 function gnSyncThemeBtn(){var b=document.getElementById('gn-theme-btn');if(b)b.textContent=document.documentElement.classList.contains('light')?'Dark':'Light';}
 function gnToggleTheme(){var l=document.documentElement.classList.toggle('light');localStorage.setItem('gn-theme',l?'light':'dark');gnSyncThemeBtn();}
-window.addEventListener('storage',function(e){if(e.key==='gn-theme'){document.documentElement.classList.toggle('light',e.newValue!=='dark');gnSyncThemeBtn();}});
+window.addEventListener('storage',function(e){if(e.key==='gn-theme'){document.documentElement.classList.remove('light');gnSyncThemeBtn();}});
 gnSyncThemeBtn();
 </script>
 
@@ -309,7 +309,7 @@ gnSyncThemeBtn();
     // Paid work asks the person to confirm its cost first (js/cost-confirm.js).
     return window.gnAfterFetch ? window.gnAfterFetch(_resp, url, opts, _authFetch) : _resp;
   }
-  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.toggle('light', e.newValue !== 'dark'); });
+  window.addEventListener('storage', e => { if (e.key === 'gn-theme') document.documentElement.classList.remove('light'); });
 
   // ── UID helpers ──
   let currentUid = null;

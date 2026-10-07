@@ -12,8 +12,7 @@
   <meta name="description" content="NoteCaptain plans: Free, Student ($4.99/month) and Pro ($9.99/month). AI credits and lecture transcription for studying." />
   <script>
     // Light by default; only an explicit "dark" choice switches it (same rule as the other pages).
-    if (localStorage.getItem('gn-theme') !== 'dark') document.documentElement.classList.add('light');
-  </script>
+    document.documentElement.classList.remove('light');</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
@@ -193,7 +192,7 @@
       <a href="pricing.html" class="active" aria-current="page">Pricing</a>
     </nav>
     <div class="hp-spacer"></div>
-    <button class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
+    <button style="display:none" class="np-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode">Dark</button>
     <a href="signin.html" class="np-btn" id="nav-signin" style="display:none">Sign in</a>
     <a href="signup.html" class="np-btn np-btn-primary" id="nav-tryfree" style="display:none">Get started</a>
     <button id="nav-signout" class="np-btn" onclick="navSignOut()" style="display:none">Sign out</button>

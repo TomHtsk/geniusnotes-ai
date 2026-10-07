@@ -119,6 +119,15 @@ Wikidata fact chips, AI "Explain simpler" levels, "Study This" one-click flashca
 
 ---
 
+### Security hardening + long recordings (6 Oct 2026) — full detail in `Claude outputs/DEVELOPER-NOTES-2026-10-06.md`
+- **Live = branch `release/security-only`** (security fixes, no pricing); `main` = that + paid plans, not live. Fix on the release, test, commit, port to `main` (one commit per fix on each). Deploy only from the release (`git ls-files` + skip list). Pushing to GitHub does not deploy.
+- **Fail closed:** every usage check (rate limit, guest/daily YouTube, monthly AI actions, audio minutes, record-check, upload sessions) answers 503 `{ code:'usage_unavailable' }` via `sendUsageUnavailable` when Firestore can't be reached — never `return true` in a catch.
+- **Size limits before charging:** `INPUT_LIMITS` / `rejectTooLong` / `rejectBadImage` (release `auth.js`; `LIMITS` in `plans.js` on main): text 50,000 chars, chat 20 msgs / 20,000 chars and only user/assistant roles, OCR 20 pages, image 3 MB (`_ocrPage` in `extract.js` accepts data URLs AND `{data,type}` from notebook.html), single audio 4 MB.
+- **Errors:** never send `err.message` to the browser. Use `sendServerError(res, err, where, fallback)` / `userError(msg)` from `models.js`; no `_debug`, no `raw`.
+- **Supadata:** `takeSupadataCall()` site-wide monthly cap (`SUPADATA_MONTHLY_CAP`, default 90); skipped at the cap or if the counter is unreachable.
+- **Record Lecture tidy-up:** `js/recorder.js` `tidyTranscript` sends the transcript in ~7,000-char pieces (sentence ends, previous edited tail as `context`, 4 tries 25 s apart when busy, stops on 401/429). `api/transcribe.js` tidies ONE piece (≤ 8,000 chars, bigger returned untouched and free), `max_tokens = min(4500, len/3+1500)`, and rejects an answer with `finish_reason:'length'` or < 85% of the words → piece returned as spoken, charge refunded. Reply `{ transcript, tidied, busy? }`.
+- **Tests (gitignored):** `node _test_limits.js "<root>" [4|5|6|7|tidy|all]`, `node _test_tidy_browser.js "<root>"` (Edge).
+- `dashboard.html` deleted; `/dashboard` redirects to `/`. Local `.git/hooks/pre-commit` blocks secret-looking keys (recreate on a new clone).
 ## notebook.html — Notebooks App (updated June 2026)
 
 ### Architecture

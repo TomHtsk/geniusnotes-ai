@@ -5,14 +5,16 @@
 // serverless function is needed. They are the only actions that work without signing in.
 //
 // Env vars (Vercel): SITE_LOCKED = "true" turns the lock on; SITE_ACCESS_PASSWORD = the code.
-// The unlock cookie is "<expiry ms>.<HMAC-SHA256(code, 'nc-access:' + expiry)>", so it can't be
+// The unlock cookie is "<time ms>.<HMAC-SHA256(code, 'nc-access:' + time)>" — a SESSION cookie (gone when the
+// browser closes) stamped with the time of the last request; middleware.js accepts it for 15 minutes
+// after that time and re-stamps it on every request (idle timeout). It can't be
 // forged without the code, and changing the code in Vercel signs everyone out of the lock.
 // middleware.js checks the same cookie with the same formula — keep the two in step.
 const crypto = require('crypto');
 const { _ensureAdmin, getDb, isAllowedOrigin } = require('./auth');
 
 const COOKIE_NAME = 'nc_access';
-const COOKIE_DAYS = 30;
+const UI_COOKIE = 'nc_unlocked';   // readable, no secret: tells js/site-lock-ui.js to show "Lock site"
 const ATTEMPTS_PER_MINUTE = 5;   // per visitor (IP), for the access code and for the waitlist
 
 // Database unreachable -> refuse (fail closed), never unlock or rate-limit-skip.
@@ -53,9 +55,9 @@ function _sameCode(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-function accessCookieValue(password, expiresAt) {
-  const sig = crypto.createHmac('sha256', password).update(`nc-access:${expiresAt}`).digest('hex');
-  return `${expiresAt}.${sig}`;
+function accessCookieValue(password, time) {
+  const sig = crypto.createHmac('sha256', password).update(`nc-access:${time}`).digest('hex');
+  return `${time}.${sig}`;
 }
 
 async function _unlock(req, res) {
@@ -70,8 +72,11 @@ async function _unlock(req, res) {
   const code = String((req.body || {}).code || '').slice(0, 200);
   if (!code || !_sameCode(code, password)) return res.status(401).json({ error: 'Incorrect code' });
 
-  const expiresAt = Date.now() + COOKIE_DAYS * 24 * 60 * 60 * 1000;
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${accessCookieValue(password, expiresAt)}; Max-Age=${COOKIE_DAYS * 24 * 60 * 60}; Path=/; HttpOnly; Secure; SameSite=Lax`);
+  // Session cookies (no Max-Age/Expires), Strict, Secure; the unlock one is HttpOnly.
+  res.setHeader('Set-Cookie', [
+    `${COOKIE_NAME}=${accessCookieValue(password, Date.now())}; Path=/; Secure; SameSite=Strict; HttpOnly`,
+    `${UI_COOKIE}=1; Path=/; Secure; SameSite=Strict`,
+  ]);
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({ ok: true });
 }

@@ -105,6 +105,13 @@ Top-ups (Student/Pro only, one-time, confirmed by the person, never automatic): 
 - `my-notes.html` was removed (redirects to `notepad.html`); the Notepad sidebar is where notes and folders are browsed.
 - **Removed (Oct 2026):** `passwords.html` (Password Manager) and `vault.html` (Vault) are deleted; `/passwords` and `/vault` redirect to the homepage (`redirects` in `vercel.json`). They kept passwords, a PIN and private files unencrypted in the browser. The old code is only in git history.
 
+### Coming-soon lock (Oct 2026)
+- **`middleware.js`** (Vercel Routing Middleware, root of the project; not a serverless function) runs before every non-`/api` request. `SITE_LOCKED=true` → visitors without a valid `nc_access` cookie get `coming-soon.html` at the address they asked for (other files such as `.js` → 401). Anything else / unset → the middleware does nothing.
+- **Always public while locked:** `/api/*` (own login checks), images, CSS, fonts, `/favicon.ico`, `/privacy`, `/terms` (and `.html`), `/coming-soon.html`. Every reply carries `X-Robots-Tag: noindex, nofollow`; `/robots.txt` is replaced by "Disallow: /". All of this disappears when the lock is off.
+- **Access code + waitlist** are two no-sign-in actions on `/api/subscription` (`api/_lib/site-lock.js`) — the only exceptions to rule 2: `site-unlock` (checks `SITE_ACCESS_PASSWORD`, 5 tries/min per IP in `siteLockAttempts/{ip}`, sets the 30-day HttpOnly/Secure/SameSite=Lax cookie) and `waitlist` (stores `waitlist/{sha256(email)}` = `{ email, createdAt, source }`, 5/min per IP in `waitlistAttempts/{ip}`). Both only accept our own origins and fail closed (503) if Firestore is down.
+- **Cookie** = `<expiry ms>.<HMAC-SHA256(SITE_ACCESS_PASSWORD, 'nc-access:' + expiry)>`; made in `site-lock.js`, checked in `middleware.js` — keep the two formulas the same. Changing the code in Vercel signs everyone out of the lock.
+- Waitlist emails: Firebase console → Firestore → `waitlist`. Local test: `node _test_sitelock.mjs "<root>"` (gitignored; 42 checks with a fake Firestore — middleware rules, cookie, code, rate limits, waitlist).
+
 ### Key files added recently
 - `js/search.js` — single smart search bar (detects YouTube link vs. topic), recent-search chips
 - `js/wiki.js` — Wikipedia summary card, autocomplete, related topics, full-screen article reader, "Send to Notepad" (uses `gn-notepad-pending*` keys)

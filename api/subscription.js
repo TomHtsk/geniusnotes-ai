@@ -3,6 +3,7 @@ const {
   chargeSeconds, PLANS, YT_PER_DAY, LIMITS,
 } = require('./_lib/auth');
 const wallet = require('./_lib/wallet');
+const { handleSiteLockAction } = require('./_lib/site-lock');
 const storage = require('./_lib/storage');
 const { TOPUPS, TOPUP_DAYS, ownerPlan } = require('./_lib/plans');
 
@@ -16,11 +17,15 @@ const { TOPUPS, TOPUP_DAYS, ownerPlan } = require('./_lib/plans');
 //        browser's own speech recognition turned into text (no AI service ran, so the
 //        browser's length is accepted, capped at MAX_AUDIO_SECONDS and at the time left)
 //   POST { action: 'storage-check' }   -> measure cloud storage now (at most once a minute)
+//   POST { action: 'site-unlock', code } / { action: 'waitlist', email } -> coming-soon page
+//        (the only actions that work without signing in; api/_lib/site-lock.js)
 //   GET ?cron=storage (Vercel cron, Authorization: Bearer $CRON_SECRET) -> measure every
 //        account's storage (api/_lib/storage.js), continuing tomorrow if it runs out of time
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  // Coming-soon page: access code + waitlist (no sign-in; see api/_lib/site-lock.js).
+  if (await handleSiteLockAction(req, res)) return;
 
   if (req.method === 'GET' && req.query && req.query.cron === 'storage') {
     const secret = process.env.CRON_SECRET;

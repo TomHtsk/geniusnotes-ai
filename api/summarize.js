@@ -304,6 +304,14 @@ async function fetchYtDirectCaptions(videoId) {
   return text;
 }
 
+// True only for https://youtube.com / https://<sub>.youtube.com addresses.
+function _isYouTubeHost(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && (u.hostname === 'youtube.com' || u.hostname.endsWith('.youtube.com'));
+  } catch (e) { return false; }
+}
+
 async function fetchTranscriptViaInnertube(videoId) {
   const { Innertube } = await import('youtubei.js');
   const opts = process.env.YT_COOKIE ? { cookie: process.env.YT_COOKIE } : {};
@@ -337,10 +345,12 @@ async function fetchTranscriptViaInnertube(videoId) {
   let baseUrl = track?.base_url;
   if (!baseUrl) throw new Error('No caption base URL');
 
-  // Include cookies in the caption fetch — YouTube requires auth for signed caption URLs
+  // Include cookies in the caption fetch — YouTube requires auth for signed caption URLs.
+  // YT_COOKIE is a real YouTube login: only ever send it to YouTube itself, never to whatever
+  // host a caption URL happens to point at.
   const captHeaders = {
     ..._YT_HEADERS_DESKTOP,
-    ...(process.env.YT_COOKIE ? { Cookie: process.env.YT_COOKIE } : {})
+    ...(process.env.YT_COOKIE && _isYouTubeHost(baseUrl) ? { Cookie: process.env.YT_COOKIE } : {})
   };
 
   const sep = baseUrl.includes('?') ? '&' : '?';

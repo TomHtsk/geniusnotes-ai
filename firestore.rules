@@ -72,7 +72,11 @@ service cloud.firestore {
     }
     match /shared_notes/{shareId} {
       allow get: if true;
-      allow create: if signedIn() && request.resource.data.sharedBy == request.auth.uid && !storageFull(request.auth.uid);
+      // New links must use the hard-to-guess id format (22 characters A-Z a-z 0-9 - _, made
+      // from 16 secure random bytes by notepad.html's _newShareId). Old links keep working.
+      allow create: if signedIn() && request.resource.data.sharedBy == request.auth.uid
+                    && shareId.matches('^[A-Za-z0-9_-]{22}$')
+                    && !storageFull(request.auth.uid);
       allow update: if (signedIn()
                         && resource.data.sharedBy == request.auth.uid
                         && request.resource.data.sharedBy == request.auth.uid)

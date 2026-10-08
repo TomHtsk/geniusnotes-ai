@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 
 # Secrets: never commit these. Keys belong in Vercel → Settings → Environment Variables.
 .env
@@ -11,6 +11,9 @@
 *service-account*.json
 *serviceAccount*.json
 *credentials*.json
+*firebase-adminsdk*.json
+*admin-key*.json
+waitlist-*.csv
 
 # Local scratch / debug files (not part of the site)
 *-player-script.js

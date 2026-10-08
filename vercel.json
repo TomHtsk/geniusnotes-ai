@@ -25,7 +25,8 @@
     { "source": "/api/musicnotes",  "destination": "/api/lyrics" },
     { "source": "/api/chat",        "destination": "/api/interpret" },
     { "source": "/api/citation",    "destination": "/api/writing" },
-    { "source": "/api/textbook",    "destination": "/api/writing" }
+    { "source": "/api/textbook",    "destination": "/api/writing" },
+    { "source": "/admin/waitlist",  "destination": "/admin-waitlist.html" }
   ],
   "headers": [
     {

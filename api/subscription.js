@@ -6,6 +6,7 @@ const wallet = require('./_lib/wallet');
 const { handleSiteLockAction } = require('./_lib/site-lock');
 const storage = require('./_lib/storage');
 const { TOPUPS, TOPUP_DAYS, ownerPlan } = require('./_lib/plans');
+const { handleWaitlistAdmin } = require('./_lib/waitlist-admin');
 
 // Usage endpoint (the file keeps its old name so existing calls to /api/subscription keep
 // working). Balances live in the wallet (api/_lib/wallet.js); plans, top-ups and limits in
@@ -21,6 +22,7 @@ const { TOPUPS, TOPUP_DAYS, ownerPlan } = require('./_lib/plans');
 //        (the only actions that work without signing in; api/_lib/site-lock.js)
 //   GET ?cron=storage (Vercel cron, Authorization: Bearer $CRON_SECRET) -> measure every
 //        account's storage (api/_lib/storage.js), continuing tomorrow if it runs out of time
+//   GET ?admin=waitlist                -> the waitlist, owner account only (api/_lib/waitlist-admin.js)
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -39,6 +41,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  if (await handleWaitlistAdmin(req, res)) return;
   const authed = await verifyAuthFull(req, res);
   if (!authed) return;
   if (!(await checkRateLimit(authed.uid, res))) return;

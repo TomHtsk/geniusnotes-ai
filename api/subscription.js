@@ -1,4 +1,5 @@
 const { applyCors, verifyAuthFull, checkRateLimit, USAGE_LIMITS, getDb, sendUsageUnavailable } = require('./_lib/auth');
+const { handleSiteLockAction } = require('./_lib/site-lock');
 
 function _monthKey() {
   return new Date().toISOString().slice(0, 7); // YYYY-MM, UTC
@@ -11,9 +12,13 @@ function _monthKey() {
 //   GET                                -> this month's usage and the limits
 //   POST { action: 'record-check' }    -> can the user start a recording right now?
 //   POST { action: 'record-log', seconds } -> report actual Record Lecture duration
+//   POST { action: 'site-unlock', code } / { action: 'waitlist', email } -> coming-soon page
+//        (the only actions that work without signing in; api/_lib/site-lock.js)
 module.exports = async function handler(req, res) {
   applyCors(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  // Coming-soon page: access code + waitlist (no sign-in; see api/_lib/site-lock.js).
+  if (await handleSiteLockAction(req, res)) return;
   const authed = await verifyAuthFull(req, res);
   if (!authed) return;
   if (!(await checkRateLimit(authed.uid, res))) return;

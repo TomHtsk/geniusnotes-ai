@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Waitlist — NoteCaptain admin</title>
+<link rel="icon" href="/favicon.ico" />
+<!-- Owner-only list of coming-soon waitlist signups. Opened at /admin/waitlist (vercel.json
+     rewrite). The page itself holds no data: the list comes from
+     GET /api/subscription?admin=waitlist, which checks the owner's sign-in on the server
+     (api/_lib/waitlist-admin.js). Uses only absolute paths because of the rewrite. -->
+<style>
+  :root { color-scheme: dark; --bg:#0B0F14; --surface:#131A21; --border:rgba(255,255,255,0.12); --text:#E8EDF2; --muted:#93A1AE;
+    --accent:#5CC4D0; --error:#FF8A7A; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 32px 16px; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 6px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  button { height: 38px; padding: 0 16px; border-radius: 8px; border: 0; background: #fff; color: #0B0F14; font: inherit;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #count { color: var(--muted); font-size: 0.88rem; margin-left: auto; }
+  #msg { min-height: 1.4em; font-size: 0.9rem; color: var(--muted); margin-bottom: 12px; }
+  #msg.err { color: var(--error); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.email { white-space: normal; word-break: break-all; }
+  [hidden] { display: none !important; }
+</style>
+<script src="/js/site-lock-ui.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="/js/auth-gate.js"></script>
+</head>
+<body>
+<main class="wrap">
+  <h1>Waitlist</h1>
+  <p class="sub">People who joined the waitlist on the coming-soon page. Only the owner account can see this.</p>
+  <div class="bar">
+    <button id="csv-btn" type="button" disabled>Download CSV</button>
+    <button id="reload-btn" class="ghost" type="button" disabled>Refresh</button>
+    <button id="signin-btn" class="ghost" type="button" hidden>Sign in</button>
+    <span id="count"></span>
+  </div>
+  <p id="msg" role="status">Checking sign-in…</p>
+  <div class="table-wrap" id="table-wrap" hidden>
+    <table>
+      <thead><tr><th>#</th><th>Email</th><th>Signed up</th><th>Source</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+(function () {
+  firebase.initializeApp({
+    apiKey: "AIzaSyAwbZkiZR8NRgrFYCL041FHfGquHyeEJUI",
+    authDomain: "geniusnotes-ai.firebaseapp.com",
+    projectId: "geniusnotes-ai",
+    storageBucket: "geniusnotes-ai.firebasestorage.app",
+    messagingSenderId: "1041746856723",
+    appId: "1:1041746856723:web:fae9072e0292c3946068e6"
+  });
+
+  var entries = [];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function say(text, isErr) { $('msg').textContent = text; $('msg').className = isErr ? 'err' : ''; }
+
+  function render() {
+    var tbody = $('rows');
+    tbody.textContent = '';
+    entries.forEach(function (e, i) {
+      var tr = document.createElement('tr');
+      [String(i + 1), e.email, e.createdAt ? new Date(e.createdAt).toLocaleString() : '', e.source].forEach(function (v, c) {
+        var td = document.createElement('td');
+        td.textContent = v;            // never innerHTML: emails are typed by strangers
+        if (c === 1) td.className = 'email';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    $('table-wrap').hidden = entries.length === 0;
+    $('count').textContent = entries.length + (entries.length === 1 ? ' signup' : ' signups');
+    $('csv-btn').disabled = entries.length === 0;
+    say(entries.length ? '' : 'No signups yet.');
+  }
+
+  function load() {
+    var user = firebase.auth().currentUser;
+    if (!user || user.isAnonymous) return;
+    $('reload-btn').disabled = true;
+    say('Loading…');
+    user.getIdToken().then(function (token) {
+      return fetch('/api/subscription?admin=waitlist', { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (res) {
+      $('reload-btn').disabled = false;
+      if (!res.ok) { entries = []; render(); say(res.d.error || 'Could not load the waitlist.', true); return; }
+      entries = res.d.entries || [];
+      render();
+    }).catch(function () {
+      $('reload-btn').disabled = false;
+      say('Could not reach the server. Check your connection and try again.', true);
+    });
+  }
+
+  // Spreadsheet apps run cells that start with = + - @ as formulas; prefix those with '.
+  function csvCell(v) {
+    v = String(v == null ? '' : v);
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+
+  function downloadCsv() {
+    var lines = ['email,signed_up_utc,source'];
+    entries.forEach(function (e) { lines.push([e.email, e.createdAt, e.source].map(csvCell).join(',')); });
+    var blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'notecaptain-waitlist-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function askSignIn() { window.gnRequireSignIn('Sign in with the owner account to see the waitlist', load); }
+
+  $('csv-btn').addEventListener('click', downloadCsv);
+  $('reload-btn').addEventListener('click', load);
+  $('signin-btn').addEventListener('click', askSignIn);
+
+  firebase.auth().onAuthStateChanged(function (user) {
+    if (user && !user.isAnonymous) {
+      $('signin-btn').hidden = true;
+      load();
+    } else {
+      entries = []; render();
+      $('signin-btn').hidden = false;
+      say('Sign in with the owner account to see the waitlist.');
+      askSignIn();
+    }
+  });
+})();
+</script>
+</body>
+</html>
